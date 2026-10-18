@@ -1,0 +1,35 @@
+{
+  "id": "warcry",
+  "name": "War Cry",
+  "class": "barbarian",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "WarcryShockwave",
+    "celFile": "WarcryShockwave",
+    "speed": 12.0,
+    "range": 16.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 2,
+    "type": "physical"
+  },
+  "cost": {
+    "mana": 10
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "barbarian_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/WarcryShockwave.png",
+    "numbers": "assets/skills/data/warcry.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "id": "arcticblast",
+  "name": "Arctic Blast",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "dru",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 6,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "arctic blast",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is dru"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "druid",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 2,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 36,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "Skillname231",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 24,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 2,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 19,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "35",
+        "description": "base ranged (doubled)",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "2",
+        "description": "level range (doubled)",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "4",
+        "description": "Min Mana to start casting",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 8,
+        "value": "15",
+        "description": "damage synergy",
+        "source": "Skills.txt Param8",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  },
+  "damage": {
+    "type": {
+      "value": "cold",
+      "source": "Skills.txt EType"
+    },
+    "min": {
+      "value": 357,
+      "formula": "21 + 16x7 + 18x8 + 20x4",
+      "atLevel": 20,
+      "brackets": [
+        [
+          1,
+          8
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          17,
+          22
+        ],
+        [
+          23,
+          28
+        ],
+        [
+          29,
+          99
+        ]
+      ],
+      "source": "Skills.txt EMin with the EMinLev/EMaxLev bracket increments",
+      "needsValidation": true,
+      "validationNote": "The bracket shape is right but whether level 1 counts as an increment is not settled by the table. Fire Ball's minimum at level 20 comes out 399, which matches the published value, with level 1 excluded; a second skill could not be checked offline. Confirm against an authoritative damage table before using these numbers for balance.",
+      "assumption": "ELevLen1..3 are empty in this table, so the standard D2 brackets (8, 8, 6, 6, 29+) were used"
+    },
+    "max": {
+      "value": 388,
+      "formula": "40 + 16x7 + 19x8 + 21x4",
+      "atLevel": 20,
+      "brackets": [
+        [
+          1,
+          8
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          17,
+          22
+        ],
+        [
+          23,
+          28
+        ],
+        [
+          29,
+          99
+        ]
+      ],
+      "source": "Skills.txt EMax with the EMinLev/EMaxLev bracket increments",
+      "needsValidation": true,
+      "validationNote": "The bracket shape is right but whether level 1 counts as an increment is not settled by the table. Fire Ball's minimum at level 20 comes out 399, which matches the published value, with level 1 excluded; a second skill could not be checked offline. Confirm against an authoritative damage table before using these numbers for balance.",
+      "assumption": "ELevLen1..3 are empty in this table, so the standard D2 brackets (8, 8, 6, 6, 29+) were used"
+    },
+    "synergy": {
+      "value": "(skill('Cyclone Armor'.blvl)+skill('Hurricane'.blvl))*par8",
+      "source": "Skills.txt EDmgSymPerCalc"
+    },
+    "hitShift": {
+      "value": 2,
+      "source": "Skills.txt HitShift"
+    }
+  },
+  "missiles": [
+    {
+      "value": "arcticblast1",
+      "source": "Skills.txt srvmissilea",
+      "missile": {
+        "name": "arcticblast1",
+        "resolved": true,
+        "celFile": {
+          "value": "expansion\\ArcticBlastIce",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 12,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 12,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 30,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 1,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": null,
+        "nextHit": null,
+        "nextDelay": null,
+        "pierce": null,
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 16,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": null,
+        "elemental": {
+          "type": null,
+          "min": null,
+          "max": null
+        },
+        "parameters": [
+          {
+            "index": 1,
+            "value": "8",
+            "description": "\"Mana Use, 16ths.\"",
+            "source": "Missiles.txt Param1",
+            "descriptionSource": "Missiles.txt description column"
+          },
+          {
+            "index": 2,
+            "value": "7",
+            "description": "Minimum range",
+            "source": "Missiles.txt Param2",
+            "descriptionSource": "Missiles.txt description column"
+          }
+        ],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "",
+          "known": null,
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    }
+  ],
+  "clientMissiles": [
+    {
+      "value": "arcticblast1",
+      "source": "Skills.txt cltmissilea"
+    },
+    {
+      "value": "arcticblast2",
+      "source": "Skills.txt cltmissileb"
+    }
+  ]
+}

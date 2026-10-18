@@ -1,0 +1,402 @@
+# 架構審查意見
+
+先講最關鍵的一點：**你們目前的 `MissileRuntime` 存的是螢幕座標**（3-C1 的介面摘要明確寫 `x, y（目前螢幕坐標）`、`prevX, prevY（上幀坐標）`）。在無滾動的沙盒裡這沒問題，但一進入帶相機平移的地牢，這個設計會直接導致第 1 題的所有症狀，而且不是調參能救的。下面第一節就從這裡展開。
+
+另外一個前提聲明：我對 D2 底層的了解來自公開的逆向資料與社群文件，**無法驗證你們從 MPQ 萃取的具體數字**（551 種 Func 1、22px 基底、18px 偏移）。下文凡涉及 D2 行為的陳述，我會標明是「結構上確定」還是「需你們用資料表自行覆核」。第三節末尾我會對「全遊戲僅兩種導引飛彈」這個結論提出反駁。
+
+---
+
+## 1. 相機滾動與等距世界座標系解耦
+
+### 1.1 根因：螢幕座標當成狀態
+
+把螢幕座標當作權威狀態，會產生三個無法用插值修補的問題：
+
+1. **相機移動必須回頭改寫所有飛彈的 `x/y/prevX/prevY`**。一旦漏改 `prev`，當幀所有飛彈會集體朝相機反方向彈一下。
+2. **相機與飛彈各自獨立取整**，兩個 `Math.round` 的相位差產生拍頻（beat），表現為飛彈相對於地板每隔幾幀抖 1px。這就是你擔心的「抖動」，它與插值品質無關，純粹是取整次數的問題。
+3. **視野外的飛彈座標語意失效**，剔除、碰撞、瞬移判定全部要額外處理相機偏移。
+
+### 1.2 建議架構：三層分離，單一投影點
+
+```
+世界層 (world)      → wx, wy, wz        權威狀態，物理唯一真理源
+投影層 (projection) → P: world → view   純函式，無狀態，全專案唯一實作
+視圖層 (view)       → 減去相機、取整     只在繪製當下發生，不回寫
+```
+
+關鍵紀律：**`worldToView` 只能有一份實作**，相機、飛彈、怪物、地板、除錯層全部呼叫它。你們目前把 `dy * 2` 和 `vy = v * sin * 0.5` 寫在兩個不同的地方（幾何修正與速度轉換），這遲早會漂移。抽成一個模組：
+
+```ts
+// projection.ts — 全專案唯一的投影定義
+export const Y_SQUASH = 0.5;
+
+/** 世界 → 視圖（尚未減相機、尚未取整），純函式 */
+export function worldToView(wx: number, wy: number, wz: number, out: Vec2): void {
+  out.x = wx;
+  out.y = wy * Y_SQUASH - wz;   // z 為離地高度，向上為正
+}
+
+/** 世界速度 → 視圖速度，與 worldToView 保持同一矩陣 */
+export function worldVelToView(vx: number, vy: number, out: Vec2): void {
+  out.x = vx;
+  out.y = vy * Y_SQUASH;
+}
+```
+
+（若你們實際用的是菱形格座標而非「y 壓扁」模型，把 `worldToView` 換成對應的 2×2 矩陣即可，架構不變。重點是**只有這裡知道投影長什麼樣**。）
+
+順帶解決一個遺留問題：把 `wz`（離地高度）提升為一級欄位。你們目前的「受擊點上移 18px」其實就是在模擬目標軀幹的 z 高度，只是硬編在 y 裡。有了 `wz`，法杖出膛高度、飛彈飛行高度、受擊點高度三者就共用同一套垂直語意，第 2 題的出膛點對齊也會變成單純的幾何加法，而不是再疊一個魔術數字。
+
+### 1.3 相機必須是邏輯實體，不是渲染參數
+
+**這是消除撕裂的核心**。相機如果在 render 迴圈裡做 `cam += (target - cam) * 0.1`，它的更新頻率是 60/144Hz，而飛彈是 25Hz —— 兩者用不同的時基，相對運動必然抖。
+
+正確作法：相機進 25Hz 的 tick，持有 `prevX/prevY`，用**和飛彈完全同一個 `alpha`** 插值。
+
+```ts
+// camera.ts
+export class Camera {
+  wx = 0; wy = 0;          // 世界座標（跟隨目標的世界位置）
+  prevWx = 0; prevWy = 0;
+  teleported = false;
+
+  /** 每 25Hz Tick 呼叫一次 —— 不要放在 render */
+  step(targetWx: number, targetWy: number): void {
+    this.prevWx = this.wx;
+    this.prevWy = this.wy;
+
+    const dx = targetWx - this.wx;
+    const dy = targetWy - this.wy;
+
+    // 死區：避免角色站著微調時相機神經質跟隨
+    const dist = Math.hypot(dx, dy * Y_SQUASH);
+    if (dist < DEADZONE) return;
+
+    // 固定步長下常數 k 即可，無需 dt 補償（這正是固定步長的紅利）
+    let mx = dx * LERP_K;
+    let my = dy * LERP_K;
+
+    // 速度上限：防止過圖/傳送時相機甩尾
+    const sp = Math.hypot(mx, my * Y_SQUASH);
+    if (sp > MAX_CAM_SPEED) { const s = MAX_CAM_SPEED / sp; mx *= s; my *= s; }
+
+    this.wx += mx;
+    this.wy += my;
+  }
+
+  /** 玩家傳送 / 換場景：相機瞬移，當幀不插值 */
+  snapTo(wx: number, wy: number): void {
+    this.wx = this.prevWx = wx;
+    this.wy = this.prevWy = wy;
+    this.teleported = true;
+  }
+}
+```
+
+固定步長的額外紅利：`LERP_K` 不需要做 `1 - Math.exp(-λ·dt)` 的 dt 補償，因為 dt 恆為 40ms。這也讓相機行為在任何更新率下完全一致、可重現、可測試。
+
+### 1.4 取整紀律：全場只取整一次
+
+這是「絕不抖動」的充分條件。規則只有一條：
+
+> **先在浮點域完成「世界 → 視圖 → 減相機」，最後對結果取整一次。而相機原點本身先獨立取整，所有圖層共用這個整數原點。**
+
+```ts
+// 每個畫面幀開頭，算一次（不是每個飛彈算一次）
+const camVx = lerp(cam.prevWx, cam.wx, cam.teleported ? 1 : alpha);
+const camVy = lerp(cam.prevWy, cam.wy, cam.teleported ? 1 : alpha) * Y_SQUASH;
+
+// 相機原點取整 —— 地板、怪物、飛彈、除錯層全部共用這兩個整數
+const originX = Math.round(camVx - viewW / 2);
+const originY = Math.round(camVy - viewH / 2);
+```
+
+然後每個飛彈：
+
+```ts
+const wx = m.teleported ? m.wx : m.prevWx * inv + m.wx * a;
+const wy = m.teleported ? m.wy : m.prevWy * inv + m.wy * a;
+const wz = m.teleported ? m.wz : m.prevWz * inv + m.wz * a;
+
+const dx = Math.round(wx - originX);                 // ← 唯一一次取整
+const dy = Math.round(wy * Y_SQUASH - wz - originY); // ← 唯一一次取整
+```
+
+為什麼這樣就不抖：所有實體與地板都減去**同一個整數** `originX/originY`，相機的分數部分被統一吸收掉，實體之間、實體與地板之間的相對關係只剩下各自的一次取整誤差（最多 ±0.5px，且不隨相機移動而振盪）。相對地，若「相機取整一次、實體再取整一次」，兩個誤差會以相機分數部分為週期互打，那就是肉眼可見的 shimmer。
+
+**不要用 `ctx.translate(-camVx, -camVy)` 傳入浮點值**。即使 `imageSmoothingEnabled = false`，瀏覽器對非整數變換下的取樣行為在各引擎不一致，會出現 1px 接縫與邊緣撕裂。要用 transform 的話，只傳整數：
+
+```ts
+ctx.setTransform(1, 0, 0, 1, -originX, -originY);  // originX/Y 已是整數
+```
+
+### 1.5 算力評估
+
+每飛彈每畫面幀：3 次 lerp + 2 次乘加 + 2 次 round ≈ 10 個浮點運算。200 顆飛彈在 144Hz 下約 29 萬次運算/秒，在現代 JS 引擎上是**微秒等級**，完全不是瓶頸。把相機計算提到迴圈外（如上）比任何微優化都有效。
+
+真正的成本在 `drawImage` 與合成模式切換，見 §3.6。
+
+### 1.6 必須補的測試
+
+- **相對穩定性測試**：固定飛彈世界座標不動，讓相機以 0.37px/tick 這種「刻意製造分數」的速度移動 1000 幀，斷言飛彈與地板參考點的螢幕距離差值恆定（這會直接抓到雙重取整的拍頻）。
+- **相機瞬移測試**：`snapTo()` 當幀不插值，且下一幀起恢復插值、不回滑。
+- **投影一致性測試**：`worldVelToView(worldToView 的差分)` 與 `worldToView 的差分` 必須相等，防止兩處投影定義漂移。
+
+---
+
+## 2. 動作前搖與投射物出膛的解耦
+
+### 2.1 三個獨立問題，不要混在一起解
+
+| 問題 | 本質 | 解法 |
+|---|---|---|
+| **何時** 生成 | 時序 | 動畫觸發幀（trigger frame）跨越偵測 |
+| **何處** 生成 | 幾何 | 掛點（attachment）偏移表，含 z |
+| **事件何時到達** | 傳輸 | 邏輯時鐘 + 抖動緩衝佇列 |
+
+你們是 AI 日誌事件驅動，第三個問題最容易被低估，我放在最後但它可能最痛。
+
+### 2.2 何時：觸發幀的「跨越偵測」
+
+結構上可以確定：D2 的動畫序列有「動作判定幀」的概念（COF 層級的 frame trigger，社群通常稱為 action frame / `start frame` + `action frame`），施法動作跑到該幀時才真正產生效果。你們的 `animAcc` 256 進位推進已經是對的基礎。
+
+**但有一個必踩的坑**：不能寫 `if (animFrame === triggerFrame)`。當 `speed ≥ 256`（加速施法、Faster Cast Rate）或單 tick 進位 > 1 幀時，觸發幀會被整個跳過，施法變成啞火。這是很難復現的間歇性 bug。
+
+正確作法是對**單調遞增的累計幀計數器**做跨越測試：
+
+```ts
+interface CastState {
+  active: boolean;
+  frameCursor: number;   // 單調遞增，不取餘數
+  acc: number;           // 256 進位餘數
+  fired: boolean;        // 本次施法是否已出膛
+  trigger: number;       // 觸發幀索引
+  total: number;         // 動作總幀數
+}
+
+/** 每 25Hz Tick 呼叫一次 */
+function stepCast(c: CastState, speed: number, onFire: () => void): void {
+  if (!c.active) return;
+
+  const before = c.frameCursor;
+  const acc = c.acc + speed;
+  c.acc = acc & 255;
+  c.frameCursor += acc >> 8;        // 可能一次跨多幀
+
+  // 跨越偵測：只要觸發幀落在 (before, cursor] 區間內就觸發
+  if (!c.fired && c.frameCursor >= c.trigger && before < c.trigger) {
+    c.fired = true;
+    onFire();                        // ← 投射物在此生成
+  }
+
+  if (c.frameCursor >= c.total) {
+    c.active = false;                // 動作結束
+    // 保險：動作跑完但沒觸發（trigger 設定錯誤）→ 補發並記錄警告
+    if (!c.fired) { c.fired = true; onFire(); reportAnomaly('trigger frame missed'); }
+  }
+}
+```
+
+末尾那個保險分支建議保留並接到除錯 HUD。資料驅動的系統裡，`trigger > total` 這類資料錯誤遲早會出現，寧可「動畫結束時補發 + 告警」也不要靜默吞掉一次施法。
+
+**中斷處理**：施法者在觸發幀之前死亡、被擊暈、被打斷、切換目標 → 必須取消 `CastState` 且不生成。這是狀態機而非回呼計時器的理由 —— 回呼（`setTimeout` 式）無法乾淨取消，狀態機可以。
+
+### 2.3 何處：掛點偏移表，與方向量化
+
+掛點不是一個點，而是 `方向 × 幀`。但完整的逐幀掛點資料量大且你們多半沒有 DCC 的圖層錨點資訊，建議分層：
+
+```ts
+/** 每個施法動作一組；索引為方向（8 或 16 向） */
+interface AttachTable {
+  dirs: number;                  // 8 / 16 / 32
+  ox: Int16Array;                // 視圖 x 偏移（px），長度 = dirs
+  oy: Int16Array;                // 視圖 y 偏移（px）—— 注意這是已投影的視圖量
+  oz: Int16Array;                // 離地高度（px），向上為正
+}
+```
+
+務必區分 `oy`（視圖平面偏移，例如法杖往身體前方伸）與 `oz`（高度，例如法杖頂端離地 56px）。混成一個數字就會重蹈「18px 魔術數字」的覆轍 —— 兩者在飛彈飛行、碰撞、陰影繪製時的行為完全不同。
+
+**方向量化的關鍵取捨**：
+
+- 角色精靈圖只有 8/16 向 → **顯示方向必須量化**。
+- 飛彈的實際飛行角度**不應該量化**。若也量化到 16 向，最大角度誤差 11.25°，在近距離會明顯從目標旁邊飛過。
+
+因此：
+
+```ts
+const aim = Math.atan2(/* 目標 - 施法者，世界空間 */);
+const dirIdx = screenVelocityToDirIndex(/* ... */);  // 給精靈圖與掛點查表用
+
+spawn({
+  wx: caster.wx + table.ox[dirIdx],   // 掛點用量化方向（因為圖是量化的）
+  // ...
+  phi: aim,                            // 物理用真實角度
+});
+```
+
+這個不對稱是刻意的：掛點必須跟著畫面上實際畫出來的那張圖走，物理必須跟著真實意圖走。
+
+**出膛瞬間必須設 `teleported = true`**。否則 `prevX/prevY` 若仍是物件池上一位租客的殘值，當幀會從地圖另一端拉出一條插值殘影。這應該在池的 `acquire()` 裡強制 `prev = cur; teleported = true`，而不是靠呼叫端記得。
+
+### 2.4 事件到達：邏輯時鐘與抖動緩衝
+
+這是監控看板特有的問題。AI 日誌事件的到達時間是**不規則且可能批次**的：一次 WebSocket 推送可能夾帶過去 300ms 內的 5 個事件。若收到即生成，會看到飛彈成串爆發再乾等，完全失去節奏感。
+
+建議引入**邏輯時鐘 + 延遲緩衝**：
+
+```ts
+interface ScheduledEvent { tick: number; payload: CastEvent; }
+
+class EventScheduler {
+  private queue: ScheduledEvent[] = [];   // 依 tick 排序
+  private readonly delayTicks: number;    // 抖動緩衝，建議 2~4 tick (80~160ms)
+
+  /** 事件到達時呼叫，不立即執行 */
+  enqueue(ev: CastEvent, currentTick: number): void {
+    // 把來源時間戳映射到邏輯 tick；若映射結果已過期，夾到「現在 + 緩衝」
+    const target = Math.max(
+      this.mapToTick(ev.timestamp),
+      currentTick + 1,
+    );
+    insertSorted(this.queue, { tick: target, payload: ev });
+  }
+
+  /** 每 Tick 開頭呼叫，取出所有到期事件 */
+  drain(currentTick: number, out: CastEvent[]): void { /* ... */ }
+}
+```
+
+兩個設計決策要你們拍板：
+
+1. **「即時跟隨」還是「回放」模式**。監控看板通常兩者都要。回放模式下可以接受較大緩衝（換取完美平滑）；即時模式下緩衝要小，且落後太多時需要**丟棄而非追趕**（追趕會讓動畫瞬間快轉，觀感比丟幀更糟）。建議把這個策略做成可切換，並在 HUD 顯示當前落後量。
+2. **分頁隱藏恢復後怎麼辦**。你們的 `MissileLoop` 恢復時不補跑 —— 對沙盒是對的，但對「即時跟隨」模式，恢復後邏輯時鐘已落後真實世界數分鐘。必須在 `onFocus` 時決定：丟棄積壓事件並重新對時（推薦），或進入快轉追趕。目前的實作是「凍結在原地然後從新基準繼續」，這會讓看板顯示過時狀態卻沒有任何提示。至少要在 HUD 上標紅。
+
+---
+
+## 3. 效能與邊界安全：進入割草場景前必補的防禦
+
+### 3.1 重複命中與穿透上限（最高優先）
+
+這是最容易在 demo 時爆炸的一項。飛彈在 25Hz 下連續數個 tick 與同一個怪物重疊，若沒有去重，單發箭矢會打出 5 次傷害。
+
+結構上可以確定 D2 有這些機制（具體數值請用你們的 `Missiles.txt` 覆核）：
+- 穿透（Pierce）後飛彈繼續飛行
+- 飛彈有命中次數上限
+- 已命中目標在一定時間內不再被同一飛彈命中
+
+零 GC 的實作：在飛彈內嵌固定長度的環形命中記錄，存**世代控制代碼**而非物件引用：
+
+```ts
+const HIT_LIST_CAP = 8;
+// 飛彈內：hitIds: Uint32Array(HIT_LIST_CAP), hitCount, hitHead, pierceLeft
+
+function tryHit(m: Missile, targetHandle: number, tick: number): boolean {
+  for (let i = 0; i < m.hitCount; i++) {
+    if (m.hitIds[i] === targetHandle) return false;   // 已打過
+  }
+  if (m.hitCount < HIT_LIST_CAP) m.hitIds[m.hitCount++] = targetHandle;
+  else { m.hitIds[m.hitHead] = targetHandle; m.hitHead = (m.hitHead + 1) % HIT_LIST_CAP; }
+  return --m.pierceLeft >= 0;   // false → 飛彈消滅
+}
+```
+
+環形覆寫在極端穿透情境下可能讓第 9 個以後的目標被重複打，但在 8 個以內保證正確，且恆定記憶體。若要完全正確，改用「每目標記錄 lastHitByMissileGen」反查，成本相同。
+
+### 3.2 隧道穿透（Tunneling）
+
+這是你們「充能彈隨機折線穿模」的同類問題的另一面，而且更隱蔽。單 tick 位移 > 目標碰撞半徑時，飛彈會直接跨過目標不觸發碰撞。
+
+在 40ms 的 tick 下，一顆每 tick 移動 30px 的飛彈遇到 22px 半徑的怪物，**漏判是必然的，不是偶然的**。你們的 739 項測試很可能因為用了較慢的測試參數而沒覆蓋到。
+
+必須改為掃掠碰撞（線段 vs 圓，等價於膠囊檢測），在**世界空間、未壓縮的圓**上做：
+
+```ts
+/** 線段 (ax,ay)->(bx,by) 與圓 (cx,cy,r) 是否相交 */
+function segmentHitsCircle(ax, ay, bx, by, cx, cy, r): boolean {
+  const dx = bx - ax, dy = by - ay;
+  const fx = ax - cx, fy = ay - cy;
+  const a = dx * dx + dy * dy;
+  if (a === 0) return fx * fx + fy * fy <= r * r;
+  let t = -(fx * dx + fy * dy) / a;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const px = fx + t * dx, py = fy + t * dy;
+  return px * px + py * py <= r * r;
+}
+```
+
+務必加一條測試：**提高飛彈速度到每 tick 位移 3 倍於目標半徑，斷言仍然命中**。這條測試現在應該會失敗。
+
+### 3.3 地圖阻擋與射線檢測
+
+你們問得很對，這是移植到真地牢後的新需求。結構上確定 D2 有碰撞圖（collision map / subtile grid），且**部分飛彈被牆阻擋、部分不被阻擋**（這是 `Missiles.txt` 的旗標欄位，請覆核你們萃取的是哪些欄位）。
+
+建議：
+- 碰撞圖存成 `Uint8Array` 的扁平網格，位元旗標（0x01 = 阻擋走位、0x02 = 阻擋飛彈…）。
+- 每 tick 對位移線段做 **DDA / Amanatides-Woo 體素行走**，而非在線段上採樣固定間隔。採樣法會漏掉薄牆，DDA 不會。
+- 成本：每飛彈每 tick 跨越的格數通常 1~3 格，200 顆飛彈 = 數百次陣列讀取，可忽略。
+- 飛彈 spec 要有 `ignoresWalls` 旗標，且預設值要慎選 —— 預設錯誤會讓 Nova 之類的範圍技被牆吃掉。
+
+另外提醒一個經常被忘記的：**生成點本身可能在牆內**（施法者貼牆施法，掛點偏移把出膛點推進牆裡）。生成時要做一次合法性檢查，不合法就退回施法者中心。
+
+### 3.4 子彈生成子彈：遞迴風暴
+
+這是物件池最危險的敵人。D2 有大量「飛彈命中後生成子飛彈」「飛彈飛行中週期性生成子飛彈」的行為（冰凍寶珠、新星類、爆裂箭…）。沒有防護的話，一次連鎖可以在 2~3 個 tick 內把池打爆。
+
+必備三道閘：
+1. **遞迴深度上限**：每顆飛彈帶 `depth`，子飛彈 `depth + 1`，超過上限（建議 3~4）拒絕生成。
+2. **單 tick 全域生成配額**：例如每 tick 最多 64 顆，超過丟棄並計數。
+3. **池耗盡策略要明確定義**，不能是未定義行為。建議優先級驅逐：先踢掉最老的「純視覺」飛彈，絕不踢玩家造成傷害的飛彈。並把驅逐次數接到你們已有的 `highWater` HUD 旁邊。
+
+### 3.5 確定性（若有多人或回放需求）
+
+你們提到「正式多人」。如果飛彈軌跡需要在多端一致，或需要日誌回放可重現：
+
+- **`Math.random()` 必須全面禁止**，改為每飛彈帶 seed 的確定性 PRNG（xorshift32 足夠）。你們的充能彈「隨機折線」正是高風險點。
+- **`Math.sin/cos/atan2/hypot` 的跨瀏覽器結果不保證逐位元相同**。若要嚴格確定性，必須換成整數角度表（你們已有 `indexToPhi`，把它反過來做成定點查表）。
+- 否則改為**單一權威端計算、其他端只接收結果**，這對監控看板其實更合理，也省掉整個確定性包袱。建議先確認需求再決定 —— 這個決策會深度影響數值型別（float vs 定點），越晚改越貴。
+
+### 3.6 渲染才是真瓶頸，不是物理
+
+0.18ms/step 的物理成本在 40ms 預算裡佔 0.45%，很漂亮。但 144Hz 下你們只有 6.9ms 的畫面幀預算，而 200 次 `drawImage` + 混色模式切換會吃掉遠超物理的時間。
+
+兩個高報酬優化：
+
+1. **依 `blendMode` 排序繪製佇列**。每次 `globalCompositeOperation` 變更都可能觸發後端狀態切換；200 顆飛彈交錯 normal/additive 就是 200 次切換。先收集成 draw list，按 `(blendMode, y)` 排序，同模式連續繪製，切換次數降到 2~3 次。注意這會改變繪製順序，需確認與 y-sort 的優先級關係（通常同一混色模式內再按 y 排）。
+2. **加法混色層獨立到 offscreen canvas**，整層一次性合成回主畫布。
+
+但請先量測再優化 —— 把你們的除錯 HUD 擴充成分段計時（physics / culling / draw / debug 各自的 ms），這比猜測有價值得多。
+
+### 3.7 建議補的測試類型
+
+739 項單元測試覆蓋度很好，但缺的多半是這三類：
+
+- **浸泡測試（soak）**：連續跑 10 分鐘模擬戰鬥，斷言 `pool.highWater` 在前 30 秒後不再上升（抓洩漏）、`liveCount` 歸零後池完全復位（抓回收時未清零的私有狀態 —— 這正是我在 3-C2 螺旋指引裡警告過的那一類）。
+- **模糊測試（fuzz）**：隨機 spec 參數 ×10 萬次 step，斷言不出現 `NaN`/`Infinity`、座標不超出合理範圍、無例外拋出。極端速度、零半徑、負射程這些邊界值用手寫測試很難窮舉。
+- **預算測試**：在 CI 裡跑 500 飛彈 × 1000 tick，斷言 p99 step 時間低於門檻。效能回歸不設守門員就一定會悄悄發生。
+
+### 3.8 對「僅兩種導引飛彈」這個結論的質疑
+
+這點我必須直說：**「全遊戲僅導引箭與骨魂為 Func 7，其餘 551 種嚴格為 Func 1」這個結論，與你們自己在上一輪實作的 F03 祝福之槌阿基米德螺旋彈道互相矛盾。**
+
+Missiles.txt 的客戶端/伺服端功能欄位有數十種取值，對應的不只是「直線 vs 導引」，還包括螺旋（祝福之槌）、週期分裂（冰凍寶珠）、隨機折線（充能彈 —— 你們自己也遇到了）、沿地面爬行、拋物線、原地展開等等。「導引類只有兩種」在**導引**這個狹義定義上可能是對的，但推論成「其餘都是 Func 1 直線」會嚴重低估行為多樣性。
+
+架構上的風險是：如果據此把引擎最佳化成「直線快速路徑 + 兩個特例」，之後每加一種技能都要動核心。建議反過來 —— **保持行為原語註冊表開放**，直線只是其中最常用的一個原語，而非預設假設。你們 3-B 的原語設計本來就是對的方向，不要因為這個統計結論而退回去。
+
+建議動作：重新跑一次萃取，把客戶端與伺服端功能欄位的**取值分佈直方圖**列出來（而不是只分類成兩類），再決定要實作哪些原語。這個數字會直接告訴你們覆蓋 90% 技能需要幾個原語。
+
+---
+
+## 建議的移植順序
+
+風險由高到低，每一步都該能獨立驗證再往下走：
+
+1. **世界座標改造**（§1.2）—— 這是所有後續工作的地基，而且越晚改越痛。先改 `MissileRuntime` 的欄位語意、抽出 `projection.ts`、補投影一致性測試。此時先不接相機，用固定相機驗證沙盒的 739 項測試仍全綠。
+2. **相機進 tick + 單次取整**（§1.3–1.4）—— 接上相機，補相對穩定性測試。
+3. **掃掠碰撞 + 命中去重**（§3.1–3.2）—— 在接真實地圖前完成，因為這會改變大量現有測試的預期值。
+4. **碰撞圖與 DDA**（§3.3）—— 此時才需要真實地牢資料。
+5. **施法狀態機 + 事件排程器**（§2）—— 接上 AI 日誌。
+6. **子飛彈閘門 + 池驅逐策略**（§3.4）—— 進入割草場景前的最後一道。
+7. **渲染批次化**（§3.6）—— 量測驅動，最後做。
+
+第 1 步如果跳過或妥協，第 2 步的抖動問題會以「調參」的形式反覆折磨你們好幾週，而且永遠調不乾淨。這是我這份審查裡唯一的強烈建議。

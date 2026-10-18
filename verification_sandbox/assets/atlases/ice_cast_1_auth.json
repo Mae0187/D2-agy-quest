@@ -1,0 +1,18 @@
+{
+  "name": "ice_cast_1",
+  "atlas": "ice_cast_1_auth.png",
+  "cellW": 99,
+  "cellH": 73,
+  "pivotX": 50,
+  "pivotY": 16,
+  "frames": 15,
+  "dirs": 1,
+  "totalW": 1485,
+  "totalH": 73,
+  "unionBox": {
+    "minX": -49,
+    "maxX": 48,
+    "minY": -15,
+    "maxY": 56
+  }
+}

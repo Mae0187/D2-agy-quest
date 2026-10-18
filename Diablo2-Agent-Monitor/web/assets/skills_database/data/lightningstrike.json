@@ -1,0 +1,475 @@
+{
+  "id": "lightningstrike",
+  "name": "Lightning Strike",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "ama",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 30,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "lightning strike",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is ama"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "amazon",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 6,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 2,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 56,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "skillname34",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    },
+    "name": {
+      "value": "Lightning Strike",
+      "source": "string.tbl skillname34 (key from SkillDesc.txt str name)"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 9,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 8,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": {
+      "value": "A1",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "A1",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 14,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "20",
+        "description": "radius of jump to next target",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "2",
+        "description": "Target hits",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 4,
+        "value": "1",
+        "description": "Target hits per level",
+        "source": "Skills.txt Param4",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 8,
+        "value": "8",
+        "description": "damage synergy",
+        "source": "Skills.txt Param8",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  },
+  "damage": {
+    "type": {
+      "value": "ltng",
+      "source": "Skills.txt EType"
+    },
+    "min": {
+      "value": 1,
+      "formula": "1 + 0x7 + 0x8 + 0x4",
+      "atLevel": 20,
+      "brackets": [
+        [
+          1,
+          8
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          17,
+          22
+        ],
+        [
+          23,
+          28
+        ],
+        [
+          29,
+          99
+        ]
+      ],
+      "source": "Skills.txt EMin with the EMinLev/EMaxLev bracket increments",
+      "needsValidation": true,
+      "validationNote": "The bracket shape is right but whether level 1 counts as an increment is not settled by the table. Fire Ball's minimum at level 20 comes out 399, which matches the published value, with level 1 excluded; a second skill could not be checked offline. Confirm against an authoritative damage table before using these numbers for balance.",
+      "assumption": "ELevLen1..3 are empty in this table, so the standard D2 brackets (8, 8, 6, 6, 29+) were used"
+    },
+    "max": {
+      "value": 295,
+      "formula": "25 + 10x7 + 15x8 + 20x4",
+      "atLevel": 20,
+      "brackets": [
+        [
+          1,
+          8
+        ],
+        [
+          9,
+          16
+        ],
+        [
+          17,
+          22
+        ],
+        [
+          23,
+          28
+        ],
+        [
+          29,
+          99
+        ]
+      ],
+      "source": "Skills.txt EMax with the EMinLev/EMaxLev bracket increments",
+      "needsValidation": true,
+      "validationNote": "The bracket shape is right but whether level 1 counts as an increment is not settled by the table. Fire Ball's minimum at level 20 comes out 399, which matches the published value, with level 1 excluded; a second skill could not be checked offline. Confirm against an authoritative damage table before using these numbers for balance.",
+      "assumption": "ELevLen1..3 are empty in this table, so the standard D2 brackets (8, 8, 6, 6, 29+) were used"
+    },
+    "synergy": {
+      "value": "(skill('Charged Strike'.blvl)+skill('Lightning Bolt'.blvl)+skill('Power Strike'.blvl)+skill('Lightning Fury'.blvl)) * par8",
+      "source": "Skills.txt EDmgSymPerCalc"
+    },
+    "hitShift": {
+      "value": 8,
+      "source": "Skills.txt HitShift"
+    }
+  },
+  "missiles": [
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt srvmissilea",
+      "missile": {
+        "name": "lightningstrike",
+        "resolved": true,
+        "celFile": {
+          "value": "LightningStrike",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 30,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 30,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 25,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 2,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": {
+          "value": 1,
+          "source": "Missiles.txt CollideKill"
+        },
+        "nextHit": {
+          "value": 1,
+          "source": "Missiles.txt NextHit"
+        },
+        "nextDelay": {
+          "value": 4,
+          "source": "Missiles.txt NextDelay"
+        },
+        "pierce": null,
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 8,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": null,
+        "elemental": {
+          "type": {
+            "value": "ltng",
+            "source": "Missiles.txt EType"
+          },
+          "min": {
+            "value": 8,
+            "source": "Missiles.txt EMin"
+          },
+          "max": null
+        },
+        "parameters": [],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "12",
+          "known": "chain to the next target within the skill's jump radius",
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    },
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt srvmissileb",
+      "missile": {
+        "name": "lightningstrike",
+        "resolved": true,
+        "celFile": {
+          "value": "LightningStrike",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 30,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 30,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 25,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 2,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": {
+          "value": 1,
+          "source": "Missiles.txt CollideKill"
+        },
+        "nextHit": {
+          "value": 1,
+          "source": "Missiles.txt NextHit"
+        },
+        "nextDelay": {
+          "value": 4,
+          "source": "Missiles.txt NextDelay"
+        },
+        "pierce": null,
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 8,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": null,
+        "elemental": {
+          "type": {
+            "value": "ltng",
+            "source": "Missiles.txt EType"
+          },
+          "min": {
+            "value": 8,
+            "source": "Missiles.txt EMin"
+          },
+          "max": null
+        },
+        "parameters": [],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "12",
+          "known": "chain to the next target within the skill's jump radius",
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    },
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt srvmissilec",
+      "missile": {
+        "name": "lightningstrike",
+        "resolved": true,
+        "celFile": {
+          "value": "LightningStrike",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 30,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 30,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 25,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 2,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": {
+          "value": 1,
+          "source": "Missiles.txt CollideKill"
+        },
+        "nextHit": {
+          "value": 1,
+          "source": "Missiles.txt NextHit"
+        },
+        "nextDelay": {
+          "value": 4,
+          "source": "Missiles.txt NextDelay"
+        },
+        "pierce": null,
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 8,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": null,
+        "elemental": {
+          "type": {
+            "value": "ltng",
+            "source": "Missiles.txt EType"
+          },
+          "min": {
+            "value": 8,
+            "source": "Missiles.txt EMin"
+          },
+          "max": null
+        },
+        "parameters": [],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "12",
+          "known": "chain to the next target within the skill's jump radius",
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    }
+  ],
+  "clientMissiles": [
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt cltmissilea"
+    },
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt cltmissileb"
+    },
+    {
+      "value": "lightningstrike",
+      "source": "Skills.txt cltmissilec"
+    }
+  ]
+}

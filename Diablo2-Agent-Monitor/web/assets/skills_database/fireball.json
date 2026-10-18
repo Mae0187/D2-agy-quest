@@ -1,0 +1,70 @@
+{
+  "id": "fireball",
+  "name": "Fire Ball",
+  "skillId": 47,
+  "source": "Skills.txt",
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_cast",
+    "cof": "SOSCSTF",
+    "frameRate": 25.0,
+    "frames": 14,
+    "frameRateSource": "AnimData.D2 SOSCSTF: speed 256 -> 25 * 256 / 256",
+    "releaseFrame": null,
+    "releaseFrameSource": "set from the COF animationFrames field",
+    "socket": {
+      "y": -35,
+      "pad": 1,
+      "source": "measured from the arm layers at the release frame"
+    }
+  },
+  "projectile": {
+    "asset": "fireball",
+    "celFile": "Fireball",
+    "speed": 20.0,
+    "maxSpeed": 20.0,
+    "range": 50.0,
+    "frames": 5,
+    "directions": 16,
+    "animRate": 1024,
+    "animSpeed": 16,
+    "collideType": 3,
+    "collideKill": 1,
+    "size": 1,
+    "loop": true,
+    "transparent": true,
+    "light": 7,
+    "speedSource": "Missiles.txt Vel / MaxVel"
+  },
+  "behavior": "single_target_projectile",
+  "damage": {
+    "type": "fire",
+    "min": 12.0,
+    "max": 28.0,
+    "hitShift": 7,
+    "source": "Skills.txt EMin / EMax / EType"
+  },
+  "cost": {
+    "mana": 10.0,
+    "source": "Skills.txt mana"
+  },
+  "reqLevel": 12,
+  "reqSkill": "Fire Bolt",
+  "impact": {
+    "asset": "explosion_glow",
+    "blend": "lighter",
+    "missile": "fireexplosion2",
+    "celFile": "FireArrowExplode2",
+    "frames": 12,
+    "frameRate": 25.0,
+    "source": "Missiles.txt CltHitSubMissile1 / ExplosionMissile",
+    "blendSource": "drawn additively because the sprite's surround is opaque near-black"
+  },
+  "sounds": {
+    "cast": "sorceress_cast_fire",
+    "hit": "sorceress_fireball_impact_1",
+    "travel": "sorceress_fireball_1"
+  },
+  "class": "sorceress",
+  "classSource": "category.playerClass from assets/skills/data"
+}

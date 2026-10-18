@@ -1,0 +1,1444 @@
+{
+  "amazon": {
+    "source": "亞馬遜.png",
+    "trees": {
+      "bow_and_crossbow": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Magic Arrow",
+            "魔法箭"
+          ],
+          [
+            1,
+            3,
+            "Fire Arrow",
+            "火焰箭"
+          ],
+          [
+            2,
+            1,
+            "Cold Arrow",
+            "冰箭"
+          ],
+          [
+            2,
+            2,
+            "Multiple Shot",
+            "多重箭"
+          ],
+          [
+            3,
+            3,
+            "Exploding Arrow",
+            "爆裂箭"
+          ],
+          [
+            4,
+            1,
+            "Ice Arrow",
+            "急凍箭"
+          ],
+          [
+            4,
+            2,
+            "Guided Arrow",
+            "導引箭"
+          ],
+          [
+            5,
+            2,
+            "Strafe",
+            "砲轟"
+          ],
+          [
+            5,
+            3,
+            "Immolation Arrow",
+            "犧牲之箭"
+          ],
+          [
+            6,
+            1,
+            "Freezing Arrow",
+            "凍結之箭"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "passive_and_magic": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            1,
+            "Inner Sight",
+            "內視"
+          ],
+          [
+            1,
+            3,
+            "Critical Strike",
+            "致命攻擊"
+          ],
+          [
+            2,
+            2,
+            "Dodge",
+            "閃避"
+          ],
+          [
+            3,
+            1,
+            "Slow Missiles",
+            "慢速箭"
+          ],
+          [
+            3,
+            2,
+            "Avoid",
+            "躲避"
+          ],
+          [
+            4,
+            3,
+            "Penetrate",
+            "刺入"
+          ],
+          [
+            5,
+            1,
+            "Dopplezon",
+            "誘餌"
+          ],
+          [
+            5,
+            2,
+            "Evade",
+            "迴避"
+          ],
+          [
+            6,
+            1,
+            "Valkyrie",
+            "女武神"
+          ],
+          [
+            6,
+            3,
+            "Pierce",
+            "穿刺"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "javelin_and_spear": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            1,
+            "Jab",
+            "戳刺"
+          ],
+          [
+            2,
+            2,
+            "Power Strike",
+            "威力一擊"
+          ],
+          [
+            2,
+            3,
+            "Poison Javelin",
+            "毒槍"
+          ],
+          [
+            3,
+            1,
+            "Impale",
+            "刺爆"
+          ],
+          [
+            3,
+            3,
+            "Lightning Bolt",
+            "閃電球"
+          ],
+          [
+            4,
+            2,
+            "Charged Strike",
+            "充能一擊"
+          ],
+          [
+            4,
+            3,
+            "Plague Javelin",
+            "瘟疫標槍"
+          ],
+          [
+            5,
+            1,
+            "Fend",
+            "擊退"
+          ],
+          [
+            6,
+            2,
+            "Lightning Strike",
+            "閃電攻擊"
+          ],
+          [
+            6,
+            3,
+            "Lightning Fury",
+            "閃電之怒"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "sorceress": {
+    "source": "法師火系.jpg / 法師冰系.jpg / 法師電系.jpg (Simplified client)",
+    "trees": {
+      "fire": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Fire Bolt",
+            "火彈"
+          ],
+          [
+            1,
+            3,
+            "Warmth",
+            "暖氣"
+          ],
+          [
+            2,
+            1,
+            "Inferno",
+            "地獄之火"
+          ],
+          [
+            3,
+            1,
+            "Blaze",
+            "熾烈之徑"
+          ],
+          [
+            3,
+            2,
+            "Fire Ball",
+            "火球"
+          ],
+          [
+            4,
+            1,
+            "Fire Wall",
+            "火牆"
+          ],
+          [
+            4,
+            3,
+            "Enchant",
+            "強化"
+          ],
+          [
+            5,
+            2,
+            "Meteor",
+            "隕石"
+          ],
+          [
+            6,
+            2,
+            "Fire Mastery",
+            "支配火燄"
+          ],
+          [
+            6,
+            3,
+            "Hydra",
+            "九頭火蛇"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "lightning": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            2,
+            "Charged Bolt",
+            "衝能彈"
+          ],
+          [
+            2,
+            1,
+            "Static Field",
+            "心靈傳動"
+          ],
+          [
+            2,
+            3,
+            "Telekinesis",
+            "靜態立場"
+          ],
+          [
+            3,
+            1,
+            "Nova",
+            "閃電"
+          ],
+          [
+            3,
+            2,
+            "Lightning",
+            "新星"
+          ],
+          [
+            4,
+            2,
+            "Chain Lightning",
+            "連鎖閃電"
+          ],
+          [
+            4,
+            3,
+            "Teleport",
+            "傳送"
+          ],
+          [
+            5,
+            1,
+            "Thunder Storm",
+            "雷雲風暴"
+          ],
+          [
+            5,
+            3,
+            "Energy Shield",
+            "能量護盾"
+          ],
+          [
+            6,
+            2,
+            "Lightning Mastery",
+            "支配閃電"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "cold": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            2,
+            "Ice Bolt",
+            "冰彈"
+          ],
+          [
+            1,
+            3,
+            "Frozen Armor",
+            "冰封裝甲"
+          ],
+          [
+            2,
+            1,
+            "Frost Nova",
+            "霜之新星"
+          ],
+          [
+            2,
+            2,
+            "Ice Blast",
+            "冰風暴"
+          ],
+          [
+            3,
+            3,
+            "Shiver Armor",
+            "碎冰甲"
+          ],
+          [
+            4,
+            2,
+            "Glacial Spike",
+            "冰尖柱"
+          ],
+          [
+            5,
+            1,
+            "Blizzard",
+            "暴風雪"
+          ],
+          [
+            5,
+            3,
+            "Chilling Armor",
+            "寒冰裝甲"
+          ],
+          [
+            6,
+            1,
+            "Frozen Orb",
+            "冰封球"
+          ],
+          [
+            6,
+            2,
+            "Cold Mastery",
+            "支配冰冷"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "necromancer": {
+    "source": "死靈法師.png",
+    "trees": {
+      "curses": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Amplify Damage",
+            "傷害加深"
+          ],
+          [
+            2,
+            1,
+            "Dim Vision",
+            "微暗靈視"
+          ],
+          [
+            2,
+            3,
+            "Weaken",
+            "削弱"
+          ],
+          [
+            3,
+            2,
+            "Iron Maiden",
+            "攻擊反噬"
+          ],
+          [
+            3,
+            3,
+            "Terror",
+            "恐懼"
+          ],
+          [
+            4,
+            1,
+            "Confuse",
+            "迷亂"
+          ],
+          [
+            4,
+            2,
+            "Life Tap",
+            "偷取生命"
+          ],
+          [
+            5,
+            1,
+            "Attract",
+            "吸引"
+          ],
+          [
+            5,
+            3,
+            "Decrepify",
+            "衰老"
+          ],
+          [
+            6,
+            2,
+            "Lower Resist",
+            "降低抵抗"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "poison_and_bone": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            2,
+            "Teeth",
+            "牙"
+          ],
+          [
+            1,
+            3,
+            "Bone Armor",
+            "白骨裝甲"
+          ],
+          [
+            2,
+            1,
+            "Poison Dagger",
+            "淬毒匕首"
+          ],
+          [
+            2,
+            2,
+            "Corpse Explosion",
+            "屍體爆炸"
+          ],
+          [
+            3,
+            3,
+            "Bone Wall",
+            "骨牆"
+          ],
+          [
+            4,
+            1,
+            "Poison Explosion",
+            "毒爆"
+          ],
+          [
+            4,
+            2,
+            "Bone Spear",
+            "骨矛"
+          ],
+          [
+            5,
+            3,
+            "Bone Prison",
+            "骨牢"
+          ],
+          [
+            6,
+            1,
+            "Poison Nova",
+            "劇毒新星"
+          ],
+          [
+            6,
+            2,
+            "Bone Spirit",
+            "白骨之魂"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "summoning": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            1,
+            "Skeleton Mastery",
+            "支配骷髏"
+          ],
+          [
+            1,
+            3,
+            "Raise Skeleton",
+            "復甦骷髏"
+          ],
+          [
+            2,
+            2,
+            "Clay Golem",
+            "黏土石魔"
+          ],
+          [
+            3,
+            1,
+            "Golem Mastery",
+            "支配石魔"
+          ],
+          [
+            3,
+            3,
+            "Raise Skeletal Mage",
+            "復甦骷髏法師"
+          ],
+          [
+            4,
+            2,
+            "BloodGolem",
+            "鮮血石魔"
+          ],
+          [
+            5,
+            1,
+            "Summon Resist",
+            "召喚反抗"
+          ],
+          [
+            5,
+            2,
+            "IronGolem",
+            "鋼鐵石魔"
+          ],
+          [
+            6,
+            2,
+            "FireGolem",
+            "火焰石魔"
+          ],
+          [
+            6,
+            3,
+            "Revive",
+            "重生"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "paladin": {
+    "source": "聖騎士.png",
+    "trees": {
+      "combat": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            1,
+            "Sacrifice",
+            "犧牲"
+          ],
+          [
+            1,
+            3,
+            "Smite",
+            "重擊"
+          ],
+          [
+            2,
+            2,
+            "Holy Bolt",
+            "聖光彈"
+          ],
+          [
+            3,
+            1,
+            "Zeal",
+            "白熱"
+          ],
+          [
+            3,
+            3,
+            "Charge",
+            "突擊"
+          ],
+          [
+            4,
+            1,
+            "Vengeance",
+            "復仇"
+          ],
+          [
+            4,
+            2,
+            "Blessed Hammer",
+            "祝福之鎚"
+          ],
+          [
+            5,
+            1,
+            "Conversion",
+            "轉換"
+          ],
+          [
+            5,
+            3,
+            "Holy Shield",
+            "神聖之盾"
+          ],
+          [
+            6,
+            2,
+            "Fist of the Heavens",
+            "天堂之拳"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "offensive_auras": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            1,
+            "Might",
+            "力量"
+          ],
+          [
+            2,
+            2,
+            "Holy Fire",
+            "聖火"
+          ],
+          [
+            2,
+            3,
+            "Thorns",
+            "針刺"
+          ],
+          [
+            3,
+            1,
+            "Blessed Aim",
+            "祝福瞄準"
+          ],
+          [
+            4,
+            1,
+            "Concentration",
+            "專注"
+          ],
+          [
+            4,
+            2,
+            "Holy Freeze",
+            "神聖冰凍"
+          ],
+          [
+            5,
+            2,
+            "Holy Shock",
+            "神聖衝擊"
+          ],
+          [
+            5,
+            3,
+            "Sanctuary",
+            "庇護所"
+          ],
+          [
+            6,
+            1,
+            "Fanaticism",
+            "狂熱"
+          ],
+          [
+            6,
+            3,
+            "Conviction",
+            "信念"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "defensive_auras": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            1,
+            "Prayer",
+            "祈禱"
+          ],
+          [
+            1,
+            3,
+            "Resist Fire",
+            "抗火"
+          ],
+          [
+            2,
+            2,
+            "Defiance",
+            "反抗"
+          ],
+          [
+            2,
+            3,
+            "Resist Cold",
+            "抗冰冷"
+          ],
+          [
+            3,
+            1,
+            "Cleansing",
+            "淨化"
+          ],
+          [
+            3,
+            3,
+            "Resist Lightning",
+            "抵抗閃電"
+          ],
+          [
+            4,
+            2,
+            "Vigor",
+            "精力"
+          ],
+          [
+            5,
+            1,
+            "Meditation",
+            "冥想"
+          ],
+          [
+            6,
+            2,
+            "Redemption",
+            "救贖"
+          ],
+          [
+            6,
+            3,
+            "Salvation",
+            "救助"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "barbarian": {
+    "source": "野蠻人.png",
+    "trees": {
+      "combat": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Bash",
+            "重擊"
+          ],
+          [
+            2,
+            1,
+            "Leap",
+            "跳躍"
+          ],
+          [
+            2,
+            3,
+            "Double Swing",
+            "雙手揮擊"
+          ],
+          [
+            3,
+            2,
+            "Stun",
+            "擊暈"
+          ],
+          [
+            3,
+            3,
+            "Double Throw",
+            "雙手投擲"
+          ],
+          [
+            4,
+            1,
+            "Leap Attack",
+            "跳躍攻擊"
+          ],
+          [
+            4,
+            2,
+            "Concentrate",
+            "專心"
+          ],
+          [
+            5,
+            3,
+            "Frenzy",
+            "狂亂"
+          ],
+          [
+            6,
+            1,
+            "Whirlwind",
+            "旋風"
+          ],
+          [
+            6,
+            2,
+            "Berserk",
+            "狂戰士"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "combat_masteries": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            1,
+            "Sword Mastery",
+            "支配長劍"
+          ],
+          [
+            1,
+            2,
+            "Axe Mastery",
+            "支配斧頭"
+          ],
+          [
+            1,
+            3,
+            "Mace Mastery",
+            "支配釘頭鎚"
+          ],
+          [
+            2,
+            1,
+            "Pole Arm Mastery",
+            "支配長棍"
+          ],
+          [
+            2,
+            2,
+            "Throwing Mastery",
+            "支配飛擲"
+          ],
+          [
+            2,
+            3,
+            "Spear Mastery",
+            "支配長矛"
+          ],
+          [
+            3,
+            1,
+            "Increased Stamina",
+            "增加耐力"
+          ],
+          [
+            4,
+            3,
+            "Iron Skin",
+            "鐵布衫"
+          ],
+          [
+            5,
+            1,
+            "Increased Speed",
+            "加速"
+          ],
+          [
+            6,
+            3,
+            "Natural Resistance",
+            "自然抵抗"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "warcries": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            1,
+            "Howl",
+            "狂嚎"
+          ],
+          [
+            1,
+            3,
+            "Find Potion",
+            "找尋藥劑"
+          ],
+          [
+            2,
+            1,
+            "Taunt",
+            "嘲弄"
+          ],
+          [
+            2,
+            2,
+            "Shout",
+            "大叫"
+          ],
+          [
+            3,
+            3,
+            "Find Item",
+            "找尋物品"
+          ],
+          [
+            4,
+            1,
+            "Battle Cry",
+            "戰嚎"
+          ],
+          [
+            5,
+            2,
+            "Battle Orders",
+            "戰鬥體制"
+          ],
+          [
+            5,
+            3,
+            "Grim Ward",
+            "殘酷嚇阻"
+          ],
+          [
+            6,
+            1,
+            "War Cry",
+            "戰鬥狂嚎"
+          ],
+          [
+            6,
+            2,
+            "Battle Command",
+            "戰鬥指揮"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "druid": {
+    "source": "德魯伊.png",
+    "trees": {
+      "summoning": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Raven",
+            "烏鴉"
+          ],
+          [
+            1,
+            3,
+            "Plague Poppy",
+            "猛毒花藤"
+          ],
+          [
+            2,
+            1,
+            "Oak Sage",
+            "橡木智者"
+          ],
+          [
+            2,
+            2,
+            "Summon Spirit Wolf",
+            "召喚鬼狼"
+          ],
+          [
+            3,
+            3,
+            "Cycle of Life",
+            "食屍藤"
+          ],
+          [
+            4,
+            1,
+            "Heart of Wolverine",
+            "狼獾之心"
+          ],
+          [
+            4,
+            2,
+            "Summon Fenris",
+            "召喚狂狼"
+          ],
+          [
+            5,
+            3,
+            "Vines",
+            "太陽藤"
+          ],
+          [
+            6,
+            1,
+            "Spirit of Barbs",
+            "棘靈"
+          ],
+          [
+            6,
+            2,
+            "Summon Grizzly",
+            "召喚灰熊"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "shape_shifting": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            1,
+            "Wearwolf",
+            "狼人變化"
+          ],
+          [
+            1,
+            2,
+            "Shape Shifting",
+            "變形術"
+          ],
+          [
+            2,
+            3,
+            "Wearbear",
+            "熊人變化"
+          ],
+          [
+            3,
+            1,
+            "Feral Rage",
+            "野性狂暴"
+          ],
+          [
+            3,
+            3,
+            "Maul",
+            "撞鎚"
+          ],
+          [
+            4,
+            1,
+            "Rabies",
+            "狂犬病"
+          ],
+          [
+            4,
+            2,
+            "Fire Claws",
+            "焰爪"
+          ],
+          [
+            5,
+            2,
+            "Hunger",
+            "飢餓"
+          ],
+          [
+            5,
+            3,
+            "Shock Wave",
+            "震波"
+          ],
+          [
+            6,
+            1,
+            "Fury",
+            "狂怒"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "elemental": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            1,
+            "Firestorm",
+            "火風暴"
+          ],
+          [
+            2,
+            1,
+            "Molten Boulder",
+            "熔漿巨岩"
+          ],
+          [
+            2,
+            3,
+            "Arctic Blast",
+            "極地風暴"
+          ],
+          [
+            3,
+            1,
+            "Eruption",
+            "火山爆"
+          ],
+          [
+            3,
+            3,
+            "Cyclone Armor",
+            "颶風裝甲"
+          ],
+          [
+            4,
+            2,
+            "Twister",
+            "鎌鼬風"
+          ],
+          [
+            5,
+            1,
+            "Volcano",
+            "火山"
+          ],
+          [
+            5,
+            2,
+            "Tornado",
+            "龍捲風"
+          ],
+          [
+            6,
+            1,
+            "Armageddon",
+            "毀天滅地"
+          ],
+          [
+            6,
+            2,
+            "Hurricane",
+            "暴風"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  },
+  "assassin": {
+    "source": "刺客.png",
+    "trees": {
+      "traps": {
+        "page": 1,
+        "cells": [
+          [
+            1,
+            2,
+            "Fire Trauma",
+            "火焰爆震"
+          ],
+          [
+            2,
+            1,
+            "Shock Field",
+            "雷電網"
+          ],
+          [
+            2,
+            3,
+            "Blade Sentinel",
+            "刃之守衛"
+          ],
+          [
+            3,
+            1,
+            "Charged Bolt Sentry",
+            "電能守衛"
+          ],
+          [
+            3,
+            2,
+            "Wake of Fire Sentry",
+            "火焰復甦"
+          ],
+          [
+            4,
+            3,
+            "Blade Fury",
+            "刃之怒"
+          ],
+          [
+            5,
+            1,
+            "Lightning Sentry",
+            "雷光守衛"
+          ],
+          [
+            5,
+            2,
+            "Inferno Sentry",
+            "復甦獄火"
+          ],
+          [
+            6,
+            1,
+            "Death Sentry",
+            "亡者守衛"
+          ],
+          [
+            6,
+            3,
+            "Blade Shield",
+            "刀刃之盾"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "shadow_disciplines": {
+        "page": 2,
+        "cells": [
+          [
+            1,
+            2,
+            "Claw Mastery",
+            "支配利爪"
+          ],
+          [
+            1,
+            3,
+            "Psychic Hammer",
+            "心靈戰鎚"
+          ],
+          [
+            2,
+            1,
+            "Quickness",
+            "加速"
+          ],
+          [
+            3,
+            2,
+            "Weapon Block",
+            "武器格檔"
+          ],
+          [
+            3,
+            3,
+            "Cloak of Shadows",
+            "魔影斗篷"
+          ],
+          [
+            4,
+            1,
+            "Fade",
+            "能量消解"
+          ],
+          [
+            4,
+            2,
+            "Shadow Warrior",
+            "影子戰士"
+          ],
+          [
+            5,
+            3,
+            "Mind Blast",
+            "心靈爆震"
+          ],
+          [
+            6,
+            1,
+            "Venom",
+            "毒牙"
+          ],
+          [
+            6,
+            2,
+            "Shadow Master",
+            "支配影子"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      },
+      "martial_arts": {
+        "page": 3,
+        "cells": [
+          [
+            1,
+            2,
+            "Tiger Strike",
+            "虎擊"
+          ],
+          [
+            1,
+            3,
+            "Dragon Talon",
+            "龍爪"
+          ],
+          [
+            2,
+            1,
+            "Fists of Fire",
+            "焰拳"
+          ],
+          [
+            2,
+            3,
+            "Dragon Claw",
+            "雙龍爪"
+          ],
+          [
+            3,
+            2,
+            "Cobra Strike",
+            "眼鏡蛇攻擊"
+          ],
+          [
+            4,
+            1,
+            "Claws of Thunder",
+            "雷電爪"
+          ],
+          [
+            4,
+            3,
+            "Dragon Tail",
+            "神龍擺尾"
+          ],
+          [
+            5,
+            1,
+            "Blades of Ice",
+            "寒冰刃"
+          ],
+          [
+            5,
+            3,
+            "Dragon Flight",
+            "飛龍在天"
+          ],
+          [
+            6,
+            2,
+            "Royal Strike",
+            "鳳凰攻擊"
+          ]
+        ],
+        "matched": 10,
+        "total": 10
+      }
+    }
+  }
+}

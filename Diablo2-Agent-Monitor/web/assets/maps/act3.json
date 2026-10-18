@@ -1,0 +1,50 @@
+{
+  "image": "map/act3.png",
+  "size": {
+    "width": 8240,
+    "height": 4120
+  },
+  "originInImage": {
+    "x": 3480,
+    "y": 0
+  },
+  "originSource": "the topmost opaque pixel run, which is world (0,0)",
+  "worldExtent": {
+    "width": 183.0,
+    "height": 133.8,
+    "source": "the left and right corners of the projected parallelogram"
+  },
+  "pixelsPerUnit": {
+    "horizontal": 26.0,
+    "vertical": 13.0,
+    "matchesEngineProjection": true,
+    "source": "halfTileW from the top vertex to the right corner"
+  },
+  "corners": {
+    "top": [
+      3480,
+      0
+    ],
+    "left": [
+      0,
+      1740
+    ],
+    "right": [
+      8239,
+      2380
+    ],
+    "bottom": [
+      4759,
+      4119
+    ]
+  },
+  "landmarkWorld": {
+    "x": 135.3654,
+    "y": 71.25
+  },
+  "landmarkImage": {
+    "x": 5147,
+    "y": 2686
+  },
+  "landmarkNote": "chosen in the preview picker"
+}

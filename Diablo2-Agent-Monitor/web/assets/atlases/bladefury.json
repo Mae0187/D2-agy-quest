@@ -1,0 +1,127 @@
+{
+  "atlas": "bladefury.png",
+  "size": {
+    "width": 112,
+    "height": 16
+  },
+  "animations": {
+    "bladefury": {
+      "cof": null,
+      "source": "C:/Users/DUCK/Desktop/D2AgentQUESDT/\u820a\u5c08\u6848/Diablo2-Agent-Monitor/web/assets/skills/assassin/bladefury.png",
+      "sourceNote": "\u820a\u5c08\u6848 Diablo2-Agent-Monitor \u7684\u89e3\u78bc\u5716\u96c6",
+      "directions": 1,
+      "frames": 7,
+      "fps": 25.0,
+      "loop": true,
+      "anchor": "ball centre; draw at (screenX - ballX, screenY - ballY)",
+      "selection": "measured drawn angle (spec section 35.1)",
+      "cellWidth": 16,
+      "cellHeight": 16,
+      "pivot": {
+        "x": 7,
+        "y": 30
+      },
+      "bodyHalfWidth": 8.0,
+      "bodyHalfHeight": 8.0,
+      "bodySource": "half the cell; skill art has no body",
+      "spawnFrame": null,
+      "releaseFrame": null,
+      "castSockets": null,
+      "castSocketsMeasured": null,
+      "castSocketYOverride": null,
+      "castClearance": null,
+      "castSocketPad": 1.0,
+      "directionAngles": [
+        271.03
+      ],
+      "framesData": [
+        [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 7,
+            "ballY": 4,
+            "tailX": 1,
+            "tailY": 3,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 16,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 6,
+            "ballY": 4,
+            "tailX": 12,
+            "tailY": 2,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 32,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 7,
+            "ballY": 3,
+            "tailX": 1,
+            "tailY": 2,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 48,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 7,
+            "ballY": 4,
+            "tailX": 13,
+            "tailY": 3,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 64,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 7,
+            "ballY": 4,
+            "tailX": 11,
+            "tailY": 6,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 80,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 7,
+            "ballY": 4,
+            "tailX": 1,
+            "tailY": 3,
+            "offsetX": 7,
+            "offsetY": 30
+          },
+          {
+            "x": 96,
+            "y": 0,
+            "width": 16,
+            "height": 16,
+            "ballX": 6,
+            "ballY": 4,
+            "tailX": 12,
+            "tailY": 2,
+            "offsetX": 7,
+            "offsetY": 30
+          }
+        ]
+      ]
+    }
+  }
+}

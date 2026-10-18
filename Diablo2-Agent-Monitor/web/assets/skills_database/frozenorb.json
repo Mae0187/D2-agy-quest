@@ -1,0 +1,42 @@
+{
+  "id": "frozenorb",
+  "name": "Frozen Orb",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "IceOrb",
+    "celFile": "IceOrb",
+    "speed": 10.0,
+    "range": 30.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": {
+    "asset": "IceOrbExplode",
+    "celFile": "IceOrbExplode",
+    "blend": "lighter"
+  },
+  "damage": {
+    "min": 100,
+    "max": 111,
+    "level": 1,
+    "formula": "80 + 20x7 + 24x8 + 28x4",
+    "maxFormula": "90 + 21x7 + 25x8 + 29x4",
+    "type": "cold"
+  },
+  "cost": {
+    "mana": 50
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/IceOrb.png",
+    "numbers": "assets/skills/data/frozenorb.json（Skills.txt / Missiles.txt）"
+  }
+}

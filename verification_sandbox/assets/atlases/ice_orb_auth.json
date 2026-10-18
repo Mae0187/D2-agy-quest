@@ -1,0 +1,18 @@
+{
+  "name": "ice_orb",
+  "atlas": "ice_orb_auth.png",
+  "cellW": 56,
+  "cellH": 58,
+  "pivotX": 28,
+  "pivotY": 35,
+  "frames": 16,
+  "dirs": 1,
+  "totalW": 896,
+  "totalH": 58,
+  "unionBox": {
+    "minX": -27,
+    "maxX": 27,
+    "minY": -34,
+    "maxY": 22
+  }
+}

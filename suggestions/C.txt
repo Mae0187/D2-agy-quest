@@ -1,0 +1,1466 @@
+你的方向是對的，而且你現在已經跨過「解包資產」這一關，真正卡住的地方其實是 **D2 的座標系、動畫控制、palette pipeline 與 render pass**。這四件事一旦分開設計，網頁版其實可以做得相當接近經典版實機。
+
+先給你一個總結：
+
+> **不要把 D2 資產全部先轉成「最終 RGB PNG」再交給 Canvas。**
+>
+> 最理想的架構是：
+> **DS1/DT1 保留地圖邏輯 → DCC/COF 保留索引與 layer → Palette/PL2 保留色彩變換 → WebGL shader 在最後一步才把 index 轉成 RGB。**
+
+OpenDiablo2 本身就是很好的參考實作；它雖然已於 2021 年封存，但其地圖 renderer、DCC、COF、palette 等實作仍非常適合拿來對照。較新的 `libd2` 則是另一個值得參考的 1.14d clean-room engine，甚至以實機資料逐格驗證地圖生成結果。([GitHub][1])
+
+---
+
+# 一、等距視角地圖：DS1 / DT1 / Sub-tile 到 Canvas
+
+這裡最重要的觀念是：
+
+```text
+DS1
+ │
+ ├── 地圖邏輯座標
+ │      Tile X / Tile Y
+ │
+ │   每一 Tile = 5 × 5 Sub-tile
+ │
+ └── 指向 DT1
+        │
+        ├── Floor
+        ├── Wall
+        ├── Shadow
+        ├── Roof
+        └── 各種 tile graphic
+```
+
+OpenDiablo2 的 map engine 明確使用：
+
+```text
+1 Tile = 5 × 5 Sub-tile
+```
+
+而 renderer 又把 orthographic 座標定義成：
+
+```text
+Sub-tile:
+16 × 8
+
+Tile:
+80 × 40
+```
+
+也就是：
+
+```text
+5 × 16 = 80
+5 × 8  = 40
+```
+
+這些數值直接存在 OpenDiablo2 的 renderer / viewport 實作中。
+
+## 1. Sub-tile 座標
+
+假設 DS1：
+
+```text
+tileX = 10
+tileY = 7
+```
+
+裡面的：
+
+```text
+subX = 3
+subY = 2
+```
+
+那麼 global subtile：
+
+```text
+subTileX = tileX * 5 + subX
+subTileY = tileY * 5 + subY
+```
+
+得到：
+
+```text
+53
+37
+```
+
+這個概念非常重要。
+
+你之後角色的位置、碰撞、NPC、物件 path，都不要直接用「圖片像素座標」。
+
+要使用：
+
+```text
+World / Sub-tile coordinates
+```
+
+然後最後才投影到 screen。
+
+---
+
+# 2. D2 的 Isometric 投影
+
+OpenDiablo2 的實際公式非常乾淨。
+
+以 **Tile world coordinate** 為例：
+
+```text
+orthoX = (x - y) × 80
+orthoY = (x + y) × 40
+```
+
+也就是：
+
+```text
+screen/world X：
+
+        ↗
+      x
+
+        ↘
+      y
+```
+
+數學上：
+
+```text
+Oₓ = (X - Y) × 80
+Oᵧ = (X + Y) × 40
+```
+
+OpenDiablo2 原始碼就是這樣做的。
+
+如果你直接用 subtile：
+
+```text
+Oₓ = (subX - subY) × 16
+Oᵧ = (subX + subY) × 8
+```
+
+這就得到 D2 的等距菱形格。
+
+例如：
+
+```text
+subtile (0,0)
+        ↓
+screen origin
+
+subtile (1,0)
+    → 16 px
+    ↓ 8 px
+
+subtile (0,1)
+    ← 16 px
+    ↓ 8 px
+```
+
+因此每個 subtile 的實際視覺 footprint 是：
+
+```text
+32 × 16
+```
+
+但要注意：
+
+**OpenDiablo2 的 world/ortho 座標本身以 16×8 的半菱形步進處理，而 DT1 graphic 又具有自己的 graphic bounds / offset。**
+
+因此不能看到「一張 160×80 PNG」就直接：
+
+```javascript
+ctx.drawImage(tile, x * 160, y * 80);
+```
+
+這正是很容易導致整張地圖「有一點歪、牆壁錯位、角色站不到格子中心」的原因。
+
+---
+
+# 3. DT1 的圖片中心不是 DS1 的格子原點
+
+OpenDiablo2 的 renderer 在繪製 Floor / Wall 時，會做：
+
+```text
+World translation
++
+Orthographic offset
++
+DT1 image offset
+```
+
+其中 renderer 對 tile graphic 使用：
+
+```text
+PushTranslationOrtho(-80, YAdjust)
+```
+
+再畫圖片。
+
+所以可以把它理解成：
+
+```text
+             DT1 graphic
+        ┌──────────────────┐
+        │                  │
+        │       floor      │
+        │                  │
+        └──────────────────┘
+                ↑
+           anchor point
+                │
+              (0,0)
+```
+
+而不是：
+
+```text
+(0,0) ┌─────── image
+      │
+      │
+```
+
+### 所以你的 WebGL / Canvas renderer 應該有：
+
+```javascript
+drawTile(tile, worldX, worldY)
+```
+
+內部：
+
+```javascript
+const ox = (worldX - worldY) * 80;
+const oy = (worldX + worldY) * 40;
+
+const drawX = ox + tile.pixelOffsetX;
+const drawY = oy + tile.pixelOffsetY;
+
+draw(image, drawX, drawY);
+```
+
+而不是單純：
+
+```javascript
+draw(image, worldX * 80, worldY * 40);
+```
+
+---
+
+# 4. Floor / Wall / Roof 的排序
+
+這一點我不建議你用單純：
+
+```javascript
+zIndex = y;
+```
+
+因為 D2 本身並不是簡單的 HTML DOM 式 z-index。
+
+OpenDiablo2 使用非常明確的 **多段 render pass**：
+
+```text
+Pass 1
+ ├─ Lower Walls
+ ├─ Floor
+ └─ Shadows
+
+Pass 2
+ └─ Entities below walls
+
+Pass 3
+ ├─ Upper Walls
+ └─ Entities above walls
+
+Pass 4
+ └─ Roof
+```
+
+這是實際 renderer 的架構。([Go Packages][2])
+
+所以你的 WebGL pipeline 可以直接照這個思路：
+
+```text
+FRAME
+ │
+ ├─ PASS 0
+ │    Background / floor
+ │
+ ├─ PASS 1
+ │    Lower wall
+ │
+ ├─ PASS 2
+ │    Entities layer 1
+ │
+ ├─ PASS 3
+ │    Upper wall
+ │
+ ├─ PASS 4
+ │    Entities layer > 1
+ │
+ ├─ PASS 5
+ │    Skill effects
+ │
+ └─ PASS 6
+      Roof / foreground
+```
+
+OpenDiablo2 甚至會按照 tile 裡面的 5×5 subtile 去找 entity，使 entity 可以在牆壁前後出現正確遮擋關係。
+
+### 這比「所有 sprite 做一次 sort」更適合你的專案。
+
+---
+
+# 二、DCC 動畫與方向
+
+這部分也有一個非常重要的觀念：
+
+> **DCC 是動畫像素資料；COF 才是 character animation 的組裝/控制資訊之一。**
+
+COF 裡面至少會記錄：
+
+```text
+NumberOfDirections
+FramesPerDirection
+NumberOfLayers
+Speed
+Layers
+AnimationFrames
+Priority
+```
+
+OpenDiablo2 的 COF parser 就直接讀取這些欄位。
+
+DCC 本身也明確有 direction 數量，而且格式文件列出的合法數量包括：
+
+```text
+1
+4
+8
+16
+32
+```
+
+每個方向可以有最多 256 frames。([GitHub][3])
+
+一般可以看到：
+
+```text
+Monster
+8 directions
+
+Character
+16 directions
+
+Missile
+32 directions
+```
+
+這也是 D2 資料分析與工具中非常常見的配置。([WueCampus][4])
+
+---
+
+# 1. 不要直接「8 方向 / 16 方向」做 atan2
+
+比較好的方式是建立：
+
+```text
+世界方向
+    ↓
+64-direction canonical space
+    ↓
+COF/DCC direction
+```
+
+這一點 OpenDiablo2 做得很漂亮。
+
+它有一個：
+
+```text
+Dir64ToCof()
+```
+
+把一個 canonical 64-direction index 映射成：
+
+```text
+4
+8
+16
+32
+64
+```
+
+不同數量的動畫方向。
+
+例如概念上：
+
+```javascript
+const angle = Math.atan2(dy, dx);
+
+let a = angle;
+if (a < 0)
+    a += Math.PI * 2;
+
+const dir64 = Math.floor(
+    (a / (Math.PI * 2)) * 64 + 0.5
+) % 64;
+
+const dirIndex = dir64ToCof(dir64, numberOfDirections);
+```
+
+---
+
+# 2. 但有一個非常容易犯的錯
+
+如果你的玩家輸入是：
+
+```text
+mouse screen X/Y
+```
+
+你不能直接：
+
+```javascript
+atan2(mouseY, mouseX)
+```
+
+得到 D2 direction。
+
+必須：
+
+```text
+Screen
+   ↓
+Inverse Isometric
+   ↓
+World vector
+   ↓
+atan2
+   ↓
+64 direction
+   ↓
+COF direction
+```
+
+因為：
+
+```text
+Screen X/Y
+```
+
+與：
+
+```text
+D2 World X/Y
+```
+
+不是同一套軸。
+
+OpenDiablo2 同時提供：
+
+```text
+WorldToOrtho
+OrthoToWorld
+WorldToScreen
+ScreenToWorld
+```
+
+就是為了解決這個問題。
+
+---
+
+# 3. 動畫是不是固定 25 FPS？
+
+**基礎遊戲時間尺度是 25 frames/sec，但不能把所有 DCC 都硬寫死成 25 FPS。**
+
+D2 的 25 FPS 是非常重要的 engine timing 基礎；很多 attack / cast / hit recovery 計算都以 1/25 秒為單位。([DiabloWiki][5])
+
+但 COF 還有：
+
+```text
+Speed
+```
+
+OpenDiablo2 的實作直接是：
+
+```text
+FPS = 25 × Speed / 256
+```
+
+如果 Speed = 0，則回到 25 FPS。
+
+例如：
+
+```text
+Speed = 256
+
+25 × 256 / 256
+= 25 FPS
+```
+
+```text
+Speed = 128
+
+25 × 128 / 256
+= 12.5 FPS
+```
+
+因此你的 Web 前端最好不要：
+
+```javascript
+currentFrame += 1;
+```
+
+每一次 requestAnimationFrame 都加一格。
+
+而是：
+
+```text
+Game simulation = 25 Hz
+
+Browser rendering = 60 / 120 / 144 Hz
+```
+
+例如：
+
+```javascript
+accumulator += elapsed;
+
+while (accumulator >= 1 / 25) {
+    simulationTick();
+    accumulator -= 1 / 25;
+}
+
+render();
+```
+
+這樣 AI Monitor 的視覺畫面即使瀏覽器跑 144 Hz，D2 動畫的節奏仍然可以保持 25-tick 的感覺。
+
+---
+
+# 三、技能特效：不要只選 `screen` 或 `lighter`
+
+這是你五個問題中，我認為最容易「看起來像 D2、實際上不像 D2」的一個。
+
+你問：
+
+> Canvas 應該使用 `screen`、`lighter` 還是其他 Blend Mode？
+
+我的答案是：
+
+**不要把 D2 的 palette effect 簡化成一個 globalCompositeOperation。**
+
+原因是經典 D2 本質上是：
+
+```text
+Indexed Color
++
+Palette Transform
++
+Alpha/Blend Transform
++
+Light Transform
++
+Layer Composition
+```
+
+而不是：
+
+```text
+RGBA Sprite
++
+CSS blend mode
+```
+
+PL2 的資料結構就是很好的證據。
+
+它包含：
+
+```text
+256 色 Palette
+
+32 dark → mid light transforms
+16 mid → bright transforms
+
+3 × 256 alpha blend transforms
+
+Add blend transform
+
+Add multiply transform
+
+Color variations
+
+Red transforms
+
+Green transforms
+
+Blue transforms
+
+Max Component blend
+
+Darkened color shift
+```
+
+而且這些 transform 本身就是：
+
+```text
+256 bytes
+```
+
+每個 byte 指向 palette 中另一個顏色 index。([GitHub][6])
+
+也就是：
+
+```text
+原始 pixel index
+      ↓
+palette transform
+      ↓
+新的 palette index
+      ↓
+RGB
+```
+
+---
+
+# 1. Canvas 版本
+
+如果你只想先做 MVP，可以：
+
+```text
+普通 DCC
+    source-over
+
+半透明效果
+    source-over + alpha
+
+Add-like effect
+    lighter
+
+暗化
+    multiply
+```
+
+但這只是：
+
+**視覺近似。**
+
+例如：
+
+```javascript
+ctx.globalCompositeOperation = "lighter";
+```
+
+對：
+
+```text
+Fire
+Lightning
+Holy effects
+```
+
+可能會有「類似感」。
+
+但不是 D2 原始 renderer 的精確實現。
+
+---
+
+# 2. WebGL 才是更適合你的
+
+你的專案其實非常適合 WebGL。
+
+可以建立：
+
+```text
+Texture 0
+DCC pixel index
+
+Texture 1
+Palette
+
+Texture 2
+Palette transform / PL2 LUT
+
+Texture 3
+Light map
+
+Texture 4
+Effect parameters
+```
+
+shader：
+
+```glsl
+uint index = texture(uSpriteIndex, uv);
+
+uint transformed =
+    texelFetch(uPaletteTransform,
+               ivec2(index, transformID),
+               0).r;
+
+vec3 rgb =
+    texelFetch(uPalette,
+               ivec2(transformed, 0),
+               0).rgb;
+```
+
+然後你的火球：
+
+```text
+DCC index
+      ↓
+Skill palette transform
+      ↓
+Add / Alpha / Light effect
+      ↓
+Framebuffer
+```
+
+這就會比：
+
+```text
+PNG + CSS brightness + screen
+```
+
+接近非常多。
+
+---
+
+# 四、PalShift / 裝備變色 / 環境光
+
+這裡我要特別修正你問題中的一個假設：
+
+> **Player Character 的裝備換色，不應該全部理解成 PalShift.dat。**
+
+D2 的動畫工具文件明確指出，玩家角色的 token 目錄通常沒有 `Palshift.dat`，而怪物則常常有；怪物變色尤其會使用 PalShift / RandTransforms。([studylib.net][7])
+
+所以你的系統最好拆成：
+
+```text
+Monster recolor
+    ↓
+PalShift.dat / RandTransforms.dat
+
+Player equipment appearance
+    ↓
+COF layers
+    +
+Armor / item transform data
+    +
+palette / PL2 color transform
+
+Environment lighting
+    ↓
+Light transform / palette level
+```
+
+不要全部混成：
+
+```text
+"palshift = 顏色"
+```
+
+---
+
+# 1. 你的 PNG pipeline 最好修改
+
+你現在：
+
+```text
+DCC
+ ↓
+RGBA PNG
+```
+
+可以保留，但不要只保留這個結果。
+
+最好同時保存：
+
+```text
+DCC
+ ↓
+Decoded pixel indices
+ ↓
+00000000
+00000001
+00000002
+...
+000000FF
+```
+
+以及：
+
+```text
+frame width
+frame height
+offsetX
+offsetY
+direction
+frame index
+```
+
+因為 DCC frame 本身有 frame offset。
+
+DCC 格式文件特別指出，每個 frame 都可能有不同的尺寸與 offset，而這些 offset 是拿來對齊 frame anchor 的。([GitHub][3])
+
+所以建議你的 asset format：
+
+```javascript
+{
+    width: 96,
+    height: 144,
+
+    offsetX: -48,
+    offsetY: -128,
+
+    direction: 5,
+    frame: 7,
+
+    pixels: Uint8Array(...),
+
+    transparentIndex: 0
+}
+```
+
+而不是：
+
+```javascript
+{
+    png: "barbarian_05_07.png"
+}
+```
+
+---
+
+# 2. 為什麼你會遇到「純黑」
+
+這通常有幾個典型原因。
+
+### 原因 A：Palette 選錯
+
+DCC / DC6 **本身沒有完整 palette**。DC6 文件也明確說 frame 是 paletted image，但 palette 不存放在 DC6 裡。([GitHub][8])
+
+所以：
+
+```text
+DCC
++
+錯誤 palette
+```
+
+就可能整隻角色：
+
+```text
+黑
+紫
+綠
+顏色完全錯誤
+```
+
+---
+
+### 原因 B：把 palette index 0 當成真正的黑色
+
+你的 decoder 應該明確區分：
+
+```text
+transparent
+```
+
+與：
+
+```text
+RGB(0,0,0)
+```
+
+不要用：
+
+```javascript
+if (r === 0 && g === 0 && b === 0)
+    alpha = 0;
+```
+
+這種判斷。
+
+因為真正的：
+
+```text
+black
+```
+
+也可能存在。
+
+應該依據 D2 的 indexed-pixel / transparency 規則判斷。
+
+---
+
+### 原因 C：先轉 RGBA，再試圖 recolor
+
+例如：
+
+```text
+原本：
+index 54
+ ↓
+RGB(128,77,41)
+```
+
+之後你想把它變成：
+
+```text
+紅色
+```
+
+已經失去：
+
+```text
+54
+```
+
+這個 palette index 的語意了。
+
+所以你的 asset pipeline 最好是：
+
+```text
+                 ┌→ RGBA preview
+DCC → Decode → Index Buffer
+                 │
+                 └→ Palette Transform → RGBA/WebGL
+```
+
+而不是：
+
+```text
+DCC → RGBA PNG → 再想辦法 recolor
+```
+
+---
+
+# 3. 環境光不要直接套 CSS brightness
+
+D2 的 PL2 結構包含：
+
+```text
+32 個 Dark → Mid light levels
+16 個 Mid → Bright light levels
+```
+
+這其實非常適合你的 WebGL shader。([GitHub][9])
+
+你可以建立：
+
+```text
+lightLevel = 0 ... 47
+```
+
+例如：
+
+```text
+0   = 最暗
+1
+2
+...
+31  = mid
+32
+...
+47  = 最亮
+```
+
+然後：
+
+```text
+pixelIndex
+     ↓
+lightLevel LUT
+     ↓
+newPixelIndex
+     ↓
+palette RGB
+```
+
+這樣地牢：
+
+```text
+Dark
+```
+
+和營火：
+
+```text
+Warm Light
+```
+
+都可以走同一套系統。
+
+---
+
+# 五、營火選角畫面：sceneL / sceneR / AMNU1
+
+這裡要特別注意：
+
+> **DC6 通常不會告訴你「我在整個選角畫面的 X=123、Y=456」。**
+
+DC6/DCC 更接近：
+
+```text
+「這張圖片怎麼解碼」
++
+「frame 的尺寸」
++
+「frame 的 offset」
+```
+
+而：
+
+```text
+「這個 scene piece 放在整個 character selection screen 的哪裡」
+```
+
+屬於更上層的 UI composition / scene layout。
+
+所以：
+
+```text
+sceneL1.DC6
+sceneR.DC6
+...
+```
+
+不是：
+
+```text
+DC6 自己帶完整 layout
+```
+
+而是：
+
+```text
+Scene compositor
+      ↓
+draw sceneL1 at X/Y
+draw sceneR  at X/Y
+draw fire    at X/Y
+draw character at anchor
+draw buttons
+```
+
+OpenD2 甚至把：
+
+```text
+PAL_FECHAR
+```
+
+定義為：
+
+```text
+global character-selection palette
+```
+
+這是一個很重要的線索：**營火選角畫面不能直接拿 Act 1 map palette 當成角色 palette。** ([GitHub][10])
+
+---
+
+# 1. 所以你不要「人工猜 X/Y」
+
+你的 scene assembler 建議做成：
+
+```javascript
+const characterSelectScene = {
+
+    background: {
+        asset: "charactercreationscreenEXP.dc6",
+        x: 0,
+        y: 0
+    },
+
+    sceneLeft: {
+        asset: "sceneL1.dc6",
+        x: ...,
+        y: ...
+    },
+
+    sceneRight: {
+        asset: "sceneR.dc6",
+        x: ...,
+        y: ...
+    },
+
+    campfire: {
+        asset: "fire.dc6",
+        x: ...,
+        y: ...
+    },
+
+    barbarian: {
+        asset: "BAnu1",
+        anchorX: ...,
+        anchorY: ...
+    }
+};
+```
+
+然後：
+
+```text
+Scene composition
+```
+
+與：
+
+```text
+D2 renderer
+```
+
+分開。
+
+這樣你後面即使重新調整角色位置，也完全不需要修改 DCC decoder。
+
+---
+
+# 2. AMNU1 為什麼套基本 palette 會變黑？
+
+這很可能不是：
+
+```text
+DCC 解碼錯
+```
+
+而是：
+
+```text
+palette pipeline 錯
+```
+
+你不能：
+
+```text
+AMNU1
++
+Act 1 palette
+```
+
+直接期待得到營火下的角色。
+
+應該概念上：
+
+```text
+AMNU1
+   ↓
+Character Selection Palette
+   ↓
+Character-specific color mapping
+   ↓
+Campfire light transform
+   ↓
+Final RGB
+```
+
+也就是：
+
+```text
+Base Color
+      +
+Warm Local Light
+      ↓
+Final Color
+```
+
+而不是：
+
+```text
+Base Color × 2
+```
+
+---
+
+# 3. 最接近原版的營火光效果
+
+你可以建立一個簡化版：
+
+```text
+Campfire center
+       ●
+      /|\
+     / | \
+    /  |  \
+```
+
+對角色所在位置計算：
+
+```javascript
+distance = distance(character, fire);
+
+light = clamp(
+    1 - distance / radius,
+    0,
+    1
+);
+```
+
+但不要直接：
+
+```javascript
+RGB *= light;
+```
+
+而是：
+
+```text
+light
+ ↓
+palette transform ID
+ ↓
+palette LUT
+```
+
+如果要更像營火：
+
+```text
+R += warmAmount
+G += warmAmount * 0.55
+B -= coolAmount
+```
+
+但最好最後仍然 quantize 回 D2 palette / transform，而不是用現代 RGB 漸層。
+
+這會讓畫面從：
+
+```text
+現代遊戲 shader
+```
+
+變成：
+
+```text
+D2 8-bit lighting
+```
+
+的感覺。
+
+---
+
+# 你的「Diablo 2 Agent Monitor」最適合的完整架構
+
+如果是我來做，我不會把它做成一個巨大 `renderer.js`。
+
+會拆成：
+
+```text
+D2 Agent Monitor
+│
+├─ assets/
+│   ├─ dc6/
+│   ├─ dcc/
+│   ├─ dt1/
+│   ├─ ds1/
+│   ├─ cof/
+│   ├─ palettes/
+│   └─ pl2/
+│
+├─ decoder/
+│   ├─ dc6Decoder
+│   ├─ dccDecoder
+│   ├─ dt1Decoder
+│   ├─ ds1Decoder
+│   └─ cofDecoder
+│
+├─ world/
+│   ├─ tileMap
+│   ├─ subTile
+│   ├─ collision
+│   └─ entity
+│
+├─ animation/
+│   ├─ AnimationClip
+│   ├─ Direction
+│   ├─ Frame
+│   └─ COFComposer
+│
+├─ palette/
+│   ├─ Palette256
+│   ├─ PalShift
+│   ├─ PL2
+│   ├─ LightLevel
+│   └─ ColorTransform
+│
+├─ renderer/
+│   ├─ IsoProjection
+│   ├─ TileRenderer
+│   ├─ EntityRenderer
+│   ├─ EffectRenderer
+│   └─ WebGLRenderer
+│
+├─ scenes/
+│   ├─ gameScene
+│   ├─ characterSelect
+│   └─ frontend
+│
+└─ agent/
+    ├─ searching
+    ├─ coding
+    ├─ thinking
+    ├─ attacking
+    ├─ casting
+    └─ idle
+```
+
+你的 AI Monitor 最後只要傳一個：
+
+```javascript
+agent.setState("SEARCHING");
+```
+
+renderer 就決定：
+
+```text
+SEARCHING
+    ↓
+Sorceress
+    ↓
+Cast Mode
+    ↓
+Blizzard animation
+    ↓
+Skill overlay
+    ↓
+palette/light
+    ↓
+render
+```
+
+而：
+
+```javascript
+agent.setState("CODING");
+```
+
+則：
+
+```text
+Barbarian
+    ↓
+Attack animation
+    ↓
+Weapon layer
+    ↓
+impact effect
+```
+
+---
+
+# 我最推薦你現在先做的 4 個核心模組
+
+按照實作難度與重要性，我會把優先順序定成：
+
+```text
+① IsoProjection
+        ↓
+② DCC + COF Animation System
+        ↓
+③ Palette / PL2 Shader
+        ↓
+④ DS1 + DT1 Map Renderer
+```
+
+**不要先做技能特效。**
+
+因為如果：
+
+```text
+座標不準
+```
+
+你看到的：
+
+```text
+暴風雪
+火球
+野蠻人攻擊
+```
+
+全部都會在錯的位置。
+
+如果：
+
+```text
+DCC anchor 不準
+```
+
+角色會：
+
+```text
+腳漂浮
+武器偏移
+攻擊時整個人跳動
+```
+
+如果：
+
+```text
+palette 錯
+```
+
+則會：
+
+```text
+人物純黑
+裝備顏色錯
+營火角色失真
+```
+
+這三個基礎系統先穩住，技能效果反而是最後最好解決的部分。
+
+---
+
+## 最重要的結論
+
+你目前真正需要建立的不是「PNG 播放器」，而是下面這個 pipeline：
+
+```text
+                D2 RAW DATA
+                     │
+       ┌─────────────┼─────────────┐
+       ↓             ↓             ↓
+      DS1           DT1          DCC/COF
+       │             │             │
+       │          Tile Art      Animation
+       │             │             │
+       └─────────────┴─────────────┘
+                     ↓
+              D2 World Coordinates
+                     ↓
+              Isometric Projection
+                     ↓
+              Render Pass System
+                     ↓
+            Palette / PL2 Transform
+                     ↓
+               Light Transform
+                     ↓
+              Skill / Overlay
+                     ↓
+                WebGL Canvas
+```
+
+其中最值得注意的三點是：
+
+**第一，D2 的等距座標可以直接依照 OpenDiablo2 的 80×40 / 16×8 座標模型建立，而不是自己猜一套比例。** 
+
+**第二，方向不要單純把 atan2 結果直接除以 8 或 16；建立 64-direction canonical space 再轉 COF direction，正是 OpenDiablo2 已採用的方式。** 
+
+**第三，不要把 palette effect 等同於 Canvas 的 `screen` / `lighter`。D2 的 PL2 本身就保存了大量預先計算好的 light、alpha、add、multiply、color-transform LUT；WebGL shader + lookup texture 才是最接近原版思路的做法。** ([GitHub][6])
+
+最後還有一個實務上的限制值得注意：OpenDiablo2 本身明確採用原版 MPQ 資產，但專案並不重新分發 Diablo II 的遊戲內容；如果你的 Agent Monitor 要公開部署，最好把「引擎程式」與「使用者自行提供的遊戲資產」分離。([GitHub][1])
+
+你現在這個專案其實已經到了可以正式做 **「D2 Renderer Core」** 的階段；下一步最有價值的工作，就是先把 **DS1 + DT1 + 5×5 Sub-tile + 80×40 投影 + Floor/Wall/Roof 四段 Render Pass** 做成一個最小可運作版本，再把 DCC/COF 接上去。
+
+[1]: https://github.com/opendiablo2/opendiablo2?utm_source=chatgpt.com "GitHub - OpenDiablo2/OpenDiablo2: An open source re-implementation of Diablo 2 · GitHub"
+[2]: https://pkg.go.dev/github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer "d2maprenderer package - github.com/OpenDiablo2/OpenDiablo2/d2core/d2map/d2maprenderer - Go Packages"
+[3]: https://github.com/gitustc/d2imdev/blob/master/dcc/dcc_doc/The%20Dcc%20File%20Format%20Description.htm "d2imdev/dcc/dcc_doc/The Dcc File Format Description.htm at master · gitustc/d2imdev · GitHub"
+[4]: https://wuecampus.uni-wuerzburg.de/moodle/pluginfile.php/1552636/mod_resource/content/1/Diablo%20II.pdf?utm_source=chatgpt.com "Diablo II"
+[5]: https://www.diablowiki.net/Breakpoint?utm_source=chatgpt.com "Breakpoint - Diablo Wiki"
+[6]: https://github.com/OpenDiablo2/pl2?utm_source=chatgpt.com "GitHub - OpenDiablo2/pl2: PL2 file format package. The PL2 data structure was used for storing palette transformations. An arcane format, used by Blizzard's Diablo II. · GitHub"
+[7]: https://studylib.net/doc/27386077/extracting-diablo-ii-animations?utm_source=chatgpt.com "Extracting Diablo II Animations: A Tutorial"
+[8]: https://github.com/OpenDiablo2/dc6?utm_source=chatgpt.com "GitHub - OpenDiablo2/dc6: DC6 file format decoder. The DC6 file format stores multiple sequences of animation frames. The frames are paletted images, but the format does not contain the palette. An arcane format, used by Blizzard's Diablo II. · GitHub"
+[9]: https://github.com/OpenDiablo2/pl2 "GitHub - OpenDiablo2/pl2: PL2 file format package. The PL2 data structure was used for storing palette transformations. An arcane format, used by Blizzard's Diablo II. · GitHub"
+[10]: https://github.com/eezstreet/OpenD2/blob/master/Shared/D2Shared.hpp?utm_source=chatgpt.com "OpenD2/Shared/D2Shared.hpp at master · eezstreet/OpenD2 · GitHub"

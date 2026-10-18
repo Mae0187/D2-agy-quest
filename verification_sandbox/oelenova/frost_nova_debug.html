@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>❄️ D2 Frost Nova (冰霜新星) 逆向分析與方向間距除錯工作台</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #06090F; color: #E0F2FE;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      padding: 16px; display: flex; flex-direction: column; align-items: center;
+    }
+    .nav-bar {
+      display: flex; gap: 12px; margin-bottom: 12px; width: 100%; max-width: 1300px; justify-content: flex-end;
+    }
+    .nav-link {
+      background: #0C1E33; border: 1px solid #0284C7; color: #38BDF8;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; text-decoration: none;
+      font-weight: bold; transition: all 0.2s ease;
+    }
+    .nav-link:hover { background: #0284C7; color: #FFFFFF; }
+    h1 { color: #38BDF8; font-size: 20px; margin-bottom: 4px; text-shadow: 0 0 12px rgba(56, 189, 248, 0.4); }
+    .subtitle { color: #7DD3FC; font-size: 12px; margin-bottom: 16px; opacity: 0.85; }
+    .layout { display: flex; gap: 16px; max-width: 1300px; width: 100%; }
+    .panel {
+      background: #0B1320; border: 1px solid #162B44; border-radius: 8px; padding: 14px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+    }
+    .left-panel { width: 340px; display: flex; flex-direction: column; gap: 14px; }
+    .center-panel { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .right-panel { width: 340px; display: flex; flex-direction: column; gap: 14px; }
+    .section-title {
+      font-size: 13px; font-weight: 700; color: #38BDF8; margin-bottom: 10px;
+      border-bottom: 1px solid #162B44; padding-bottom: 4px; display: flex; justify-content: space-between;
+    }
+    .control-row {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px;
+    }
+    label { color: #BAE6FD; }
+    input[type=range] { width: 140px; accent-color: #38BDF8; }
+    select, button {
+      background: #0F233A; border: 1px solid #1E3A5F; color: #F0F9FF;
+      padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;
+    }
+    button:hover { background: #1E3A5F; }
+    .btn-active { background: #0284C7 !important; border-color: #38BDF8 !important; }
+    .metric-card {
+      background: #060E18; border: 1px solid #162B44; border-radius: 6px; padding: 10px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;
+    }
+    .metric-item { display: flex; flex-direction: column; }
+    .metric-label { color: #7DD3FC; margin-bottom: 2px; }
+    .metric-val { font-family: monospace; font-size: 14px; font-weight: bold; color: #F0F9FF; }
+    .metric-val.alert { color: #EF4444; }
+    .metric-val.good { color: #10B981; }
+    canvas {
+      background: #020509; border: 1px solid #162B44; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+    }
+    .side-by-side {
+      display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 10px;
+    }
+    .ref-box { text-align: center; font-size: 11px; color: #7DD3FC; }
+    .ref-box img {
+      border: 1px solid #1E3A5F; border-radius: 4px; max-width: 280px; height: auto;
+    }
+    .inspector-canvas { background: #000; border: 1px dashed #1E3A5F; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="nav-bar">
+    <a href="nova_debug.html" class="nav-link">⚡ 切換至電系新星 (Nova) 工作台</a>
+  </div>
+
+  <h1>❄️ D2 Frost Nova (冰霜新星) 逆向分析與方向間距除錯工作台</h1>
+  <div class="subtitle">遵循 suggestions/Oelenova.txt 規範：冰霜新星 16 方向檢視、等弧長 8px 取樣、動態間距指標與官方大圖對照</div>
+
+  <div class="layout">
+    <!-- 左側：16 方向檢視器 -->
+    <div class="panel left-panel">
+      <div class="section-title">🔍 冰晶方向切片檢視器 (Direction Inspector)</div>
+      <div class="control-row">
+        <label>選取方向 (0~15):</label>
+        <select id="sel-dir"></select>
+      </div>
+      <div class="control-row">
+        <label>影格 Scrubber (0~13):</label>
+        <input type="range" id="slider-dir-frame" min="0" max="13" value="4">
+        <span id="txt-dir-frame">F4</span>
+      </div>
+      <div style="text-align:center;">
+        <canvas id="canvas-inspector" width="180" height="130" class="inspector-canvas"></canvas>
+      </div>
+      <div class="metric-card" style="margin-top:6px;">
+        <div class="metric-item">
+          <span class="metric-label">DCC 索引:</span>
+          <span class="metric-val" id="insp-dcc">Row 7</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">標準方位:</span>
+          <span class="metric-val" id="insp-angle">0.0° (E)</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">切片單元寬高:</span>
+          <span class="metric-val">100×70 px</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">錨點 Pivot:</span>
+          <span class="metric-val">50, 35</span>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:10px;">📊 實機指標與健康度 (Health Metrics)</div>
+      <div class="metric-card">
+        <div class="metric-item">
+          <span class="metric-label">冰晶數量 (Count):</span>
+          <span class="metric-val" id="m-count">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">橢圓周長 (Perimeter):</span>
+          <span class="metric-val" id="m-peri">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">最小間距 (Min Spacing):</span>
+          <span class="metric-val" id="m-min">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">最大間距 (Max Spacing):</span>
+          <span class="metric-val" id="m-max">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">平均間距 (Avg Spacing):</span>
+          <span class="metric-val" id="m-avg">-</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">最大裂縫 (Visible Gap):</span>
+          <span class="metric-val" id="m-gap">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中央：冰霜新星動態環形畫布 -->
+    <div class="panel center-panel">
+      <div class="section-title" style="width:100%;">
+        <span>❄️ 冰霜新星即時合成畫布 (Frost Nova Simulator)</span>
+        <span id="canvas-status" style="color:#38BDF8;">圖集載入中...</span>
+      </div>
+      <canvas id="canvas-sim" width="600" height="460"></canvas>
+      <div class="control-row" style="width:100%; margin-top:10px; justify-content:center; gap:16px;">
+        <button id="btn-play">▶ 播放動畫</button>
+        <button id="btn-step-prev">⏮ 上一幀</button>
+        <button id="btn-step-next">⏭ 下一幀</button>
+        <span id="txt-sim-frame" style="font-family:monospace; font-size:12px;">Frame: 4 / 13</span>
+      </div>
+    </div>
+
+    <!-- 右側：演算法調校與對照 -->
+    <div class="panel right-panel">
+      <div class="section-title">⚙️ 演算法與幾何參數 (Algorithm Config)</div>
+      <div class="control-row">
+        <label>取樣策略 (Mode):</label>
+        <select id="sel-mode">
+          <option value="equal_arc">✨ 模式 2: 等弧長 LUT 動態取樣 (8px 鎖定)</option>
+          <option value="authentic_64">🎯 模式 1: 原廠 64 顆固定冰霜子體</option>
+          <option value="legacy_angle">⚠️ 模式 3: 舊版等角度步進 (缺陷對照)</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <label>擴散半徑 R (px):</label>
+        <input type="range" id="slider-radius" min="15" max="260" value="130">
+        <span id="txt-radius">130</span>
+      </div>
+      <div class="control-row">
+        <label>目標相鄰間距 (px):</label>
+        <input type="range" id="slider-spacing" min="6" max="24" value="8">
+        <span id="txt-spacing">8</span>
+      </div>
+      <div class="control-row">
+        <label>等軸測 Y 比率:</label>
+        <input type="range" id="slider-iso" min="40" max="100" value="54">
+        <span id="txt-iso">0.54</span>
+      </div>
+      <div class="control-row">
+        <label>光帶層數:</label>
+        <select id="sel-layer">
+          <option value="single">單層冰晶 (清澈原版)</option>
+          <option value="dual" selected>雙層冰霜熔接 (外R + 內R-6px, 冰霜實心核)</option>
+        </select>
+      </div>
+
+      <div class="section-title" style="margin-top:8px;">🛠️ 輔助視覺標記 (Debug Overlays)</div>
+      <div class="control-row">
+        <label><input type="checkbox" id="chk-ellipse" checked> 顯示等軸測參考幾何線</label>
+      </div>
+      <div class="control-row">
+        <label><input type="checkbox" id="chk-points"> 顯示圖元取樣中心點</label>
+      </div>
+      <div class="control-row">
+        <label><input type="checkbox" id="chk-dirs"> 顯示 DCC 方向標籤</label>
+      </div>
+      <div class="control-row">
+        <label><input type="checkbox" id="chk-bbox"> 顯示圖元包圍盒 (BBox)</label>
+      </div>
+
+      <div class="section-title" style="margin-top:8px;">🖼️ 官方真理對照圖 (Ground Truth)</div>
+      <div class="ref-box">
+        <img src="../../official_visual_standards/sorceress/frost_nova_crop.png" alt="官方 Frost Nova 基準圖">
+        <div>frost_nova_crop.png (暴雪官方原圖)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── 暴雪原廠 16 方向標準 DCC 映射表 (0~15 順時針步進 22.5 度) ──
+    const DCC_16 = [
+      { row: 7,  deg: 0.0,   label: 'E' },
+      { row: 14, deg: 22.5,  label: 'ESE' },
+      { row: 3,  deg: 45.0,  label: 'SE' },
+      { row: 15, deg: 67.5,  label: 'SSE' },
+      { row: 4,  deg: 90.0,  label: 'S' },
+      { row: 8,  deg: 112.5, label: 'SSW' },
+      { row: 0,  deg: 135.0, label: 'SW' },
+      { row: 9,  deg: 157.5, label: 'WSW' },
+      { row: 5,  deg: 180.0, label: 'W' },
+      { row: 10, deg: 202.5, label: 'WNW' },
+      { row: 1,  deg: 225.0, label: 'NW' },
+      { row: 11, deg: 247.5, label: 'NNW' },
+      { row: 6,  deg: 270.0, label: 'N' },
+      { row: 12, deg: 292.5, label: 'NNE' },
+      { row: 2,  deg: 315.0, label: 'NE' },
+      { row: 13, deg: 337.5, label: 'ENE' }
+    ];
+
+    function resolveDcc(angleDeg) {
+      const a = ((angleDeg % 360) + 360) % 360;
+      let best = DCC_16[0];
+      let minDiff = 999;
+      for (const d of DCC_16) {
+        const diff = Math.abs(((d.deg - a + 180) % 360) - 180);
+        if (diff < minDiff) {
+          minDiff = diff;
+          best = d;
+        }
+      }
+      return best;
+    }
+
+    // ── 累積弧長查找表 (Arc-Length LUT) ──
+    class EllipseArcLut {
+      constructor(rx, ry, steps = 180) {
+        this.rx = rx; this.ry = ry;
+        this.angles = [0]; this.dists = [0];
+        let cum = 0, px = rx, py = 0;
+        for (let i = 1; i <= steps; i++) {
+          const t = (i / steps) * Math.PI * 2;
+          const x = rx * Math.cos(t), y = ry * Math.sin(t);
+          cum += Math.hypot(x - px, y - py);
+          this.angles.push(t);
+          this.dists.push(cum);
+          px = x; py = y;
+        }
+        this.totalPerimeter = cum;
+      }
+      getThetaAt(dist) {
+        const d = dist % this.totalPerimeter;
+        let low = 0, high = this.dists.length - 1;
+        while (low <= high) {
+          const mid = (low + high) >> 1;
+          if (this.dists[mid] < d) low = mid + 1;
+          else high = mid - 1;
+        }
+        const idx = Math.max(1, low);
+        const d0 = this.dists[idx - 1], d1 = this.dists[idx];
+        const t0 = this.angles[idx - 1], t1 = this.angles[idx];
+        const frac = d1 > d0 ? (d - d0) / (d1 - d0) : 0;
+        return t0 + (t1 - t0) * frac;
+      }
+    }
+
+    // ── 初始化冰霜新星圖集 (frost_nova.png: 100x70, pivot 50, 35, 14 frames, 16 dirs) ──
+    const atlasImg = new Image();
+    atlasImg.src = '../assets/atlases/frost_nova.png';
+    const CELL_W = 100, CELL_H = 70, PIV_X = 50, PIV_Y = 35;
+
+    let simFrame = 4;
+    let isPlaying = false;
+    let playTimer = null;
+
+    const selDir = document.getElementById('sel-dir');
+    DCC_16.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `方向 ${i}: ${d.label} (${d.deg}°) -> DCC Row ${d.row}`;
+      selDir.appendChild(opt);
+    });
+
+    atlasImg.onload = () => {
+      document.getElementById('canvas-status').textContent = '✅ 圖集已載入 (1400×1120)';
+      renderInspector();
+      renderSimulator();
+    };
+
+    // ── 左側切片檢視器 ──
+    function renderInspector() {
+      const c = document.getElementById('canvas-inspector');
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      const dirIdx = parseInt(selDir.value);
+      const frameIdx = parseInt(document.getElementById('slider-dir-frame').value);
+      const dcc = DCC_16[dirIdx];
+
+      document.getElementById('insp-dcc').textContent = `Row ${dcc.row}`;
+      document.getElementById('insp-angle').textContent = `${dcc.deg}° (${dcc.label})`;
+
+      const sx = frameIdx * CELL_W;
+      const sy = dcc.row * CELL_H;
+
+      const cx = c.width / 2;
+      const cy = c.height / 2;
+
+      ctx.save();
+      // 繪製背景網格
+      ctx.strokeStyle = '#1E3A5F';
+      ctx.strokeRect(cx - PIV_X, cy - PIV_Y, CELL_W, CELL_H);
+
+      // 繪製冰晶切片
+      ctx.drawImage(atlasImg, sx, sy, CELL_W, CELL_H, cx - PIV_X, cy - PIV_Y, CELL_W, CELL_H);
+
+      // 繪製錨點十字準星
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+      ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+      ctx.stroke();
+
+      // 繪製中心黃點
+      ctx.fillStyle = '#FCD34D';
+      ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    // ── 中央冰霜新星模擬器 ──
+    function renderSimulator() {
+      const c = document.getElementById('canvas-sim');
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      const cx = c.width / 2;
+      const cy = c.height / 2;
+
+      const rx = parseFloat(document.getElementById('slider-radius').value);
+      const iso = parseFloat(document.getElementById('slider-iso').value) / 100;
+      const ry = rx * iso;
+      const spacing = parseFloat(document.getElementById('slider-spacing').value);
+      const mode = document.getElementById('sel-mode').value;
+      const layerMode = document.getElementById('sel-layer').value;
+
+      const lut = new EllipseArcLut(rx, ry, 180);
+      const samples = [];
+
+      if (mode === 'equal_arc') {
+        const count = Math.max(16, Math.round(lut.totalPerimeter / spacing));
+        const step = lut.totalPerimeter / count;
+        for (let i = 0; i < count; i++) {
+          const theta = lut.getThetaAt(i * step);
+          const px = cx + rx * Math.cos(theta);
+          const py = cy + ry * Math.sin(theta);
+          const radialDeg = (Math.atan2(Math.sin(theta), Math.cos(theta)) * 180 / Math.PI + 360) % 360;
+          const dcc = resolveDcc(radialDeg);
+          samples.push({ x: px, y: py, theta, dccRow: dcc.row, label: dcc.label, dist: step });
+        }
+      } else if (mode === 'authentic_64') {
+        const count = 64;
+        for (let i = 0; i < count; i++) {
+          const theta = (i / count) * Math.PI * 2;
+          const px = cx + rx * Math.cos(theta);
+          const py = cy + ry * Math.sin(theta);
+          const radialDeg = (theta * 180 / Math.PI + 360) % 360;
+          const dcc = resolveDcc(radialDeg);
+          samples.push({ x: px, y: py, theta, dccRow: dcc.row, label: dcc.label, dist: 0 });
+        }
+        for (let i = 0; i < count; i++) {
+          const next = samples[(i + 1) % count];
+          samples[i].dist = Math.hypot(next.x - samples[i].x, next.y - samples[i].y);
+        }
+      } else {
+        const count = Math.max(16, Math.round(lut.totalPerimeter / spacing));
+        for (let i = 0; i < count; i++) {
+          const theta = (i / count) * Math.PI * 2;
+          const px = cx + rx * Math.cos(theta);
+          const py = cy + ry * Math.sin(theta);
+          const radialDeg = (theta * 180 / Math.PI + 360) % 360;
+          const dcc = resolveDcc(radialDeg);
+          samples.push({ x: px, y: py, theta, dccRow: dcc.row, label: dcc.label, dist: 0 });
+        }
+        for (let i = 0; i < count; i++) {
+          const next = samples[(i + 1) % count];
+          samples[i].dist = Math.hypot(next.x - samples[i].x, next.y - samples[i].y);
+        }
+      }
+
+      // 指標計算 (FrostNova 切片有效寬度約 40px)
+      let minDist = 999, maxDist = 0, sumDist = 0;
+      samples.forEach(s => {
+        if (s.dist < minDist) minDist = s.dist;
+        if (s.dist > maxDist) maxDist = s.dist;
+        sumDist += s.dist;
+      });
+      const avgDist = sumDist / samples.length;
+      const maxGap = Math.max(0, maxDist - 40);
+
+      document.getElementById('m-count').textContent = samples.length;
+      document.getElementById('m-peri').textContent = `${lut.totalPerimeter.toFixed(0)} px`;
+      document.getElementById('m-min').textContent = `${minDist.toFixed(1)} px`;
+      document.getElementById('m-max').textContent = `${maxDist.toFixed(1)} px`;
+      document.getElementById('m-avg').textContent = `${avgDist.toFixed(1)} px`;
+
+      const gapEl = document.getElementById('m-gap');
+      gapEl.textContent = `${maxGap.toFixed(1)} px`;
+      gapEl.className = maxGap > 0 ? 'metric-val alert' : 'metric-val good';
+
+      // ── 繪製冰霜精靈圖 ──
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const renderLayer = (layerRadiusX, layerRadiusY, frameOffset, alpha) => {
+        ctx.globalAlpha = alpha;
+        const curLut = (layerRadiusX === rx) ? lut : new EllipseArcLut(layerRadiusX, layerRadiusY, 180);
+        const curSamples = (mode === 'equal_arc') ? [] : samples;
+
+        if (mode === 'equal_arc') {
+          const count = samples.length;
+          const step = curLut.totalPerimeter / count;
+          for (let i = 0; i < count; i++) {
+            const theta = curLut.getThetaAt(i * step);
+            const px = cx + layerRadiusX * Math.cos(theta);
+            const py = cy + layerRadiusY * Math.sin(theta);
+            const radialDeg = (Math.atan2(Math.sin(theta), Math.cos(theta)) * 180 / Math.PI + 360) % 360;
+            const dcc = resolveDcc(radialDeg);
+            curSamples.push({ x: px, y: py, dccRow: dcc.row });
+          }
+        }
+
+        const curFrame = (simFrame + frameOffset) % 14;
+        for (const pt of curSamples) {
+          const sx = curFrame * CELL_W;
+          const sy = pt.dccRow * CELL_H;
+          ctx.drawImage(atlasImg, sx, sy, CELL_W, CELL_H, Math.round(pt.x - PIV_X), Math.round(pt.y - PIV_Y), CELL_W, CELL_H);
+        }
+      };
+
+      if (layerMode === 'dual') {
+        renderLayer(rx, ry, 0, 0.95);
+        renderLayer(Math.max(10, rx - 6), Math.max(5, ry - 3.24), 1, 0.75);
+      } else {
+        renderLayer(rx, ry, 0, 1.0);
+      }
+      ctx.restore();
+
+      // ── 繪製輔助標記 ──
+      if (document.getElementById('chk-ellipse').checked) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (document.getElementById('chk-points').checked) {
+        ctx.save();
+        ctx.fillStyle = '#38BDF8';
+        samples.forEach(s => {
+          ctx.beginPath(); ctx.arc(s.x, s.y, 2, 0, Math.PI * 2); ctx.fill();
+        });
+        ctx.restore();
+      }
+
+      if (document.getElementById('chk-dirs').checked) {
+        ctx.save();
+        ctx.fillStyle = '#7DD3FC';
+        ctx.font = '9px monospace';
+        samples.forEach(s => {
+          ctx.fillText(s.label, s.x + 4, s.y - 4);
+        });
+        ctx.restore();
+      }
+
+      if (document.getElementById('chk-bbox').checked) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(2, 132, 199, 0.25)';
+        ctx.lineWidth = 1;
+        samples.forEach(s => {
+          ctx.strokeRect(s.x - PIV_X, s.y - PIV_Y, CELL_W, CELL_H);
+        });
+        ctx.restore();
+      }
+    }
+
+    // ── 事件監聽 ──
+    selDir.addEventListener('change', renderInspector);
+    document.getElementById('slider-dir-frame').addEventListener('input', (e) => {
+      document.getElementById('txt-dir-frame').textContent = `F${e.target.value}`;
+      renderInspector();
+    });
+
+    ['slider-radius', 'slider-spacing', 'slider-iso', 'sel-mode', 'sel-layer', 'chk-ellipse', 'chk-points', 'chk-dirs', 'chk-bbox'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        document.getElementById('txt-radius').textContent = document.getElementById('slider-radius').value;
+        document.getElementById('txt-spacing').textContent = document.getElementById('slider-spacing').value;
+        document.getElementById('txt-iso').textContent = (document.getElementById('slider-iso').value / 100).toFixed(2);
+        renderSimulator();
+      });
+    });
+
+    document.getElementById('btn-step-next').addEventListener('click', () => {
+      simFrame = (simFrame + 1) % 14;
+      document.getElementById('txt-sim-frame').textContent = `Frame: ${simFrame} / 13`;
+      renderSimulator();
+    });
+
+    document.getElementById('btn-step-prev').addEventListener('click', () => {
+      simFrame = (simFrame - 1 + 14) % 14;
+      document.getElementById('txt-sim-frame').textContent = `Frame: ${simFrame} / 13`;
+      renderSimulator();
+    });
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('btn-play');
+      if (isPlaying) {
+        btn.textContent = '⏸ 暫停動畫';
+        btn.classList.add('btn-active');
+        playTimer = setInterval(() => {
+          simFrame = (simFrame + 1) % 14;
+          document.getElementById('txt-sim-frame').textContent = `Frame: ${simFrame} / 13`;
+          renderSimulator();
+        }, 60);
+      } else {
+        btn.textContent = '▶ 播放動畫';
+        btn.classList.remove('btn-active');
+        clearInterval(playTimer);
+      }
+    });
+  </script>
+</body>
+</html>

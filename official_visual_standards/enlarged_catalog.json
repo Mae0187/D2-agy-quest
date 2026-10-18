@@ -1,0 +1,1064 @@
+[
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/magicarrow01.jpg",
+    "size_str": "96 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/firearrow01.jpg",
+    "size_str": "86 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/coldarrow01.jpg",
+    "size_str": "95 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/multishot01.jpg",
+    "size_str": "91 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/exploadingarrow01.jpg",
+    "size_str": "97 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/icearrow01.jpg",
+    "size_str": "92 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/guidedarrow01.jpg",
+    "size_str": "92 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/immolationarrow01.jpg",
+    "size_str": "96 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/strafe01.jpg",
+    "size_str": "100 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/freezingarrow01.jpg",
+    "size_str": "93 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-bow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/freezingarrow03.jpg",
+    "size_str": "97 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/powerstrike01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/poisonjavelin01.jpg",
+    "size_str": "83 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lightningbolt01.jpg",
+    "size_str": "118 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/chargedstrike01.jpg",
+    "size_str": "81 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/plaguejavelin01.jpg",
+    "size_str": "113 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lightningstrike01.jpg",
+    "size_str": "86 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-javelin.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lightningfury01.jpg",
+    "size_str": "103 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/innersight01.jpg",
+    "size_str": "62 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/criticalstrike01.jpg",
+    "size_str": "103 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/dodge01.jpg",
+    "size_str": "85 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/slowmissiles01.jpg",
+    "size_str": "91 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/avoid01.jpg",
+    "size_str": "51 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/decoy01.jpg",
+    "size_str": "97 KB "
+  },
+  {
+    "class": "amazon",
+    "url": "https://classic.battle.net/diablo2exp/skills/amazon-passive.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/valkyrie01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/tigerstrike01.jpg",
+    "size_str": "129 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/dragontalon01.jpg",
+    "size_str": "41 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fistsoffire01.jpg",
+    "size_str": "74 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/cobrastrike01.jpg",
+    "size_str": "84 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/dragontail01.jpg",
+    "size_str": "81 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/clawsofthunder01.jpg",
+    "size_str": "70 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/clawsofthunder03.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bladesofice01.jpg",
+    "size_str": "72 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bladesofice03.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/phoenixstrike02.jpg",
+    "size_str": "84 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-martialarts.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/phoenixstrike03.jpg",
+    "size_str": "77 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-shadow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/psychichammer01.jpg",
+    "size_str": "130 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-shadow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/burstofspeed01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-shadow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/cloakofshadows01.jpg",
+    "size_str": "42 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-shadow.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/shadowwarrior01.jpg",
+    "size_str": "67 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fireblast01.jpg",
+    "size_str": "128 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/shockweb01.jpg",
+    "size_str": "119 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bladesentinel01.jpg",
+    "size_str": "133 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/chargedboltsentry01.jpg",
+    "size_str": "95 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/wakeoffire01.jpg",
+    "size_str": "131 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bladefury01.jpg",
+    "size_str": "125 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lightningsentry01.jpg",
+    "size_str": "121 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/wakeofinferno01.jpg",
+    "size_str": "100 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/deathsentry01.jpg",
+    "size_str": "78 KB "
+  },
+  {
+    "class": "assassin",
+    "url": "https://classic.battle.net/diablo2exp/skills/assassin-traps.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bladeshield01.jpg",
+    "size_str": "85 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bash01.jpg",
+    "size_str": "59 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/leap01.jpg",
+    "size_str": "93 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/leap03.jpg",
+    "size_str": "52 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/doublethrow01.jpg",
+    "size_str": "87 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/stun01.jpg",
+    "size_str": "60 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/leapattack01.jpg",
+    "size_str": "66 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/frenzy01.jpg",
+    "size_str": "84 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/whirlwind01.jpg",
+    "size_str": "72 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-combatskills.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/berzerk01.jpg",
+    "size_str": "81 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/howl01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/findpotion01.jpg",
+    "size_str": "91 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/shout01.jpg",
+    "size_str": "98 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/taunt01.jpg",
+    "size_str": "100 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/battlecry01.jpg",
+    "size_str": "62 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/finditem01.jpg",
+    "size_str": "48 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/battleorders01.jpg",
+    "size_str": "79 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/grimward01.jpg",
+    "size_str": "94 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/warcry01.jpg",
+    "size_str": "65 KB "
+  },
+  {
+    "class": "barbarian",
+    "url": "https://classic.battle.net/diablo2exp/skills/barbarian-warcries.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/battlecommand01.jpg",
+    "size_str": "86 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/firestorm01.jpg",
+    "size_str": "138 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/moltenboulder01.jpg",
+    "size_str": "55 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/arcticblast01.jpg",
+    "size_str": "111 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/arcticblast02.jpg",
+    "size_str": "72 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fissure01.jpg",
+    "size_str": "67 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/cyclonearmor01.jpg",
+    "size_str": "114 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/twister01.jpg",
+    "size_str": "93 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/volcano01.jpg",
+    "size_str": "110 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-elemental.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/armageddon01.jpg",
+    "size_str": "105 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-shapeshifting.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/werewolf01.jpg",
+    "size_str": "71 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-shapeshifting.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/werebear01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-shapeshifting.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/maul01.jpg",
+    "size_str": "79 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-shapeshifting.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/rabies01.jpg",
+    "size_str": "86 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/ravens01.jpg",
+    "size_str": "137 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/poisoncreeper01.jpg",
+    "size_str": "108 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/oaksage01.jpg",
+    "size_str": "101 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/spiritwolf01.jpg",
+    "size_str": "126 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/carrionvine01.jpg",
+    "size_str": "117 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/wolverine01.jpg",
+    "size_str": "63 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/direwolves01.jpg",
+    "size_str": "123 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/solarcreeper01.jpg",
+    "size_str": "129 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/spiritofbarbs01.jpg",
+    "size_str": "134 KB "
+  },
+  {
+    "class": "druid",
+    "url": "https://classic.battle.net/diablo2exp/skills/druid-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/grizzlybear01.jpg",
+    "size_str": "111 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/amplifydamage01.jpg",
+    "size_str": "96 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/dimvision01.jpg",
+    "size_str": "80 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/weaken01.jpg",
+    "size_str": "83 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/ironmaiden01.jpg",
+    "size_str": "85 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/terror01.jpg",
+    "size_str": "93 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/confuse01.jpg",
+    "size_str": "95 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lifetap01.jpg",
+    "size_str": "94 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/attract01.jpg",
+    "size_str": "102 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/decrepify01.jpg",
+    "size_str": "95 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-curses.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lowerresist01.jpg",
+    "size_str": "101 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/teeth01.jpg",
+    "size_str": "88 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bonearmor01.jpg",
+    "size_str": "92 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/poisondagger01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/corpseexplosion01.jpg",
+    "size_str": "103 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/corpseexplosion03.jpg",
+    "size_str": "102 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bonewall01.jpg",
+    "size_str": "59 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/poisonexplosion01.jpg",
+    "size_str": "101 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bonespear01.jpg",
+    "size_str": "60 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/boneprison01.jpg",
+    "size_str": "114 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/poisonnova01.jpg",
+    "size_str": "106 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bonespirit01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-poison.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bonespirit03.jpg",
+    "size_str": "98 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/skeleton01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/claygolem01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/skeletalmage01.jpg",
+    "size_str": "72 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/bloodgolem01.jpg",
+    "size_str": "75 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/irongolem01.jpg",
+    "size_str": "76 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/irongolem03.jpg",
+    "size_str": "84 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/firegolem01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "necromancer",
+    "url": "https://classic.battle.net/diablo2exp/skills/necromancer-summoning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/revived01.jpg",
+    "size_str": "98 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/smite01.jpg",
+    "size_str": "63 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/holybolt01.jpg",
+    "size_str": "89 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/charge01.jpg",
+    "size_str": "61 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/blessedhammer01.jpg",
+    "size_str": "98 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/conversion01.jpg",
+    "size_str": "82 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/holyshield01.jpg",
+    "size_str": "100 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-combat.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fistofheavens01.jpg",
+    "size_str": "78 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/prayer01.jpg",
+    "size_str": "82 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/resistfire01.jpg",
+    "size_str": "68 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/resistcold01.jpg",
+    "size_str": "91 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/resistlightning01.jpg",
+    "size_str": "91 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/defiance01.jpg",
+    "size_str": "121 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/cleansing01.jpg",
+    "size_str": "71 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/vigor01.jpg",
+    "size_str": "69 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/meditation01.jpg",
+    "size_str": "51 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/redemption01.jpg",
+    "size_str": "97 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-defense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/salvation01.jpg",
+    "size_str": "63 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/might01.jpg",
+    "size_str": "83 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/holyfire01.jpg",
+    "size_str": "84 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/thorns01.jpg",
+    "size_str": "77 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/blessedaim01.jpg",
+    "size_str": "47 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/concentration01.jpg",
+    "size_str": "92 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/holyfreeze01.jpg",
+    "size_str": "63 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/holyshock01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/sanctuary01.jpg",
+    "size_str": "46 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/sanctuary03.jpg",
+    "size_str": "46 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fanaticism01.jpg",
+    "size_str": "93 KB "
+  },
+  {
+    "class": "paladin",
+    "url": "https://classic.battle.net/diablo2exp/skills/paladin-offense.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/conviction01.jpg",
+    "size_str": "88 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/icebolt01.jpg",
+    "size_str": "111 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/frozenarmor01.jpg",
+    "size_str": "95 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/frostnova01.jpg",
+    "size_str": "82 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/iceblast01.jpg",
+    "size_str": "96 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/shiverarmor01.jpg",
+    "size_str": "70 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/glacierspike01.jpg",
+    "size_str": "53 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/blizzard01.jpg",
+    "size_str": "117 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/chillingarmor01.jpg",
+    "size_str": "70 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-cold.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/frozenorb01.jpg",
+    "size_str": "70 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/firebolt02.jpg",
+    "size_str": "104 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/inferno01.jpg",
+    "size_str": "97 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/blaze01.jpg",
+    "size_str": "83 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/fireball01.jpg",
+    "size_str": "61 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/firewall01.jpg",
+    "size_str": "98 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/enchant01.jpg",
+    "size_str": "62 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/meteor01.jpg",
+    "size_str": "67 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/meteor03.jpg",
+    "size_str": "78 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-fire.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/hydra01.jpg",
+    "size_str": "88 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/chargedbolt02.jpg",
+    "size_str": "116 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/telekinesis01.jpg",
+    "size_str": "90 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/staticfield01.jpg",
+    "size_str": "99 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/lightning01.jpg",
+    "size_str": "69 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/nova01.jpg",
+    "size_str": "102 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/chainlightning01.jpg",
+    "size_str": "80 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/teleport01.jpg",
+    "size_str": "77 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/thunderstorm01.jpg",
+    "size_str": "102 KB "
+  },
+  {
+    "class": "sorceress",
+    "url": "https://classic.battle.net/diablo2exp/skills/sorceress-lightning.shtml",
+    "img_rel": "/images/battle/diablo2exp/images/skills/energyshield01.jpg",
+    "size_str": "63 KB "
+  }
+]

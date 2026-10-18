@@ -1,0 +1,1777 @@
+# 第 3-A 輪交付:型別、亂數、混色與目標基礎設施
+
+本輪只產出 `rng.ts`、`blend.ts`、`missile-types.ts`、`targets.ts` 及各自的測試。沒有物件池、行為原語、主迴圈、渲染,留待 3-B 與 3-C。
+
+我沒有實際執行這份程式碼,請跑一次 `npm run typecheck && npm test`,有失敗請貼給我。需要統計容差的測試我都留了數倍餘量。
+
+---
+
+## 先說明與前兩輪不同或需要你確認的地方
+
+| 項目 | 說明 |
+|---|---|
+| 空間命名 | 你的規範寫 Screen / World / Direction。我統一叫 **Ground**(地面未壓縮平面),因為 D2 世界座標軸相對螢幕轉 45°,和我們的 φ 平面不同,混用會出錯。`dir0WorldAngle` 欄位名稱保留不動。Ground 座標與螢幕座標的關係只有一條:`sx = gx`、`sy = gy × 0.5` |
+| `BlendMode` 型態 | 第 2 輪草稿是數字 `enum`,這輪改成**字串聯集**(與 `direction.ts` 的風格一致)。這樣 Manifest JSON 可直接寫 `"additive"`,也不需要列舉反查 |
+| `DrawStyle.alpha` | 草稿寫「覆蓋」,這輪改為**與模式基礎 alpha 相乘**,才適合做淡入淡出。例如 `alpha50` 搭配淡出係數 0.5,結果是 0.25 |
+| `alpha25/50/75` 的語意 | 我假設是**不透明度 25%/50%/75%**。原廠表若是「透明度」語意就會反過來,請對照你本機的 Overlay/混色表,不一致只需改 `BLEND_TABLE` 一處 |
+| `Luminance`、`Shadow` | Canvas 2D 沒有等價物。依先前約定,`luminance` 以 `source-over` 繪製,圖集離線烘焙 alpha。`shadow` 的 alpha 0.5 只是**待校準的預設值**,陰影的壓扁變換屬於渲染端(3-C) |
+| LCG 的限制 | 依你的要求用 LCG(Numerical Recipes 常數)。2 的冪次模數 LCG 的**低位元週期很短**,所以 `next()` 只用整個 32 位元狀態除以 2³²,`nextInt` 只用浮點結果。不要自己寫 `nextU32() % n` |
+| `NO_TARGET` | 定義在 `targets.ts`,`missile-types.ts` 從那裡匯入 |
+| 範圍 | `SkillBehaviorBase` 還沒定義。它依賴 `FamilyId` 與 `BlendMode`,這兩個現在都已就位,3-B/3-C 再補 |
+
+---
+
+## src/rng.ts
+
+```ts
+/**
+ * rng.ts — 可重現的種子偽隨機數產生器(線性同餘 LCG)
+ *
+ *   state' = (state × 1664525 + 1013904223) mod 2^32      (Numerical Recipes 常數)
+ *
+ * 用途:彈道軌跡(充能彈折線、散射)的確定性回放。同一個種子、同一個呼叫序列,
+ * 在任何環境都產生逐位元相同的結果。
+ *
+ * 注意:
+ *  - 2^k 模數 LCG 的低位元週期很短,切勿用 `nextU32() % n`。請用 nextInt()。
+ *  - 不適合密碼學,也不適合需要高品質統計性質的場合。
+ *  - 物件池若要把狀態存進 Uint32Array,直接使用 lcgStep() / lcgUnit(),不必持有 Lcg 實例。
+ */
+
+const LCG_A = 1664525;
+const LCG_C = 1013904223;
+const TWO32 = 4294967296;
+
+/** 任意有限數 → uint32 種子(截斷小數,負數與大數以 2^32 為模)。 */
+export function toSeed32(seed: number): number {
+  if (!Number.isFinite(seed)) {
+    throw new RangeError(`seed must be a finite number, got ${seed}`);
+  }
+  return Math.trunc(seed) >>> 0;
+}
+
+/** 純函式:推進一步,回傳新狀態(uint32)。零配置。 */
+export function lcgStep(state: number): number {
+  return (Math.imul(state, LCG_A) + LCG_C) >>> 0;
+}
+
+/** 純函式:uint32 狀態 → [0, 1)。 */
+export function lcgUnit(state: number): number {
+  return state / TWO32;
+}
+
+/**
+ * 由基礎種子與串流編號衍生獨立種子(murmur3 finalizer 混合)。
+ * 對固定的 base,stream 在 uint32 範圍內是一對一映射,不會碰撞。
+ * 用途:每顆投射物 seed = deriveSeed(worldSeed, spawnCounter)。
+ */
+export function deriveSeed(base: number, stream: number): number {
+  let h = (toSeed32(base) + Math.imul(toSeed32(stream), 0x9e3779b1)) >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
+export class Lcg {
+  private s: number;
+
+  constructor(seed: number) {
+    this.s = toSeed32(seed);
+  }
+
+  /** 目前內部狀態(uint32),可存檔後以 setState() 還原。 */
+  get state(): number {
+    return this.s;
+  }
+
+  setState(state: number): void {
+    this.s = toSeed32(state);
+  }
+
+  clone(): Lcg {
+    return new Lcg(this.s);
+  }
+
+  /** 下一個 uint32 原始狀態。僅供需要原始位元的場合使用。 */
+  nextU32(): number {
+    this.s = lcgStep(this.s);
+    return this.s;
+  }
+
+  /** [0, 1)。 */
+  next(): number {
+    return lcgUnit(this.nextU32());
+  }
+
+  /** [-1, 1)。 */
+  nextSigned(): number {
+    return this.next() * 2 - 1;
+  }
+
+  /** 整數 ∈ [0, maxExclusive)。maxExclusive 必須是 1 ~ 2^32 的整數。 */
+  nextInt(maxExclusive: number): number {
+    if (!Number.isInteger(maxExclusive) || maxExclusive < 1 || maxExclusive > TWO32) {
+      throw new RangeError(`maxExclusive must be an integer in [1, 2^32], got ${maxExclusive}`);
+    }
+    return Math.floor(this.next() * maxExclusive);
+  }
+
+  /** 實數 ∈ [min, max)。 */
+  nextRange(min: number, max: number): number {
+    if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) {
+      throw new RangeError(`invalid range [${min}, ${max})`);
+    }
+    return min + this.next() * (max - min);
+  }
+
+  /** 以機率 p(預設 0.5)回傳 true。p=0 恆 false,p=1 恆 true。 */
+  nextBool(p = 0.5): boolean {
+    if (!(p >= 0 && p <= 1)) throw new RangeError(`p must be in [0, 1], got ${p}`);
+    return this.next() < p;
+  }
+}
+```
+
+## src/rng.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { Lcg, deriveSeed, lcgStep, lcgUnit, toSeed32 } from './rng.js';
+
+/** 以 BigInt 實作的獨立參考,避免和被測程式碼共用同一套整數運算。 */
+function reference(seed: number, n: number): number[] {
+  let s = BigInt(seed >>> 0);
+  const out: number[] = [];
+  for (let i = 0; i < n; i++) {
+    s = (s * 1664525n + 1013904223n) % 4294967296n;
+    out.push(Number(s));
+  }
+  return out;
+}
+
+describe('LCG determinism', () => {
+  it('matches an independent BigInt reference for 1000 steps (several seeds)', () => {
+    for (const seed of [0, 1, 42, 0xdeadbeef, 4294967295]) {
+      const r = new Lcg(seed);
+      const got = Array.from({ length: 1000 }, () => r.nextU32());
+      expect(got).toEqual(reference(seed, 1000));
+    }
+  });
+
+  it('known first values: seed 0 → c, seed 1 → a + c', () => {
+    expect(new Lcg(0).nextU32()).toBe(1013904223);
+    expect(new Lcg(1).nextU32()).toBe(1664525 + 1013904223);
+  });
+
+  it('same seed → identical sequence; different seeds → different sequences', () => {
+    const a = new Lcg(2024);
+    const b = new Lcg(2024);
+    const c = new Lcg(2025);
+    const sa = Array.from({ length: 200 }, () => a.next());
+    const sb = Array.from({ length: 200 }, () => b.next());
+    const sc = Array.from({ length: 200 }, () => c.next());
+    expect(sa).toEqual(sb);
+    expect(sa).not.toEqual(sc);
+  });
+
+  it('getState / setState replays the exact same continuation', () => {
+    const r = new Lcg(7);
+    for (let i = 0; i < 13; i++) r.next();
+    const saved = r.state;
+    const first = Array.from({ length: 5 }, () => r.next());
+    r.setState(saved);
+    const again = Array.from({ length: 5 }, () => r.next());
+    expect(again).toEqual(first);
+  });
+
+  it('clone is independent of the original', () => {
+    const r = new Lcg(99);
+    const c = r.clone();
+    const ahead = Array.from({ length: 10 }, () => r.next());
+    const cloned = Array.from({ length: 10 }, () => c.next());
+    expect(cloned).toEqual(ahead);
+    r.next();
+    expect(c.state).not.toBe(r.state);
+  });
+
+  it('pure helpers agree with the class', () => {
+    const r = new Lcg(5);
+    let s = toSeed32(5);
+    for (let i = 0; i < 50; i++) {
+      s = lcgStep(s);
+      expect(r.next()).toBe(lcgUnit(s));
+    }
+  });
+});
+
+describe('seed normalisation', () => {
+  it('truncates fractions and wraps negatives / large values modulo 2^32', () => {
+    expect(new Lcg(-1).state).toBe(4294967295);
+    expect(new Lcg(1.9).state).toBe(1);
+    expect(new Lcg(4294967296 + 5).state).toBe(5);
+    expect(Object.is(new Lcg(-0).state, 0)).toBe(true);
+  });
+
+  it('rejects non-finite seeds', () => {
+    expect(() => new Lcg(NaN)).toThrow(RangeError);
+    expect(() => new Lcg(Infinity)).toThrow(RangeError);
+    expect(() => deriveSeed(NaN, 0)).toThrow(RangeError);
+  });
+});
+
+describe('output ranges and distribution', () => {
+  it('next() ∈ [0, 1), nextSigned() ∈ [-1, 1)', () => {
+    const r = new Lcg(1);
+    for (let i = 0; i < 50_000; i++) {
+      const u = r.next();
+      expect(u).toBeGreaterThanOrEqual(0);
+      expect(u).toBeLessThan(1);
+      const s = r.nextSigned();
+      expect(s).toBeGreaterThanOrEqual(-1);
+      expect(s).toBeLessThan(1);
+    }
+  });
+
+  it('mean of 100k samples is ≈ 0.5', () => {
+    const r = new Lcg(31337);
+    let sum = 0;
+    for (let i = 0; i < 100_000; i++) sum += r.next();
+    expect(Math.abs(sum / 100_000 - 0.5)).toBeLessThan(0.01);
+  });
+
+  it('16 buckets are roughly uniform (±5%)', () => {
+    const r = new Lcg(12345);
+    const buckets = new Array<number>(16).fill(0);
+    for (let i = 0; i < 160_000; i++) {
+      const k = Math.floor(r.next() * 16);
+      buckets[k] = (buckets[k] ?? 0) + 1;
+    }
+    for (const c of buckets) {
+      expect(c).toBeGreaterThan(9500);
+      expect(c).toBeLessThan(10500);
+    }
+  });
+
+  it('nextInt stays in range, covers every value, and nextInt(1) is always 0', () => {
+    const r = new Lcg(8);
+    const seen = new Set<number>();
+    for (let i = 0; i < 7000; i++) {
+      const v = r.nextInt(7);
+      expect(Number.isInteger(v)).toBe(true);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThan(7);
+      seen.add(v);
+    }
+    expect(seen.size).toBe(7);
+    for (let i = 0; i < 100; i++) expect(r.nextInt(1)).toBe(0);
+  });
+
+  it('nextRange stays within bounds; nextBool honours p = 0 and p = 1', () => {
+    const r = new Lcg(3);
+    for (let i = 0; i < 10_000; i++) {
+      const v = r.nextRange(-3, 5);
+      expect(v).toBeGreaterThanOrEqual(-3);
+      expect(v).toBeLessThanOrEqual(5);
+      expect(r.nextBool(0)).toBe(false);
+      expect(r.nextBool(1)).toBe(true);
+    }
+  });
+
+  it('rejects invalid arguments', () => {
+    const r = new Lcg(1);
+    expect(() => r.nextInt(0)).toThrow(RangeError);
+    expect(() => r.nextInt(1.5)).toThrow(RangeError);
+    expect(() => r.nextInt(2 ** 32 + 1)).toThrow(RangeError);
+    expect(() => r.nextRange(2, 1)).toThrow(RangeError);
+    expect(() => r.nextRange(NaN, 1)).toThrow(RangeError);
+    expect(() => r.nextBool(1.1)).toThrow(RangeError);
+    expect(() => r.nextBool(-0.1)).toThrow(RangeError);
+  });
+});
+
+describe('deriveSeed', () => {
+  it('is deterministic', () => {
+    expect(deriveSeed(123, 7)).toBe(deriveSeed(123, 7));
+  });
+
+  it('gives 10,000 distinct seeds for consecutive streams', () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 10_000; i++) seen.add(deriveSeed(2024, i));
+    expect(seen.size).toBe(10_000);
+  });
+
+  it('streams from adjacent derived seeds are decorrelated (first outputs differ)', () => {
+    const a = new Lcg(deriveSeed(1, 0)).next();
+    const b = new Lcg(deriveSeed(1, 1)).next();
+    expect(a).not.toBe(b);
+  });
+
+  it('output is a uint32', () => {
+    for (let i = 0; i < 1000; i++) {
+      const s = deriveSeed(i * 977, i);
+      expect(Number.isInteger(s)).toBe(true);
+      expect(s).toBeGreaterThanOrEqual(0);
+      expect(s).toBeLessThan(4294967296);
+    }
+  });
+});
+```
+
+---
+
+## src/blend.ts
+
+```ts
+/**
+ * blend.ts — 混色模式列舉與 Canvas 2D 合成運算映射
+ *
+ * 混色(blend)與調色盤偏移(paletteShift)是兩個獨立維度。
+ *
+ * 重要:
+ *  - 本表是「執行期 Canvas 2D 的近似」。與原廠 Overlay.txt 的 Trans 欄、pal.pl2 混色表的
+ *    對照,請以你本機的表驗證後再綁定,不要憑記憶硬綁數字。
+ *  - alpha25/50/75 在此被當作「不透明度」。若原廠語意相反,只需改 BLEND_TABLE。
+ *  - Canvas 2D 沒有「亮度當 alpha」與「單位陰影」的等價物:
+ *      luminance → 離線烘焙 alpha 後以 source-over 繪製
+ *      shadow    → 壓扁變換屬於渲染端;此處只提供預設不透明度(待校準)
+ *  - 黑框排查:先確認是否把該用 additive 的特效用了 normal,再確認是否重複處理 premultiplied alpha。
+ */
+
+export const BLEND_MODES = [
+  'normal',
+  'alpha25',
+  'alpha50',
+  'alpha75',
+  'additive',
+  'screen',
+  'luminance',
+  'multiply',
+  'shadow',
+] as const;
+export type BlendMode = (typeof BLEND_MODES)[number];
+
+/** 本模組用到的 Canvas globalCompositeOperation 子集。 */
+export type CompositeOp = 'source-over' | 'lighter' | 'screen' | 'multiply';
+
+export interface BlendSpec {
+  readonly composite: CompositeOp;
+  /** 此模式的基礎不透明度,[0, 1]。 */
+  readonly alpha: number;
+}
+
+function spec(composite: CompositeOp, alpha: number): BlendSpec {
+  return Object.freeze({ composite, alpha });
+}
+
+export const BLEND_TABLE: Readonly<Record<BlendMode, BlendSpec>> = Object.freeze({
+  normal: spec('source-over', 1),
+  alpha25: spec('source-over', 0.25),
+  alpha50: spec('source-over', 0.5),
+  alpha75: spec('source-over', 0.75),
+  additive: spec('lighter', 1),
+  screen: spec('screen', 1),
+  luminance: spec('source-over', 1),
+  multiply: spec('multiply', 1),
+  shadow: spec('source-over', 0.5), // 待校準
+});
+
+/** 最小的 2D context 介面,讓本模組不依賴 DOM 型別。CanvasRenderingContext2D 可直接傳入。 */
+export interface BlendContext {
+  globalCompositeOperation: string;
+  globalAlpha: number;
+}
+
+/** 繪製樣式:混色與調色盤偏移彼此獨立。 */
+export interface DrawStyle {
+  readonly blend: BlendMode;
+  /** 乘在模式基礎 alpha 之上,用於淡入淡出。預設 1。 */
+  readonly alpha?: number;
+  readonly paletteShift?: string;
+  readonly tint?: readonly [number, number, number];
+}
+
+export function isBlendMode(value: unknown): value is BlendMode {
+  return typeof value === 'string' && (BLEND_MODES as readonly string[]).includes(value);
+}
+
+export function assertBlendMode(value: unknown): asserts value is BlendMode {
+  if (!isBlendMode(value)) {
+    throw new RangeError(`unknown blend mode: ${String(value)} (expected one of ${BLEND_MODES.join(', ')})`);
+  }
+}
+
+/** 回傳共用的凍結物件,零配置。 */
+export function resolveBlend(mode: BlendMode): BlendSpec {
+  return BLEND_TABLE[mode];
+}
+
+export function compositeOpFor(mode: BlendMode): CompositeOp {
+  return BLEND_TABLE[mode].composite;
+}
+
+/** 加法類混色(Canvas 'lighter'),用於排序批次與除錯標籤。 */
+export function isAdditive(mode: BlendMode): boolean {
+  return BLEND_TABLE[mode].composite === 'lighter';
+}
+
+/** 實際 globalAlpha = clamp01(模式基礎 alpha × alpha)。alpha 必須是有限數。 */
+export function effectiveAlpha(mode: BlendMode, alpha = 1): number {
+  if (!Number.isFinite(alpha)) throw new RangeError(`alpha must be finite, got ${alpha}`);
+  const v = BLEND_TABLE[mode].alpha * alpha;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+/** 設定 context 的合成運算與 globalAlpha。零配置。呼叫端自行 save/restore 或下次覆寫。 */
+export function applyBlend(ctx: BlendContext, mode: BlendMode, alpha = 1): void {
+  ctx.globalCompositeOperation = BLEND_TABLE[mode].composite;
+  ctx.globalAlpha = effectiveAlpha(mode, alpha);
+}
+
+export function applyDrawStyle(ctx: BlendContext, style: DrawStyle): void {
+  applyBlend(ctx, style.blend, style.alpha ?? 1);
+}
+```
+
+## src/blend.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  BLEND_MODES,
+  BLEND_TABLE,
+  applyBlend,
+  applyDrawStyle,
+  assertBlendMode,
+  compositeOpFor,
+  effectiveAlpha,
+  isAdditive,
+  isBlendMode,
+  resolveBlend,
+  type BlendContext,
+  type BlendMode,
+  type CompositeOp,
+} from './blend.js';
+
+function fakeCtx(): BlendContext {
+  return { globalCompositeOperation: 'source-over', globalAlpha: 1 };
+}
+
+describe('blend table', () => {
+  const expected: Array<[BlendMode, CompositeOp, number]> = [
+    ['normal', 'source-over', 1],
+    ['alpha25', 'source-over', 0.25],
+    ['alpha50', 'source-over', 0.5],
+    ['alpha75', 'source-over', 0.75],
+    ['additive', 'lighter', 1],
+    ['screen', 'screen', 1],
+    ['luminance', 'source-over', 1],
+    ['multiply', 'multiply', 1],
+    ['shadow', 'source-over', 0.5],
+  ];
+
+  it.each(expected)('%s → %s, alpha %f', (mode, op, alpha) => {
+    expect(compositeOpFor(mode)).toBe(op);
+    expect(resolveBlend(mode).alpha).toBe(alpha);
+  });
+
+  it('expected table covers every BlendMode exactly once', () => {
+    expect(expected.map((e) => e[0]).sort()).toEqual([...BLEND_MODES].sort());
+  });
+
+  it('table entries are frozen and alphas are within [0, 1]', () => {
+    expect(Object.isFrozen(BLEND_TABLE)).toBe(true);
+    for (const m of BLEND_MODES) {
+      expect(Object.isFrozen(BLEND_TABLE[m])).toBe(true);
+      expect(BLEND_TABLE[m].alpha).toBeGreaterThanOrEqual(0);
+      expect(BLEND_TABLE[m].alpha).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("only 'additive' uses 'lighter'", () => {
+    for (const m of BLEND_MODES) expect(isAdditive(m)).toBe(m === 'additive');
+  });
+
+  it('resolveBlend returns the shared object (zero allocation)', () => {
+    expect(resolveBlend('additive')).toBe(resolveBlend('additive'));
+  });
+});
+
+describe('effectiveAlpha', () => {
+  it('multiplies base alpha by the override', () => {
+    expect(effectiveAlpha('alpha50', 0.5)).toBeCloseTo(0.25, 12);
+    expect(effectiveAlpha('normal')).toBe(1);
+    expect(effectiveAlpha('additive', 0.3)).toBeCloseTo(0.3, 12);
+  });
+
+  it('clamps to [0, 1]', () => {
+    expect(effectiveAlpha('normal', 7)).toBe(1);
+    expect(effectiveAlpha('normal', -2)).toBe(0);
+  });
+
+  it('rejects non-finite alpha', () => {
+    expect(() => effectiveAlpha('normal', NaN)).toThrow(RangeError);
+    expect(() => effectiveAlpha('normal', Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('applyBlend / applyDrawStyle', () => {
+  it('sets composite operation and globalAlpha', () => {
+    const ctx = fakeCtx();
+    applyBlend(ctx, 'additive');
+    expect(ctx.globalCompositeOperation).toBe('lighter');
+    expect(ctx.globalAlpha).toBe(1);
+
+    applyBlend(ctx, 'alpha75', 0.5);
+    expect(ctx.globalCompositeOperation).toBe('source-over');
+    expect(ctx.globalAlpha).toBeCloseTo(0.375, 12);
+  });
+
+  it('switching back to normal fully resets the state (no leakage from additive)', () => {
+    const ctx = fakeCtx();
+    applyBlend(ctx, 'additive', 0.2);
+    applyBlend(ctx, 'normal');
+    expect(ctx.globalCompositeOperation).toBe('source-over');
+    expect(ctx.globalAlpha).toBe(1);
+  });
+
+  it('applyDrawStyle uses style.alpha (default 1) and ignores palette fields', () => {
+    const ctx = fakeCtx();
+    applyDrawStyle(ctx, { blend: 'screen', alpha: 0.4, paletteShift: 'freeze', tint: [1, 2, 3] });
+    expect(ctx.globalCompositeOperation).toBe('screen');
+    expect(ctx.globalAlpha).toBeCloseTo(0.4, 12);
+    applyDrawStyle(ctx, { blend: 'multiply' });
+    expect(ctx.globalCompositeOperation).toBe('multiply');
+    expect(ctx.globalAlpha).toBe(1);
+  });
+});
+
+describe('guards', () => {
+  it('isBlendMode accepts only known strings', () => {
+    for (const m of BLEND_MODES) expect(isBlendMode(m)).toBe(true);
+    for (const bad of ['Additive', 'lighter', '', 1, null, undefined, {}]) {
+      expect(isBlendMode(bad)).toBe(false);
+    }
+  });
+
+  it('assertBlendMode throws on unknown values', () => {
+    expect(() => assertBlendMode('additive')).not.toThrow();
+    expect(() => assertBlendMode('glow')).toThrow(RangeError);
+  });
+});
+```
+
+---
+
+## src/targets.ts
+
+```ts
+/**
+ * targets.ts — 目標抽象(定點目標與可移動單位目標)
+ *
+ * 座標空間:全部是 Ground(地面未壓縮平面)。
+ *   螢幕 → Ground:gx = sx,gy = sy × 2
+ *   Ground → 螢幕:sx = gx,sy = gy × 0.5   (只在繪製前最後一步做)
+ *
+ * 設計重點:
+ *  - 投射物只儲存數字 targetId,不持有目標物件引用,避免懸空引用,也方便物件池重用。
+ *  - id 單調遞增、永不重用,過期的 id 一律解析失敗,不會誤指到新目標。
+ *  - resolve() 把座標寫入呼叫端提供的 out,熱路徑零配置。
+ *  - 目標已失效時 resolve() 回傳 false,且不修改 out。
+ */
+
+import { ISO_Y_SCALE, ISO_Y_UNSQUASH, RAD2DEG, normalizeDeg } from './geometry.js';
+
+export const NO_TARGET = -1;
+
+export interface GroundPoint {
+  x: number;
+  y: number;
+}
+
+export interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+// ───────────────────────── 座標空間輔助 ─────────────────────────
+
+export function groundToScreenInto(gx: number, gy: number, out: ScreenPoint): ScreenPoint {
+  out.x = gx;
+  out.y = gy * ISO_Y_SCALE;
+  return out;
+}
+
+export function screenToGroundInto(sx: number, sy: number, out: GroundPoint): GroundPoint {
+  out.x = sx;
+  out.y = sy * ISO_Y_UNSQUASH;
+  return out;
+}
+
+/**
+ * Ground 平面位移 → φ(度,[0, 360))。與 screenToPhi(dx, dy × 0.5) 等價。
+ * (0, 0) 沒有方向,回傳 0;呼叫端若需要區分請自行檢查。
+ */
+export function groundToPhi(dx: number, dy: number): number {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+    throw new RangeError(`dx, dy must be finite, got (${dx}, ${dy})`);
+  }
+  return normalizeDeg(Math.atan2(dy, dx) * RAD2DEG);
+}
+
+// ───────────────────────── 目標介面 ─────────────────────────
+
+export type TargetKind = 'point' | 'unit';
+
+export interface Target {
+  readonly id: number;
+  readonly kind: TargetKind;
+  /** 把目標目前的 Ground 座標寫入 out。目標失效時回傳 false 且不修改 out。 */
+  resolve(out: GroundPoint): boolean;
+}
+
+/** 單位目標需要的最小資料。實際的怪物/英雄物件只要有這些欄位即可。 */
+export interface TrackableUnit {
+  readonly x: number;
+  readonly y: number;
+  readonly alive: boolean;
+  /** 陣營編號(小整數)。索敵時只挑符合的陣營。 */
+  readonly team: number;
+}
+
+function assertFinitePair(x: number, y: number, what: string): void {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new RangeError(`${what} must be finite, got (${x}, ${y})`);
+  }
+}
+
+/** 定點目標(如地面落點、玩家點擊位置)。永遠有效。 */
+export class PointTarget implements Target {
+  readonly kind = 'point' as const;
+  private px: number;
+  private py: number;
+
+  constructor(
+    readonly id: number,
+    x: number,
+    y: number,
+  ) {
+    assertFinitePair(x, y, 'point');
+    this.px = x;
+    this.py = y;
+  }
+
+  set(x: number, y: number): void {
+    assertFinitePair(x, y, 'point');
+    this.px = x;
+    this.py = y;
+  }
+
+  resolve(out: GroundPoint): boolean {
+    out.x = this.px;
+    out.y = this.py;
+    return true;
+  }
+}
+
+/** 可移動單位目標:每次 resolve() 都讀取單位當下的座標,加上瞄準偏移(例如瞄軀幹而非腳底)。 */
+export class UnitTarget implements Target {
+  readonly kind = 'unit' as const;
+  readonly offsetX: number;
+  readonly offsetY: number;
+
+  constructor(
+    readonly id: number,
+    readonly unit: TrackableUnit,
+    offsetX = 0,
+    offsetY = 0,
+  ) {
+    assertFinitePair(offsetX, offsetY, 'aim offset');
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
+  }
+
+  get team(): number {
+    return this.unit.team;
+  }
+
+  resolve(out: GroundPoint): boolean {
+    if (!this.unit.alive) return false;
+    out.x = this.unit.x + this.offsetX;
+    out.y = this.unit.y + this.offsetY;
+    return true;
+  }
+}
+
+// ───────────────────────── 註冊表 ─────────────────────────
+
+/**
+ * 目標註冊表:以數字 id 查詢目標。
+ * 內部用「密集陣列 + 交換移除」,所以索敵迴圈不產生迭代器配置;
+ * 且索敵的平手規則以 id 決定,與註冊或移除順序無關,保證確定性。
+ */
+export class TargetRegistry {
+  private readonly list: Target[] = [];
+  private readonly slot = new Map<number, number>();
+  private readonly scratch: GroundPoint = { x: 0, y: 0 };
+  private nextId = 1;
+
+  get size(): number {
+    return this.list.length;
+  }
+
+  createPoint(x: number, y: number): PointTarget {
+    const t = new PointTarget(this.nextId, x, y);
+    this.register(t);
+    return t;
+  }
+
+  createUnit(unit: TrackableUnit, offsetX = 0, offsetY = 0): UnitTarget {
+    const t = new UnitTarget(this.nextId, unit, offsetX, offsetY);
+    this.register(t);
+    return t;
+  }
+
+  private register(t: Target): void {
+    this.nextId++;
+    this.slot.set(t.id, this.list.length);
+    this.list.push(t);
+  }
+
+  get(id: number): Target | undefined {
+    const idx = this.slot.get(id);
+    return idx === undefined ? undefined : this.list[idx];
+  }
+
+  has(id: number): boolean {
+    return this.slot.has(id);
+  }
+
+  /** 移除目標。回傳是否真的移除。id 不會被重用。 */
+  remove(id: number): boolean {
+    const idx = this.slot.get(id);
+    if (idx === undefined) return false;
+    const lastIdx = this.list.length - 1;
+    const last = this.list[lastIdx]!;
+    this.list[idx] = last;
+    this.slot.set(last.id, idx);
+    this.list.pop();
+    this.slot.delete(id);
+    return true;
+  }
+
+  /** 清空全部目標;id 計數器不重置,舊 id 永遠失效。 */
+  clear(): void {
+    this.list.length = 0;
+    this.slot.clear();
+  }
+
+  /** NO_TARGET、未註冊、已移除或單位已死亡,一律回傳 false 且不修改 out。 */
+  resolve(id: number, out: GroundPoint): boolean {
+    if (id === NO_TARGET) return false;
+    const t = this.get(id);
+    return t !== undefined && t.resolve(out);
+  }
+
+  /**
+   * 從 (x, y) 看向目標的 φ(度)。目標失效或與出發點重合(沒有方向)時回傳 fallbackPhi。
+   * 零配置。
+   */
+  phiToTarget(id: number, fromX: number, fromY: number, fallbackPhi: number): number {
+    if (!this.resolve(id, this.scratch)) return fallbackPhi;
+    const dx = this.scratch.x - fromX;
+    const dy = this.scratch.y - fromY;
+    if (dx === 0 && dy === 0) return fallbackPhi;
+    return groundToPhi(dx, dy);
+  }
+
+  /**
+   * 在半徑內找最近的存活單位(只看指定陣營)。找不到回傳 NO_TARGET。
+   * 距離相同時 id 較小者優先。零配置。
+   */
+  findNearestUnit(
+    x: number,
+    y: number,
+    radius: number,
+    team: number,
+    excludeId: number = NO_TARGET,
+  ): number {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius < 0) {
+      throw new RangeError(`invalid search (x=${x}, y=${y}, radius=${radius})`);
+    }
+    const r2 = radius * radius;
+    let bestId = NO_TARGET;
+    let bestD2 = Infinity;
+    const p = this.scratch;
+    for (let i = 0; i < this.list.length; i++) {
+      const t = this.list[i]!;
+      if (!(t instanceof UnitTarget) || t.team !== team || t.id === excludeId) continue;
+      if (!t.resolve(p)) continue;
+      const dx = p.x - x;
+      const dy = p.y - y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      if (d2 < bestD2 || (d2 === bestD2 && t.id < bestId)) {
+        bestD2 = d2;
+        bestId = t.id;
+      }
+    }
+    return bestId;
+  }
+}
+```
+
+## src/targets.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { screenToPhi } from './geometry.js';
+import {
+  NO_TARGET,
+  PointTarget,
+  TargetRegistry,
+  UnitTarget,
+  groundToPhi,
+  groundToScreenInto,
+  screenToGroundInto,
+  type GroundPoint,
+} from './targets.js';
+
+interface MutableUnit {
+  x: number;
+  y: number;
+  alive: boolean;
+  team: number;
+}
+const unit = (x: number, y: number, team = 1, alive = true): MutableUnit => ({ x, y, alive, team });
+const pt = (): GroundPoint => ({ x: -999, y: -999 });
+
+describe('coordinate helpers', () => {
+  it('Ground ↔ screen round trip is exact', () => {
+    const g = { x: 0, y: 0 };
+    const s = { x: 0, y: 0 };
+    for (const [x, y] of [[0, 0], [10, 20], [-33.5, 71.25], [1e4, -1e4]] as const) {
+      groundToScreenInto(x, y, s);
+      expect(s.x).toBe(x);
+      expect(s.y).toBe(y * 0.5);
+      screenToGroundInto(s.x, s.y, g);
+      expect(g.x).toBe(x);
+      expect(g.y).toBe(y);
+    }
+  });
+
+  it('groundToPhi agrees with screenToPhi(dx, dy × 0.5) for 360 directions', () => {
+    for (let deg = 0; deg < 360; deg++) {
+      const dx = Math.cos((deg * Math.PI) / 180) * 50;
+      const dy = Math.sin((deg * Math.PI) / 180) * 50;
+      expect(groundToPhi(dx, dy)).toBeCloseTo(screenToPhi(dx, dy * 0.5), 9);
+    }
+  });
+
+  it('axis directions (Y down ⇒ clockwise)', () => {
+    expect(groundToPhi(1, 0)).toBeCloseTo(0, 12);
+    expect(groundToPhi(0, 1)).toBeCloseTo(90, 12);
+    expect(groundToPhi(-1, 0)).toBeCloseTo(180, 12);
+    expect(groundToPhi(0, -1)).toBeCloseTo(270, 12);
+  });
+
+  it('rejects non-finite input', () => {
+    expect(() => groundToPhi(NaN, 0)).toThrow(RangeError);
+    expect(() => groundToPhi(0, Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('PointTarget', () => {
+  it('always resolves and can be moved', () => {
+    const t = new PointTarget(1, 10, 20);
+    const out = pt();
+    expect(t.resolve(out)).toBe(true);
+    expect(out).toEqual({ x: 10, y: 20 });
+    t.set(-5, 6);
+    expect(t.resolve(out)).toBe(true);
+    expect(out).toEqual({ x: -5, y: 6 });
+    expect(t.kind).toBe('point');
+  });
+
+  it('rejects non-finite coordinates', () => {
+    expect(() => new PointTarget(1, NaN, 0)).toThrow(RangeError);
+    expect(() => new PointTarget(1, 0, 0).set(0, Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('UnitTarget (dynamic tracking)', () => {
+  it('follows the unit as it moves', () => {
+    const u = unit(0, 0);
+    const t = new UnitTarget(1, u);
+    const out = pt();
+    expect(t.resolve(out)).toBe(true);
+    expect(out).toEqual({ x: 0, y: 0 });
+    u.x = 100;
+    u.y = -40;
+    expect(t.resolve(out)).toBe(true);
+    expect(out).toEqual({ x: 100, y: -40 });
+    expect(t.kind).toBe('unit');
+  });
+
+  it('applies the aim offset', () => {
+    const u = unit(10, 10);
+    const t = new UnitTarget(1, u, 0, -24);
+    const out = pt();
+    t.resolve(out);
+    expect(out).toEqual({ x: 10, y: -14 });
+  });
+
+  it('returns false and leaves out untouched once the unit is dead', () => {
+    const u = unit(5, 5);
+    const t = new UnitTarget(1, u);
+    u.alive = false;
+    const out = pt();
+    expect(t.resolve(out)).toBe(false);
+    expect(out).toEqual({ x: -999, y: -999 });
+  });
+
+  it('rejects a non-finite aim offset', () => {
+    expect(() => new UnitTarget(1, unit(0, 0), NaN, 0)).toThrow(RangeError);
+  });
+});
+
+describe('TargetRegistry', () => {
+  it('assigns increasing ids and never reuses them', () => {
+    const r = new TargetRegistry();
+    const a = r.createPoint(0, 0);
+    const b = r.createPoint(1, 1);
+    expect(b.id).toBeGreaterThan(a.id);
+    r.remove(a.id);
+    const c = r.createPoint(2, 2);
+    expect(c.id).toBeGreaterThan(b.id);
+    expect(r.has(a.id)).toBe(false);
+  });
+
+  it('resolve: NO_TARGET, unknown, removed and dead targets all fail without touching out', () => {
+    const r = new TargetRegistry();
+    const u = unit(1, 2);
+    const t = r.createUnit(u);
+    const out = pt();
+    expect(r.resolve(NO_TARGET, out)).toBe(false);
+    expect(r.resolve(12345, out)).toBe(false);
+    expect(out).toEqual({ x: -999, y: -999 });
+    expect(r.resolve(t.id, out)).toBe(true);
+    expect(out).toEqual({ x: 1, y: 2 });
+    u.alive = false;
+    expect(r.resolve(t.id, out)).toBe(false);
+    u.alive = true;
+    r.remove(t.id);
+    expect(r.resolve(t.id, out)).toBe(false);
+  });
+
+  it('swap-remove keeps every other target resolvable', () => {
+    const r = new TargetRegistry();
+    const targets = [0, 1, 2, 3, 4].map((i) => r.createPoint(i * 10, i));
+    expect(r.remove(targets[1]!.id)).toBe(true);
+    expect(r.remove(targets[1]!.id)).toBe(false);
+    expect(r.size).toBe(4);
+    const out = pt();
+    for (const i of [0, 2, 3, 4]) {
+      expect(r.resolve(targets[i]!.id, out)).toBe(true);
+      expect(out).toEqual({ x: i * 10, y: i });
+    }
+    r.remove(targets[4]!.id); // 移除最後一個
+    expect(r.size).toBe(3);
+    expect(r.resolve(targets[3]!.id, out)).toBe(true);
+  });
+
+  it('clear() invalidates old ids even after new targets are created', () => {
+    const r = new TargetRegistry();
+    const a = r.createPoint(0, 0);
+    r.clear();
+    expect(r.size).toBe(0);
+    const b = r.createPoint(9, 9);
+    expect(b.id).not.toBe(a.id);
+    expect(r.resolve(a.id, pt())).toBe(false);
+  });
+
+  describe('findNearestUnit', () => {
+    it('picks the nearest living unit of the requested team within the radius', () => {
+      const r = new TargetRegistry();
+      const near = r.createUnit(unit(30, 0, 1));
+      r.createUnit(unit(60, 0, 1));
+      const enemyTeam = r.createUnit(unit(10, 0, 2));
+      const dead = r.createUnit(unit(5, 0, 1, false));
+      r.createPoint(1, 0); // 定點目標不是單位,不應被選中
+
+      expect(r.findNearestUnit(0, 0, 100, 1)).toBe(near.id);
+      expect(r.findNearestUnit(0, 0, 100, 2)).toBe(enemyTeam.id);
+      expect(r.findNearestUnit(0, 0, 100, 3)).toBe(NO_TARGET);
+      expect(r.findNearestUnit(0, 0, 20, 1)).toBe(NO_TARGET);
+      expect(r.has(dead.id)).toBe(true);
+    });
+
+    it('radius is inclusive and excludeId is honoured', () => {
+      const r = new TargetRegistry();
+      const a = r.createUnit(unit(50, 0));
+      const b = r.createUnit(unit(80, 0));
+      expect(r.findNearestUnit(0, 0, 50, 1)).toBe(a.id);
+      expect(r.findNearestUnit(0, 0, 100, 1, a.id)).toBe(b.id);
+    });
+
+    it('follows moving units', () => {
+      const r = new TargetRegistry();
+      const u1 = unit(30, 0);
+      const u2 = unit(60, 0);
+      const t1 = r.createUnit(u1);
+      const t2 = r.createUnit(u2);
+      expect(r.findNearestUnit(0, 0, 100, 1)).toBe(t1.id);
+      u1.x = 90;
+      u2.x = 20;
+      expect(r.findNearestUnit(0, 0, 100, 1)).toBe(t2.id);
+    });
+
+    it('ties are broken by the smaller id, independent of internal list order', () => {
+      const r = new TargetRegistry();
+      const a = r.createUnit(unit(500, 500));
+      const b = r.createUnit(unit(40, 0));
+      const c = r.createUnit(unit(0, 40));
+      r.remove(a.id); // 交換移除後,內部順序變成 [c, b]
+      expect(r.findNearestUnit(0, 0, 100, 1)).toBe(b.id);
+      expect(b.id).toBeLessThan(c.id);
+    });
+
+    it('rejects invalid arguments', () => {
+      const r = new TargetRegistry();
+      expect(() => r.findNearestUnit(0, 0, -1, 1)).toThrow(RangeError);
+      expect(() => r.findNearestUnit(NaN, 0, 10, 1)).toThrow(RangeError);
+      expect(() => r.findNearestUnit(0, 0, Infinity, 1)).toThrow(RangeError);
+    });
+  });
+
+  describe('phiToTarget', () => {
+    it('returns the Ground bearing to the target', () => {
+      const r = new TargetRegistry();
+      const right = r.createPoint(100, 0);
+      const down = r.createPoint(0, 100);
+      expect(r.phiToTarget(right.id, 0, 0, 77)).toBeCloseTo(0, 12);
+      expect(r.phiToTarget(down.id, 0, 0, 77)).toBeCloseTo(90, 12);
+      expect(r.phiToTarget(down.id, 0, 200, 77)).toBeCloseTo(270, 12);
+    });
+
+    it('falls back when the target is gone, absent, or coincident with the origin', () => {
+      const r = new TargetRegistry();
+      const u = unit(10, 10);
+      const t = r.createUnit(u);
+      expect(r.phiToTarget(NO_TARGET, 0, 0, 33)).toBe(33);
+      expect(r.phiToTarget(t.id, 10, 10, 33)).toBe(33);
+      u.alive = false;
+      expect(r.phiToTarget(t.id, 0, 0, 33)).toBe(33);
+    });
+  });
+});
+```
+
+---
+
+## src/missile-types.ts
+
+```ts
+/**
+ * missile-types.ts — 投射物生命週期、屬性規格、執行期記錄與事件鉤子的型別
+ *
+ * 單位約定:
+ *  - 所有速度、加速度、距離、半徑都是 Ground(地面未壓縮)像素 / tick 系列。
+ *  - φ 為度,與 geometry.ts 一致。
+ *  - 螢幕 Y × 0.5 只發生在繪製前最後一步。
+ *
+ * 分層:
+ *  - MissileSpec:不可變的資料(來自 Manifest / Missiles.txt 的映射),可被大量投射物共用。
+ *  - MissileRuntime:每顆投射物的可變狀態,由物件池(3-B)預先配置並重複使用。
+ */
+
+import { isBlendMode, type BlendMode } from './blend.js';
+import { NO_TARGET } from './targets.js';
+
+// ───────────────────────── 家族 ID ─────────────────────────
+
+export const FAMILY_IDS = [
+  'F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10',
+  'F11', 'F12', 'F13', 'F14', 'F15', 'F16', 'F17', 'F18', 'F19', 'F20',
+] as const;
+export type FamilyId = (typeof FAMILY_IDS)[number];
+
+// ───────────────────────── 生命週期 ─────────────────────────
+
+/**
+ * INIT      已配置,尚未開始運動(施法錨點對齊、延遲生成)。
+ * ACTIVE    飛行中,參與運動與碰撞。
+ * EXPLODING 命中或到期後播放爆裂動畫,不再運動與碰撞。
+ * DEAD      已回收。池中的空閒槽位也是 DEAD。
+ */
+export const MissileState = {
+  INIT: 0,
+  ACTIVE: 1,
+  EXPLODING: 2,
+  DEAD: 3,
+} as const;
+export type MissileState = (typeof MissileState)[keyof typeof MissileState];
+
+const STATE_NAMES: readonly string[] = ['INIT', 'ACTIVE', 'EXPLODING', 'DEAD'];
+
+export function stateName(state: MissileState): string {
+  return STATE_NAMES[state] ?? 'UNKNOWN';
+}
+
+// 允許的轉移,以位元遮罩表示:ALLOWED[from] 的第 `to` 位為 1 即合法。
+const ALLOWED: readonly number[] = [
+  (1 << MissileState.ACTIVE) | (1 << MissileState.DEAD), // INIT
+  (1 << MissileState.EXPLODING) | (1 << MissileState.DEAD), // ACTIVE
+  1 << MissileState.DEAD, // EXPLODING
+  0, // DEAD:只能由物件池 reset 重新配置,不屬於狀態轉移
+];
+
+export function canTransition(from: MissileState, to: MissileState): boolean {
+  return (((ALLOWED[from] ?? 0) >> to) & 1) === 1;
+}
+
+// ───────────────────────── 穿透 ─────────────────────────
+
+/** pierce 欄位的特殊值:無限穿透(骨矛之類)。JSON 無法存 Infinity,所以用 -1。 */
+export const UNLIMITED_PIERCE = -1;
+
+/** 命中後還能否穿過(true = 繼續飛;false = 停止並進入爆裂或回收)。 */
+export function canPierce(pierceLeft: number): boolean {
+  return pierceLeft !== 0;
+}
+
+/** 穿過一個目標後的剩餘穿透數。無限穿透保持不變;0 保持 0。 */
+export function consumePierce(pierceLeft: number): number {
+  if (pierceLeft === UNLIMITED_PIERCE) return UNLIMITED_PIERCE;
+  return pierceLeft > 0 ? pierceLeft - 1 : 0;
+}
+
+// ───────────────────────── 規格(不可變資料) ─────────────────────────
+
+export interface MissileMotion {
+  /** 初速,≥ 0。 */
+  readonly speed: number;
+  /** 每 tick 速度增量(可為負)。 */
+  readonly accel: number;
+  /** 速度上限,≥ speed。減速型投射物令其等於 speed。 */
+  readonly maxSpeed: number;
+}
+
+export interface MissileLifetime {
+  /** 存活 tick 上限(整數 ≥ 1)。永遠必填,保證任何投射物都有界。 */
+  readonly maxLifeTicks: number;
+  /** 最大飛行距離(Ground px)。null = 不以距離限制。 */
+  readonly rangePx: number | null;
+}
+
+export interface MissileCollision {
+  /** 碰撞圓半徑(Ground px),≥ 0。 */
+  readonly radiusPx: number;
+  /** 可穿過的目標數(整數 ≥ 0),或 UNLIMITED_PIERCE。0 = 命中第一個就停。 */
+  readonly pierce: number;
+}
+
+export interface MissileExplosion {
+  /** 爆裂動畫持續 tick(整數 ≥ 0)。0 = 立即回收。 */
+  readonly durationTicks: number;
+  readonly onHit: boolean;
+  readonly onExpire: boolean;
+  /** 爆裂時再生成的投射物(如冰封球子彈)。null = 不生成。 */
+  readonly spawnMissileId: string | null;
+}
+
+// 各家族專屬參數(第 1.2 節家族表中屬於 F01/F02/F04 的部分)。
+export interface F01Params {
+  readonly family: 'F01';
+}
+
+export interface F02Params {
+  readonly family: 'F02';
+  /** 每 tick 最大轉向角(度),> 0。 */
+  readonly turnRateDegPerTick: number;
+  /** 索敵半徑(Ground px),≥ 0。 */
+  readonly acquireRadiusPx: number;
+  /** 目標失效後是否重新索敵。 */
+  readonly reacquire: boolean;
+  /** 沒有目標時:沿當前方向直飛,或直接到期。 */
+  readonly fallback: 'straight' | 'expire';
+}
+
+export interface F04Params {
+  readonly family: 'F04';
+  /** 每次轉向的隨機擾動幅度(度),[0, 180]。 */
+  readonly stepJitterDeg: number;
+  /** 每隔幾個 tick 重新擾動一次,整數 ≥ 1。 */
+  readonly retargetEveryTicks: number;
+}
+
+export type BehaviorParams = F01Params | F02Params | F04Params;
+
+export interface MissileSpec {
+  /** Missiles.txt 的名稱。 */
+  readonly id: string;
+  /** 對應 DirectionCalibration.missileId。 */
+  readonly calibrationId: string;
+  readonly blend: BlendMode;
+  readonly motion: MissileMotion;
+  readonly lifetime: MissileLifetime;
+  readonly collision: MissileCollision;
+  /** null = 沒有爆裂階段,命中或到期後直接 DEAD。 */
+  readonly explosion: MissileExplosion | null;
+  readonly behavior: BehaviorParams;
+}
+
+/** 檢查數值域,回傳錯誤清單(空 = 通過)。原始 JSON 的結構驗證由 Schema 負責。 */
+export function validateMissileSpec(spec: MissileSpec): readonly string[] {
+  const e: string[] = [];
+  const fin = Number.isFinite;
+
+  if (spec.id.length === 0) e.push('id must be non-empty');
+  if (spec.calibrationId.length === 0) e.push('calibrationId must be non-empty');
+  if (!isBlendMode(spec.blend)) e.push(`blend is not a known BlendMode: ${String(spec.blend)}`);
+
+  const m = spec.motion;
+  if (!(fin(m.speed) && m.speed >= 0)) e.push('motion.speed must be a finite number >= 0');
+  if (!fin(m.accel)) e.push('motion.accel must be finite');
+  if (!(fin(m.maxSpeed) && m.maxSpeed >= m.speed)) e.push('motion.maxSpeed must be finite and >= motion.speed');
+
+  const l = spec.lifetime;
+  if (!(Number.isInteger(l.maxLifeTicks) && l.maxLifeTicks >= 1)) {
+    e.push('lifetime.maxLifeTicks must be an integer >= 1');
+  }
+  if (l.rangePx !== null && !(fin(l.rangePx) && l.rangePx > 0)) {
+    e.push('lifetime.rangePx must be null or a finite number > 0');
+  }
+
+  const c = spec.collision;
+  if (!(fin(c.radiusPx) && c.radiusPx >= 0)) e.push('collision.radiusPx must be a finite number >= 0');
+  if (!(Number.isInteger(c.pierce) && (c.pierce >= 0 || c.pierce === UNLIMITED_PIERCE))) {
+    e.push('collision.pierce must be an integer >= 0 or UNLIMITED_PIERCE (-1)');
+  }
+
+  if (spec.explosion !== null) {
+    const x = spec.explosion;
+    if (!(Number.isInteger(x.durationTicks) && x.durationTicks >= 0)) {
+      e.push('explosion.durationTicks must be an integer >= 0');
+    }
+    if (x.spawnMissileId !== null && x.spawnMissileId.length === 0) {
+      e.push('explosion.spawnMissileId must be null or non-empty');
+    }
+  }
+
+  const b = spec.behavior;
+  switch (b.family) {
+    case 'F01':
+      break;
+    case 'F02':
+      if (!(fin(b.turnRateDegPerTick) && b.turnRateDegPerTick > 0)) {
+        e.push('behavior.turnRateDegPerTick must be a finite number > 0');
+      }
+      if (!(fin(b.acquireRadiusPx) && b.acquireRadiusPx >= 0)) {
+        e.push('behavior.acquireRadiusPx must be a finite number >= 0');
+      }
+      if (b.fallback !== 'straight' && b.fallback !== 'expire') {
+        e.push("behavior.fallback must be 'straight' or 'expire'");
+      }
+      break;
+    case 'F04':
+      if (!(fin(b.stepJitterDeg) && b.stepJitterDeg >= 0 && b.stepJitterDeg <= 180)) {
+        e.push('behavior.stepJitterDeg must be in [0, 180]');
+      }
+      if (!(Number.isInteger(b.retargetEveryTicks) && b.retargetEveryTicks >= 1)) {
+        e.push('behavior.retargetEveryTicks must be an integer >= 1');
+      }
+      break;
+    default:
+      e.push(`behavior.family unsupported: ${String((b as { family: unknown }).family)}`);
+  }
+  return e;
+}
+
+// ───────────────────────── 執行期記錄(可變,由物件池持有) ─────────────────────────
+
+export interface MissileRuntime {
+  state: MissileState;
+  /** 池中的固定槽位編號。 */
+  readonly handle: number;
+  /** 每次重新配置遞增,用來偵測過期的 handle。 */
+  generation: number;
+  /** 指向規格表的索引,避免在記錄中持有物件引用。 */
+  specIndex: number;
+  ageTicks: number;
+
+  // Ground 座標。prevX/prevY 是上一個 tick 的位置,給渲染插值使用。
+  x: number;
+  y: number;
+  prevX: number;
+  prevY: number;
+  /** 前進方向 φ(度,[0, 360))。 */
+  phi: number;
+  /** 目前速度(Ground px/tick)。 */
+  speed: number;
+  /** 累計飛行距離(Ground px)。 */
+  travelled: number;
+
+  pierceLeft: number;
+  hitCount: number;
+  targetId: number;
+  /** 本顆投射物自己的 LCG 狀態(uint32),可直接用 lcgStep / lcgUnit 推進。 */
+  rngState: number;
+
+  explodeTicksLeft: number;
+  /** 動畫整數累加器(speed 累加至 256 進一幀)與當前幀。 */
+  animAcc: number;
+  animFrame: number;
+
+  /** true = 本 tick 的 prev 已被設為 curr,渲染不得插值(生成、瞬移)。 */
+  teleported: boolean;
+}
+
+/** 建立一個 DEAD 狀態的空記錄。物件池啟動時預先配置用。 */
+export function createMissileRuntime(handle: number): MissileRuntime {
+  return {
+    state: MissileState.DEAD,
+    handle,
+    generation: 0,
+    specIndex: -1,
+    ageTicks: 0,
+    x: 0,
+    y: 0,
+    prevX: 0,
+    prevY: 0,
+    phi: 0,
+    speed: 0,
+    travelled: 0,
+    pierceLeft: 0,
+    hitCount: 0,
+    targetId: NO_TARGET,
+    rngState: 0,
+    explodeTicksLeft: 0,
+    animAcc: 0,
+    animFrame: 0,
+    teleported: false,
+  };
+}
+
+/** 回收或重新配置前重置所有欄位。保留 handle、遞增 generation。零配置。 */
+export function resetMissileRuntime(rt: MissileRuntime): void {
+  rt.state = MissileState.DEAD;
+  rt.generation = (rt.generation + 1) >>> 0;
+  rt.specIndex = -1;
+  rt.ageTicks = 0;
+  rt.x = 0;
+  rt.y = 0;
+  rt.prevX = 0;
+  rt.prevY = 0;
+  rt.phi = 0;
+  rt.speed = 0;
+  rt.travelled = 0;
+  rt.pierceLeft = 0;
+  rt.hitCount = 0;
+  rt.targetId = NO_TARGET;
+  rt.rngState = 0;
+  rt.explodeTicksLeft = 0;
+  rt.animAcc = 0;
+  rt.animFrame = 0;
+  rt.teleported = false;
+}
+
+// ───────────────────────── 事件鉤子 ─────────────────────────
+
+export const MissileEventKind = {
+  SPAWN: 0,
+  ACTIVATE: 1,
+  HIT: 2,
+  EXPIRE: 3,
+  EXPLODE: 4,
+  DEAD: 5,
+} as const;
+export type MissileEventKind = (typeof MissileEventKind)[keyof typeof MissileEventKind];
+
+export const ExpireReason = {
+  LIFETIME: 0,
+  RANGE: 1,
+} as const;
+export type ExpireReason = (typeof ExpireReason)[keyof typeof ExpireReason];
+
+/**
+ * 所有鉤子都直接傳入既有的 runtime 與 spec(不配置事件物件)。
+ * 鉤子內不得保存 rt 的引用,它會被池重用。需要保留請複製所需欄位。
+ */
+export interface MissileHooks {
+  onSpawn?(rt: Readonly<MissileRuntime>, spec: MissileSpec): void;
+  onActivate?(rt: Readonly<MissileRuntime>, spec: MissileSpec): void;
+  onHit?(rt: Readonly<MissileRuntime>, spec: MissileSpec, targetId: number): void;
+  onExpire?(rt: Readonly<MissileRuntime>, spec: MissileSpec, reason: ExpireReason): void;
+  onExplode?(rt: Readonly<MissileRuntime>, spec: MissileSpec): void;
+  onDead?(rt: Readonly<MissileRuntime>, spec: MissileSpec): void;
+}
+
+/**
+ * 分派事件。aux 的意義:HIT = targetId,EXPIRE = ExpireReason,其餘忽略。
+ * hooks 為 null 時為空操作。
+ */
+export function dispatchMissileEvent(
+  hooks: MissileHooks | null,
+  kind: MissileEventKind,
+  rt: Readonly<MissileRuntime>,
+  spec: MissileSpec,
+  aux: number = NO_TARGET,
+): void {
+  if (hooks === null) return;
+  switch (kind) {
+    case MissileEventKind.SPAWN:
+      hooks.onSpawn?.(rt, spec);
+      break;
+    case MissileEventKind.ACTIVATE:
+      hooks.onActivate?.(rt, spec);
+      break;
+    case MissileEventKind.HIT:
+      hooks.onHit?.(rt, spec, aux);
+      break;
+    case MissileEventKind.EXPIRE:
+      hooks.onExpire?.(rt, spec, aux as ExpireReason);
+      break;
+    case MissileEventKind.EXPLODE:
+      hooks.onExplode?.(rt, spec);
+      break;
+    case MissileEventKind.DEAD:
+      hooks.onDead?.(rt, spec);
+      break;
+  }
+}
+
+// ───────────────────────── 爆裂判定 ─────────────────────────
+
+/** 依規格判斷該觸發原因是否進入 EXPLODING(否則直接 DEAD)。 */
+export function explodesOn(spec: MissileSpec, trigger: 'hit' | 'expire'): boolean {
+  const x = spec.explosion;
+  if (x === null) return false;
+  return trigger === 'hit' ? x.onHit : x.onExpire;
+}
+```
+
+## src/missile-types.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { NO_TARGET } from './targets.js';
+import {
+  ExpireReason,
+  FAMILY_IDS,
+  MissileEventKind,
+  MissileState,
+  UNLIMITED_PIERCE,
+  canPierce,
+  canTransition,
+  consumePierce,
+  createMissileRuntime,
+  dispatchMissileEvent,
+  explodesOn,
+  resetMissileRuntime,
+  stateName,
+  validateMissileSpec,
+  type MissileHooks,
+  type MissileSpec,
+} from './missile-types.js';
+
+const BASE: MissileSpec = {
+  id: 'bonespear',
+  calibrationId: 'bonespear',
+  blend: 'normal',
+  motion: { speed: 12, accel: 0, maxSpeed: 12 },
+  lifetime: { maxLifeTicks: 50, rangePx: null },
+  collision: { radiusPx: 10, pierce: UNLIMITED_PIERCE },
+  explosion: null,
+  behavior: { family: 'F01' },
+};
+
+describe('lifecycle transitions', () => {
+  const S = MissileState;
+  const legal = new Set(['0>1', '0>3', '1>2', '1>3', '2>3']);
+  const all = [S.INIT, S.ACTIVE, S.EXPLODING, S.DEAD] as const;
+
+  for (const from of all) {
+    for (const to of all) {
+      const ok = legal.has(`${from}>${to}`);
+      it(`${stateName(from)} → ${stateName(to)} is ${ok ? 'legal' : 'illegal'}`, () => {
+        expect(canTransition(from, to)).toBe(ok);
+      });
+    }
+  }
+
+  it('state names', () => {
+    expect(all.map(stateName)).toEqual(['INIT', 'ACTIVE', 'EXPLODING', 'DEAD']);
+  });
+});
+
+describe('pierce semantics', () => {
+  it('pierce = 0 stops at the first hit', () => {
+    expect(canPierce(0)).toBe(false);
+    expect(consumePierce(0)).toBe(0);
+  });
+
+  it('pierce = 2 passes through exactly 2 targets, stops on the 3rd', () => {
+    let left = 2;
+    const passes: boolean[] = [];
+    for (let i = 0; i < 3; i++) {
+      const pass = canPierce(left);
+      passes.push(pass);
+      if (pass) left = consumePierce(left);
+    }
+    expect(passes).toEqual([true, true, false]);
+  });
+
+  it('UNLIMITED_PIERCE never runs out', () => {
+    let left = UNLIMITED_PIERCE;
+    for (let i = 0; i < 1000; i++) {
+      expect(canPierce(left)).toBe(true);
+      left = consumePierce(left);
+    }
+    expect(left).toBe(UNLIMITED_PIERCE);
+  });
+});
+
+describe('validateMissileSpec', () => {
+  const F02: MissileSpec = {
+    ...BASE,
+    id: 'bonespirit',
+    behavior: { family: 'F02', turnRateDegPerTick: 6, acquireRadiusPx: 300, reacquire: true, fallback: 'straight' },
+  };
+  const F04: MissileSpec = {
+    ...BASE,
+    id: 'chargedbolt',
+    behavior: { family: 'F04', stepJitterDeg: 30, retargetEveryTicks: 3 },
+  };
+  const WITH_EXPLOSION: MissileSpec = {
+    ...BASE,
+    id: 'fireball',
+    blend: 'additive',
+    collision: { radiusPx: 12, pierce: 0 },
+    explosion: { durationTicks: 10, onHit: true, onExpire: false, spawnMissileId: null },
+  };
+
+  it.each([
+    ['F01 baseline', BASE],
+    ['F02', F02],
+    ['F04', F04],
+    ['with explosion', WITH_EXPLOSION],
+  ])('accepts %s', (_name, spec) => {
+    expect(validateMissileSpec(spec)).toEqual([]);
+  });
+
+  const bad: Array<[string, MissileSpec, string]> = [
+    ['empty id', { ...BASE, id: '' }, 'id'],
+    ['empty calibrationId', { ...BASE, calibrationId: '' }, 'calibrationId'],
+    ['unknown blend', { ...BASE, blend: 'glow' as never }, 'blend'],
+    ['negative speed', { ...BASE, motion: { speed: -1, accel: 0, maxSpeed: 5 } }, 'motion.speed'],
+    ['NaN speed', { ...BASE, motion: { speed: NaN, accel: 0, maxSpeed: 5 } }, 'motion.speed'],
+    ['maxSpeed < speed', { ...BASE, motion: { speed: 10, accel: 0, maxSpeed: 5 } }, 'motion.maxSpeed'],
+    ['infinite accel', { ...BASE, motion: { speed: 1, accel: Infinity, maxSpeed: 5 } }, 'motion.accel'],
+    ['maxLifeTicks 0', { ...BASE, lifetime: { maxLifeTicks: 0, rangePx: null } }, 'maxLifeTicks'],
+    ['maxLifeTicks 1.5', { ...BASE, lifetime: { maxLifeTicks: 1.5, rangePx: null } }, 'maxLifeTicks'],
+    ['rangePx 0', { ...BASE, lifetime: { maxLifeTicks: 10, rangePx: 0 } }, 'rangePx'],
+    ['negative radius', { ...BASE, collision: { radiusPx: -1, pierce: 0 } }, 'radiusPx'],
+    ['pierce -2', { ...BASE, collision: { radiusPx: 1, pierce: -2 } }, 'pierce'],
+    ['pierce 1.5', { ...BASE, collision: { radiusPx: 1, pierce: 1.5 } }, 'pierce'],
+    [
+      'negative explosion duration',
+      { ...BASE, explosion: { durationTicks: -1, onHit: true, onExpire: false, spawnMissileId: null } },
+      'durationTicks',
+    ],
+    [
+      'empty spawnMissileId',
+      { ...BASE, explosion: { durationTicks: 1, onHit: true, onExpire: false, spawnMissileId: '' } },
+      'spawnMissileId',
+    ],
+    [
+      'F02 turnRate 0',
+      { ...F02, behavior: { family: 'F02', turnRateDegPerTick: 0, acquireRadiusPx: 1, reacquire: true, fallback: 'straight' } },
+      'turnRateDegPerTick',
+    ],
+    [
+      'F02 bad fallback',
+      { ...F02, behavior: { family: 'F02', turnRateDegPerTick: 1, acquireRadiusPx: 1, reacquire: true, fallback: 'spin' as never } },
+      'fallback',
+    ],
+    [
+      'F04 jitter 200',
+      { ...F04, behavior: { family: 'F04', stepJitterDeg: 200, retargetEveryTicks: 1 } },
+      'stepJitterDeg',
+    ],
+    [
+      'F04 retarget 0',
+      { ...F04, behavior: { family: 'F04', stepJitterDeg: 10, retargetEveryTicks: 0 } },
+      'retargetEveryTicks',
+    ],
+    ['unsupported family', { ...BASE, behavior: { family: 'F99' } as never }, 'unsupported'],
+  ];
+
+  it.each(bad)('rejects: %s', (_name, spec, fragment) => {
+    const errors = validateMissileSpec(spec);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.join(' | ')).toContain(fragment);
+  });
+
+  it('reports multiple problems at once', () => {
+    const errors = validateMissileSpec({
+      ...BASE,
+      id: '',
+      motion: { speed: -1, accel: NaN, maxSpeed: -5 },
+    });
+    expect(errors.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('explodesOn', () => {
+  it('no explosion block → never', () => {
+    expect(explodesOn(BASE, 'hit')).toBe(false);
+    expect(explodesOn(BASE, 'expire')).toBe(false);
+  });
+
+  it('follows onHit / onExpire flags', () => {
+    const s: MissileSpec = {
+      ...BASE,
+      explosion: { durationTicks: 5, onHit: true, onExpire: false, spawnMissileId: null },
+    };
+    expect(explodesOn(s, 'hit')).toBe(true);
+    expect(explodesOn(s, 'expire')).toBe(false);
+  });
+});
+
+describe('MissileRuntime', () => {
+  it('a fresh record is DEAD with sentinel values', () => {
+    const rt = createMissileRuntime(3);
+    expect(rt.state).toBe(MissileState.DEAD);
+    expect(rt.handle).toBe(3);
+    expect(rt.targetId).toBe(NO_TARGET);
+    expect(rt.specIndex).toBe(-1);
+    expect(rt.teleported).toBe(false);
+  });
+
+  it('reset restores every field, keeps handle and bumps generation', () => {
+    const rt = createMissileRuntime(7);
+    rt.state = MissileState.ACTIVE;
+    rt.specIndex = 4;
+    rt.ageTicks = 9;
+    rt.x = 1;
+    rt.y = 2;
+    rt.prevX = 3;
+    rt.prevY = 4;
+    rt.phi = 123;
+    rt.speed = 8;
+    rt.travelled = 99;
+    rt.pierceLeft = 3;
+    rt.hitCount = 2;
+    rt.targetId = 55;
+    rt.rngState = 777;
+    rt.explodeTicksLeft = 6;
+    rt.animAcc = 100;
+    rt.animFrame = 5;
+    rt.teleported = true;
+
+    resetMissileRuntime(rt);
+    expect(rt).toEqual({ ...createMissileRuntime(7), generation: 1 });
+
+    resetMissileRuntime(rt);
+    expect(rt.generation).toBe(2);
+  });
+
+  it('generation wraps as uint32', () => {
+    const rt = createMissileRuntime(0);
+    rt.generation = 4294967295;
+    resetMissileRuntime(rt);
+    expect(rt.generation).toBe(0);
+  });
+});
+
+describe('dispatchMissileEvent', () => {
+  it('routes each event kind to the matching hook with the right arguments', () => {
+    const calls: Array<[string, number]> = [];
+    const hooks: MissileHooks = {
+      onSpawn: () => calls.push(['spawn', 0]),
+      onActivate: () => calls.push(['activate', 0]),
+      onHit: (_rt, _s, t) => calls.push(['hit', t]),
+      onExpire: (_rt, _s, r) => calls.push(['expire', r]),
+      onExplode: () => calls.push(['explode', 0]),
+      onDead: () => calls.push(['dead', 0]),
+    };
+    const rt = createMissileRuntime(0);
+    dispatchMissileEvent(hooks, MissileEventKind.SPAWN, rt, BASE);
+    dispatchMissileEvent(hooks, MissileEventKind.ACTIVATE, rt, BASE);
+    dispatchMissileEvent(hooks, MissileEventKind.HIT, rt, BASE, 42);
+    dispatchMissileEvent(hooks, MissileEventKind.EXPIRE, rt, BASE, ExpireReason.RANGE);
+    dispatchMissileEvent(hooks, MissileEventKind.EXPLODE, rt, BASE);
+    dispatchMissileEvent(hooks, MissileEventKind.DEAD, rt, BASE);
+    expect(calls).toEqual([
+      ['spawn', 0],
+      ['activate', 0],
+      ['hit', 42],
+      ['expire', ExpireReason.RANGE],
+      ['explode', 0],
+      ['dead', 0],
+    ]);
+  });
+
+  it('null hooks and missing optional hooks are no-ops', () => {
+    const rt = createMissileRuntime(0);
+    expect(() => dispatchMissileEvent(null, MissileEventKind.HIT, rt, BASE, 1)).not.toThrow();
+    expect(() => dispatchMissileEvent({}, MissileEventKind.DEAD, rt, BASE)).not.toThrow();
+  });
+
+  it('preserves `this` for class-based hooks', () => {
+    class Recorder implements MissileHooks {
+      hits = 0;
+      onHit(): void {
+        this.hits++;
+      }
+    }
+    const r = new Recorder();
+    dispatchMissileEvent(r, MissileEventKind.HIT, createMissileRuntime(0), BASE, 1);
+    expect(r.hits).toBe(1);
+  });
+});
+
+describe('family ids', () => {
+  it('are F01..F20, unique and in order', () => {
+    expect(FAMILY_IDS).toHaveLength(20);
+    expect(new Set(FAMILY_IDS).size).toBe(20);
+    FAMILY_IDS.forEach((id, i) => expect(id).toBe(`F${String(i + 1).padStart(2, '0')}`));
+  });
+});
+```
+
+---
+
+## 檔案清單與相依關係
+
+```
+rng.ts           (無相依)
+blend.ts         (無相依)
+geometry.ts      (第 1 輪)
+targets.ts       → geometry.ts
+missile-types.ts → blend.ts, targets.ts
+```
+
+沒有任何第三方依賴。`tsconfig.json` 的 `"types": []` 與 `"lib": ["ES2022"]` 不變:本輪沒有使用任何 DOM 型別,`BlendContext` 是結構型別,真正的 `CanvasRenderingContext2D` 可以直接傳入。
+
+## 與下一輪銜接的設計決策
+
+| 決策 | 3-B 如何使用 |
+|---|---|
+| `MissileRuntime` 是 AoS 記錄,含 `rngState: number`(uint32) | 物件池預先配置 N 筆,每筆加一個 `nextFree` 欄位組成 free-list。行為原語用 `lcgStep` / `lcgUnit` 直接推進,不需要 `Lcg` 實例,穩態零配置 |
+| `specIndex` 取代 spec 引用 | 池記錄不持有物件引用,spec 放在獨立的陣列,回收時不用清引用 |
+| `generation` | 池的 `handle` 可以編碼為 `index + generation`,外部持有的過期 handle 會被偵測並拒絕 |
+| `teleported` 旗標 | 生成與瞬移時 `prev = curr`,並設旗標。主迴圈每 tick 開頭先清旗標,渲染端看到 true 就不插值 |
+| `targetId` 加 `TargetRegistry` | F02 每 tick 呼叫 `phiToTarget(...)`,失敗則依 `fallback` 處理;`reacquire` 時呼叫 `findNearestUnit(...)` |
+| `canPierce` / `consumePierce` / `explodesOn` | 碰撞階段只需組合這三個純函式,不需要在行為原語中再寫判斷 |
+| 事件鉤子不配置物件 | 3-B 的管理器會在狀態轉移處呼叫 `dispatchMissileEvent` |
+
+## 下一步建議
+
+- **3-B**:`MissileObjectPool`(free-list、容量上限、generation handle)、F01/F02/F04 三個行為原語、`MissileManager.step()`(一個 tick 的邏輯推進)、對應測試。其中包含確定性回放、10,000 次發射回收零洩漏,以及 200 個實體的單 tick 基準測試。
+- **3-C**:25Hz 主迴圈(`MAX_CATCHUP_TICKS = 5`、插值、`teleported`)、60Hz/144Hz 邏輯一致性測試、Canvas 繪製器、除錯覆蓋層,以及 F03 螺旋的擴充說明。
+
+3-A 的測試通過後再通知我,我就接著出 3-B。

@@ -1,0 +1,3240 @@
+{
+  "schema": 1,
+  "tool": "d2_proj_toolkit 1.0.0",
+  "name": "hydra_a1",
+  "source": {
+    "frameCount": 96,
+    "yMode": "bottom"
+  },
+  "coordinateSystem": {
+    "world": "原點=單位錨點，x右 y下，像素中心=索引+0.5",
+    "cell": "cell = world + (pivot_x, pivot_y)"
+  },
+  "atlas": {
+    "file": "hydra_a1.png",
+    "cell_w": 111,
+    "cell_h": 88,
+    "pivot_x": 63,
+    "pivot_y": 79,
+    "pivotNorm": {
+      "x": 0.567568,
+      "y": 0.897727
+    },
+    "unionBox": {
+      "minX": -62,
+      "minY": -78,
+      "maxX": 47,
+      "maxY": 8,
+      "w": 109,
+      "h": 86
+    },
+    "padding": 1,
+    "symmetric": false,
+    "yMode": "bottom",
+    "trimAlpha": true,
+    "alphaThreshold": 0,
+    "columns": 12,
+    "rowsPerDir": 1,
+    "directions": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "directionCount": 8,
+    "framesPerDir": 12,
+    "width": 1332,
+    "height": 704
+  },
+  "frames": {
+    "0": {
+      "0": {
+        "dir": 0,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 24,
+          "y": 16,
+          "w": 49,
+          "h": 65
+        },
+        "contentAtlas": {
+          "x": 24,
+          "y": 16,
+          "w": 49,
+          "h": 65
+        },
+        "worldRect": {
+          "x": -39,
+          "y": -63,
+          "w": 49,
+          "h": 65
+        },
+        "sourceOffset": {
+          "x": -39,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 0,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 27,
+          "y": 15,
+          "w": 49,
+          "h": 66
+        },
+        "contentAtlas": {
+          "x": 138,
+          "y": 15,
+          "w": 49,
+          "h": 66
+        },
+        "worldRect": {
+          "x": -36,
+          "y": -64,
+          "w": 49,
+          "h": 66
+        },
+        "sourceOffset": {
+          "x": -36,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 0,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 30,
+          "y": 12,
+          "w": 50,
+          "h": 69
+        },
+        "contentAtlas": {
+          "x": 252,
+          "y": 12,
+          "w": 50,
+          "h": 69
+        },
+        "worldRect": {
+          "x": -33,
+          "y": -67,
+          "w": 50,
+          "h": 69
+        },
+        "sourceOffset": {
+          "x": -33,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 0,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 34,
+          "y": 9,
+          "w": 45,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 367,
+          "y": 9,
+          "w": 45,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -29,
+          "y": -70,
+          "w": 45,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -29,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 0,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 6,
+          "w": 45,
+          "h": 76
+        },
+        "contentAtlas": {
+          "x": 481,
+          "y": 6,
+          "w": 45,
+          "h": 76
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -73,
+          "w": 45,
+          "h": 76
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 3
+        }
+      },
+      "5": {
+        "dir": 0,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 42,
+          "y": 2,
+          "w": 37,
+          "h": 80
+        },
+        "contentAtlas": {
+          "x": 597,
+          "y": 2,
+          "w": 37,
+          "h": 80
+        },
+        "worldRect": {
+          "x": -21,
+          "y": -77,
+          "w": 37,
+          "h": 80
+        },
+        "sourceOffset": {
+          "x": -21,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 0,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 42,
+          "y": 1,
+          "w": 37,
+          "h": 82
+        },
+        "contentAtlas": {
+          "x": 708,
+          "y": 1,
+          "w": 37,
+          "h": 82
+        },
+        "worldRect": {
+          "x": -21,
+          "y": -78,
+          "w": 37,
+          "h": 82
+        },
+        "sourceOffset": {
+          "x": -21,
+          "y": 4
+        }
+      },
+      "7": {
+        "dir": 0,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 25,
+          "y": 6,
+          "w": 48,
+          "h": 77
+        },
+        "contentAtlas": {
+          "x": 802,
+          "y": 6,
+          "w": 48,
+          "h": 77
+        },
+        "worldRect": {
+          "x": -38,
+          "y": -73,
+          "w": 48,
+          "h": 77
+        },
+        "sourceOffset": {
+          "x": -38,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 0,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 7,
+          "y": 25,
+          "w": 60,
+          "h": 56
+        },
+        "contentAtlas": {
+          "x": 895,
+          "y": 25,
+          "w": 60,
+          "h": 56
+        },
+        "worldRect": {
+          "x": -56,
+          "y": -54,
+          "w": 60,
+          "h": 56
+        },
+        "sourceOffset": {
+          "x": -57,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 0,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 5,
+          "y": 24,
+          "w": 62,
+          "h": 57
+        },
+        "contentAtlas": {
+          "x": 1004,
+          "y": 24,
+          "w": 62,
+          "h": 57
+        },
+        "worldRect": {
+          "x": -58,
+          "y": -55,
+          "w": 62,
+          "h": 57
+        },
+        "sourceOffset": {
+          "x": -60,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 0,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 3,
+          "y": 21,
+          "w": 66,
+          "h": 60
+        },
+        "contentAtlas": {
+          "x": 1113,
+          "y": 21,
+          "w": 66,
+          "h": 60
+        },
+        "worldRect": {
+          "x": -60,
+          "y": -58,
+          "w": 66,
+          "h": 60
+        },
+        "sourceOffset": {
+          "x": -63,
+          "y": 2
+        }
+      },
+      "11": {
+        "dir": 0,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 0,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 1,
+          "y": 17,
+          "w": 71,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 1222,
+          "y": 17,
+          "w": 71,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -62,
+          "y": -62,
+          "w": 71,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -64,
+          "y": 2
+        }
+      }
+    },
+    "1": {
+      "0": {
+        "dir": 1,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 39,
+          "y": 16,
+          "w": 36,
+          "h": 65
+        },
+        "contentAtlas": {
+          "x": 39,
+          "y": 104,
+          "w": 36,
+          "h": 65
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -63,
+          "w": 36,
+          "h": 65
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 1,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 41,
+          "y": 16,
+          "w": 37,
+          "h": 65
+        },
+        "contentAtlas": {
+          "x": 152,
+          "y": 104,
+          "w": 37,
+          "h": 65
+        },
+        "worldRect": {
+          "x": -22,
+          "y": -63,
+          "w": 37,
+          "h": 65
+        },
+        "sourceOffset": {
+          "x": -22,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 1,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 15,
+          "w": 36,
+          "h": 66
+        },
+        "contentAtlas": {
+          "x": 266,
+          "y": 103,
+          "w": 36,
+          "h": 66
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -64,
+          "w": 36,
+          "h": 66
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 1,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 12,
+          "w": 38,
+          "h": 69
+        },
+        "contentAtlas": {
+          "x": 377,
+          "y": 100,
+          "w": 38,
+          "h": 69
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -67,
+          "w": 38,
+          "h": 69
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 1,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 10,
+          "w": 41,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 488,
+          "y": 98,
+          "w": 41,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -69,
+          "w": 41,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 3
+        }
+      },
+      "5": {
+        "dir": 1,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 7,
+          "w": 40,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 599,
+          "y": 95,
+          "w": 40,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -72,
+          "w": 40,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 1,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 6,
+          "w": 38,
+          "h": 77
+        },
+        "contentAtlas": {
+          "x": 710,
+          "y": 94,
+          "w": 38,
+          "h": 77
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -73,
+          "w": 38,
+          "h": 77
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "7": {
+        "dir": 1,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 5,
+          "w": 31,
+          "h": 79
+        },
+        "contentAtlas": {
+          "x": 821,
+          "y": 93,
+          "w": 31,
+          "h": 79
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -74,
+          "w": 31,
+          "h": 79
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 1,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 12,
+          "w": 39,
+          "h": 69
+        },
+        "contentAtlas": {
+          "x": 925,
+          "y": 100,
+          "w": 39,
+          "h": 69
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -67,
+          "w": 39,
+          "h": 69
+        },
+        "sourceOffset": {
+          "x": -28,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 1,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 33,
+          "y": 10,
+          "w": 41,
+          "h": 71
+        },
+        "contentAtlas": {
+          "x": 1032,
+          "y": 98,
+          "w": 41,
+          "h": 71
+        },
+        "worldRect": {
+          "x": -30,
+          "y": -69,
+          "w": 41,
+          "h": 71
+        },
+        "sourceOffset": {
+          "x": -31,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 1,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 30,
+          "y": 10,
+          "w": 44,
+          "h": 71
+        },
+        "contentAtlas": {
+          "x": 1140,
+          "y": 98,
+          "w": 44,
+          "h": 71
+        },
+        "worldRect": {
+          "x": -33,
+          "y": -69,
+          "w": 44,
+          "h": 71
+        },
+        "sourceOffset": {
+          "x": -34,
+          "y": 2
+        }
+      },
+      "11": {
+        "dir": 1,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 88,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 29,
+          "y": 10,
+          "w": 45,
+          "h": 71
+        },
+        "contentAtlas": {
+          "x": 1250,
+          "y": 98,
+          "w": 45,
+          "h": 71
+        },
+        "worldRect": {
+          "x": -34,
+          "y": -69,
+          "w": 45,
+          "h": 71
+        },
+        "sourceOffset": {
+          "x": -36,
+          "y": 2
+        }
+      }
+    },
+    "2": {
+      "0": {
+        "dir": 2,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 38,
+          "y": 18,
+          "w": 42,
+          "h": 63
+        },
+        "contentAtlas": {
+          "x": 38,
+          "y": 194,
+          "w": 42,
+          "h": 63
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -61,
+          "w": 42,
+          "h": 63
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 2,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 35,
+          "y": 13,
+          "w": 42,
+          "h": 68
+        },
+        "contentAtlas": {
+          "x": 146,
+          "y": 189,
+          "w": 42,
+          "h": 68
+        },
+        "worldRect": {
+          "x": -28,
+          "y": -66,
+          "w": 42,
+          "h": 68
+        },
+        "sourceOffset": {
+          "x": -28,
+          "y": 4
+        }
+      },
+      "2": {
+        "dir": 2,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 32,
+          "y": 11,
+          "w": 38,
+          "h": 70
+        },
+        "contentAtlas": {
+          "x": 254,
+          "y": 187,
+          "w": 38,
+          "h": 70
+        },
+        "worldRect": {
+          "x": -31,
+          "y": -68,
+          "w": 38,
+          "h": 70
+        },
+        "sourceOffset": {
+          "x": -32,
+          "y": 4
+        }
+      },
+      "3": {
+        "dir": 2,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 29,
+          "y": 9,
+          "w": 39,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 362,
+          "y": 185,
+          "w": 39,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -34,
+          "y": -70,
+          "w": 39,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -35,
+          "y": 4
+        }
+      },
+      "4": {
+        "dir": 2,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 28,
+          "y": 14,
+          "w": 40,
+          "h": 68
+        },
+        "contentAtlas": {
+          "x": 472,
+          "y": 190,
+          "w": 40,
+          "h": 68
+        },
+        "worldRect": {
+          "x": -35,
+          "y": -65,
+          "w": 40,
+          "h": 68
+        },
+        "sourceOffset": {
+          "x": -36,
+          "y": 4
+        }
+      },
+      "5": {
+        "dir": 2,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 29,
+          "y": 10,
+          "w": 40,
+          "h": 73
+        },
+        "contentAtlas": {
+          "x": 584,
+          "y": 186,
+          "w": 40,
+          "h": 73
+        },
+        "worldRect": {
+          "x": -34,
+          "y": -69,
+          "w": 40,
+          "h": 73
+        },
+        "sourceOffset": {
+          "x": -36,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 2,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 25,
+          "y": 12,
+          "w": 46,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 691,
+          "y": 188,
+          "w": 46,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -38,
+          "y": -67,
+          "w": 46,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -42,
+          "y": 6
+        }
+      },
+      "7": {
+        "dir": 2,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 19,
+          "w": 35,
+          "h": 65
+        },
+        "contentAtlas": {
+          "x": 814,
+          "y": 195,
+          "w": 35,
+          "h": 65
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -60,
+          "w": 35,
+          "h": 65
+        },
+        "sourceOffset": {
+          "x": -29,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 2,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 22,
+          "w": 57,
+          "h": 59
+        },
+        "contentAtlas": {
+          "x": 932,
+          "y": 198,
+          "w": 57,
+          "h": 59
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -57,
+          "w": 57,
+          "h": 59
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 3
+        }
+      },
+      "9": {
+        "dir": 2,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 20,
+          "w": 59,
+          "h": 61
+        },
+        "contentAtlas": {
+          "x": 1043,
+          "y": 196,
+          "w": 59,
+          "h": 61
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -59,
+          "w": 59,
+          "h": 61
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 3
+        }
+      },
+      "10": {
+        "dir": 2,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 18,
+          "w": 62,
+          "h": 63
+        },
+        "contentAtlas": {
+          "x": 1154,
+          "y": 194,
+          "w": 62,
+          "h": 63
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -61,
+          "w": 62,
+          "h": 63
+        },
+        "sourceOffset": {
+          "x": -20,
+          "y": 3
+        }
+      },
+      "11": {
+        "dir": 2,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 176,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 40,
+          "y": 15,
+          "w": 69,
+          "h": 66
+        },
+        "contentAtlas": {
+          "x": 1261,
+          "y": 191,
+          "w": 69,
+          "h": 66
+        },
+        "worldRect": {
+          "x": -23,
+          "y": -64,
+          "w": 69,
+          "h": 66
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 3
+        }
+      }
+    },
+    "3": {
+      "0": {
+        "dir": 3,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 38,
+          "y": 26,
+          "w": 35,
+          "h": 55
+        },
+        "contentAtlas": {
+          "x": 38,
+          "y": 290,
+          "w": 35,
+          "h": 55
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -53,
+          "w": 35,
+          "h": 55
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 3,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 41,
+          "y": 28,
+          "w": 30,
+          "h": 53
+        },
+        "contentAtlas": {
+          "x": 152,
+          "y": 292,
+          "w": 30,
+          "h": 53
+        },
+        "worldRect": {
+          "x": -22,
+          "y": -51,
+          "w": 30,
+          "h": 53
+        },
+        "sourceOffset": {
+          "x": -23,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 3,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 41,
+          "y": 26,
+          "w": 30,
+          "h": 55
+        },
+        "contentAtlas": {
+          "x": 263,
+          "y": 290,
+          "w": 30,
+          "h": 55
+        },
+        "worldRect": {
+          "x": -22,
+          "y": -53,
+          "w": 30,
+          "h": 55
+        },
+        "sourceOffset": {
+          "x": -22,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 3,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 40,
+          "y": 21,
+          "w": 32,
+          "h": 60
+        },
+        "contentAtlas": {
+          "x": 373,
+          "y": 285,
+          "w": 32,
+          "h": 60
+        },
+        "worldRect": {
+          "x": -23,
+          "y": -58,
+          "w": 32,
+          "h": 60
+        },
+        "sourceOffset": {
+          "x": -23,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 3,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 16,
+          "w": 36,
+          "h": 66
+        },
+        "contentAtlas": {
+          "x": 481,
+          "y": 280,
+          "w": 36,
+          "h": 66
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -63,
+          "w": 36,
+          "h": 66
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 3
+        }
+      },
+      "5": {
+        "dir": 3,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 34,
+          "y": 15,
+          "w": 41,
+          "h": 67
+        },
+        "contentAtlas": {
+          "x": 589,
+          "y": 279,
+          "w": 41,
+          "h": 67
+        },
+        "worldRect": {
+          "x": -29,
+          "y": -64,
+          "w": 41,
+          "h": 67
+        },
+        "sourceOffset": {
+          "x": -29,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 3,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 28,
+          "y": 14,
+          "w": 47,
+          "h": 69
+        },
+        "contentAtlas": {
+          "x": 694,
+          "y": 278,
+          "w": 47,
+          "h": 69
+        },
+        "worldRect": {
+          "x": -35,
+          "y": -65,
+          "w": 47,
+          "h": 69
+        },
+        "sourceOffset": {
+          "x": -35,
+          "y": 4
+        }
+      },
+      "7": {
+        "dir": 3,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 39,
+          "y": 18,
+          "w": 34,
+          "h": 66
+        },
+        "contentAtlas": {
+          "x": 816,
+          "y": 282,
+          "w": 34,
+          "h": 66
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -61,
+          "w": 34,
+          "h": 66
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 3,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 37,
+          "w": 39,
+          "h": 44
+        },
+        "contentAtlas": {
+          "x": 932,
+          "y": 301,
+          "w": 39,
+          "h": 44
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -42,
+          "w": 39,
+          "h": 44
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 3,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 29,
+          "w": 41,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 1043,
+          "y": 293,
+          "w": 41,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -50,
+          "w": 41,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 3,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 29,
+          "w": 44,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 1154,
+          "y": 293,
+          "w": 44,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -50,
+          "w": 44,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 3
+        }
+      },
+      "11": {
+        "dir": 3,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 264,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 38,
+          "y": 27,
+          "w": 51,
+          "h": 56
+        },
+        "contentAtlas": {
+          "x": 1259,
+          "y": 291,
+          "w": 51,
+          "h": 56
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -52,
+          "w": 51,
+          "h": 56
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": 5
+        }
+      }
+    },
+    "4": {
+      "0": {
+        "dir": 4,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 36,
+          "y": 22,
+          "w": 35,
+          "h": 59
+        },
+        "contentAtlas": {
+          "x": 36,
+          "y": 374,
+          "w": 35,
+          "h": 59
+        },
+        "worldRect": {
+          "x": -27,
+          "y": -57,
+          "w": 35,
+          "h": 59
+        },
+        "sourceOffset": {
+          "x": -27,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 4,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 22,
+          "w": 33,
+          "h": 59
+        },
+        "contentAtlas": {
+          "x": 148,
+          "y": 374,
+          "w": 33,
+          "h": 59
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -57,
+          "w": 33,
+          "h": 59
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 4,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 39,
+          "y": 18,
+          "w": 32,
+          "h": 63
+        },
+        "contentAtlas": {
+          "x": 261,
+          "y": 370,
+          "w": 32,
+          "h": 63
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -61,
+          "w": 32,
+          "h": 63
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 4,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 40,
+          "y": 14,
+          "w": 33,
+          "h": 67
+        },
+        "contentAtlas": {
+          "x": 373,
+          "y": 366,
+          "w": 33,
+          "h": 67
+        },
+        "worldRect": {
+          "x": -23,
+          "y": -65,
+          "w": 33,
+          "h": 67
+        },
+        "sourceOffset": {
+          "x": -23,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 4,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 41,
+          "y": 10,
+          "w": 34,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 485,
+          "y": 362,
+          "w": 34,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -22,
+          "y": -69,
+          "w": 34,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -22,
+          "y": 3
+        }
+      },
+      "5": {
+        "dir": 4,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 43,
+          "y": 7,
+          "w": 33,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 598,
+          "y": 359,
+          "w": 33,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -20,
+          "y": -72,
+          "w": 33,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -21,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 4,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 3,
+          "w": 30,
+          "h": 80
+        },
+        "contentAtlas": {
+          "x": 710,
+          "y": 355,
+          "w": 30,
+          "h": 80
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -76,
+          "w": 30,
+          "h": 80
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "7": {
+        "dir": 4,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 40,
+          "y": 17,
+          "w": 34,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 817,
+          "y": 369,
+          "w": 34,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -23,
+          "y": -62,
+          "w": 34,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 4,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 29,
+          "y": 33,
+          "w": 39,
+          "h": 48
+        },
+        "contentAtlas": {
+          "x": 917,
+          "y": 385,
+          "w": 39,
+          "h": 48
+        },
+        "worldRect": {
+          "x": -34,
+          "y": -46,
+          "w": 39,
+          "h": 48
+        },
+        "sourceOffset": {
+          "x": -35,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 4,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 25,
+          "y": 30,
+          "w": 44,
+          "h": 51
+        },
+        "contentAtlas": {
+          "x": 1024,
+          "y": 382,
+          "w": 44,
+          "h": 51
+        },
+        "worldRect": {
+          "x": -38,
+          "y": -49,
+          "w": 44,
+          "h": 51
+        },
+        "sourceOffset": {
+          "x": -39,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 4,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 23,
+          "y": 27,
+          "w": 47,
+          "h": 56
+        },
+        "contentAtlas": {
+          "x": 1133,
+          "y": 379,
+          "w": 47,
+          "h": 56
+        },
+        "worldRect": {
+          "x": -40,
+          "y": -52,
+          "w": 47,
+          "h": 56
+        },
+        "sourceOffset": {
+          "x": -42,
+          "y": 7
+        }
+      },
+      "11": {
+        "dir": 4,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 352,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 20,
+          "y": 23,
+          "w": 51,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 1241,
+          "y": 375,
+          "w": 51,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -43,
+          "y": -56,
+          "w": 51,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -46,
+          "y": 12
+        }
+      }
+    },
+    "5": {
+      "0": {
+        "dir": 5,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 19,
+          "y": 17,
+          "w": 56,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 19,
+          "y": 457,
+          "w": 56,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -44,
+          "y": -62,
+          "w": 56,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -44,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 5,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 23,
+          "y": 16,
+          "w": 54,
+          "h": 65
+        },
+        "contentAtlas": {
+          "x": 134,
+          "y": 456,
+          "w": 54,
+          "h": 65
+        },
+        "worldRect": {
+          "x": -40,
+          "y": -63,
+          "w": 54,
+          "h": 65
+        },
+        "sourceOffset": {
+          "x": -40,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 5,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 29,
+          "y": 14,
+          "w": 51,
+          "h": 67
+        },
+        "contentAtlas": {
+          "x": 251,
+          "y": 454,
+          "w": 51,
+          "h": 67
+        },
+        "worldRect": {
+          "x": -34,
+          "y": -65,
+          "w": 51,
+          "h": 67
+        },
+        "sourceOffset": {
+          "x": -34,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 5,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 35,
+          "y": 11,
+          "w": 45,
+          "h": 70
+        },
+        "contentAtlas": {
+          "x": 368,
+          "y": 451,
+          "w": 45,
+          "h": 70
+        },
+        "worldRect": {
+          "x": -28,
+          "y": -68,
+          "w": 45,
+          "h": 70
+        },
+        "sourceOffset": {
+          "x": -28,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 5,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 8,
+          "w": 48,
+          "h": 74
+        },
+        "contentAtlas": {
+          "x": 481,
+          "y": 448,
+          "w": 48,
+          "h": 74
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -71,
+          "w": 48,
+          "h": 74
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 3
+        }
+      },
+      "5": {
+        "dir": 5,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 37,
+          "y": 5,
+          "w": 48,
+          "h": 77
+        },
+        "contentAtlas": {
+          "x": 592,
+          "y": 445,
+          "w": 48,
+          "h": 77
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -74,
+          "w": 48,
+          "h": 77
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 5,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 32,
+          "y": 2,
+          "w": 51,
+          "h": 81
+        },
+        "contentAtlas": {
+          "x": 698,
+          "y": 442,
+          "w": 51,
+          "h": 81
+        },
+        "worldRect": {
+          "x": -31,
+          "y": -77,
+          "w": 51,
+          "h": 81
+        },
+        "sourceOffset": {
+          "x": -31,
+          "y": 5
+        }
+      },
+      "7": {
+        "dir": 5,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 20,
+          "y": 4,
+          "w": 54,
+          "h": 80
+        },
+        "contentAtlas": {
+          "x": 797,
+          "y": 444,
+          "w": 54,
+          "h": 80
+        },
+        "worldRect": {
+          "x": -43,
+          "y": -75,
+          "w": 54,
+          "h": 80
+        },
+        "sourceOffset": {
+          "x": -43,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 5,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 8,
+          "y": 19,
+          "w": 60,
+          "h": 62
+        },
+        "contentAtlas": {
+          "x": 896,
+          "y": 459,
+          "w": 60,
+          "h": 62
+        },
+        "worldRect": {
+          "x": -55,
+          "y": -60,
+          "w": 60,
+          "h": 62
+        },
+        "sourceOffset": {
+          "x": -56,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 5,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 5,
+          "y": 19,
+          "w": 64,
+          "h": 62
+        },
+        "contentAtlas": {
+          "x": 1004,
+          "y": 459,
+          "w": 64,
+          "h": 62
+        },
+        "worldRect": {
+          "x": -58,
+          "y": -60,
+          "w": 64,
+          "h": 62
+        },
+        "sourceOffset": {
+          "x": -61,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 5,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 4,
+          "y": 19,
+          "w": 67,
+          "h": 62
+        },
+        "contentAtlas": {
+          "x": 1114,
+          "y": 459,
+          "w": 67,
+          "h": 62
+        },
+        "worldRect": {
+          "x": -59,
+          "y": -60,
+          "w": 67,
+          "h": 62
+        },
+        "sourceOffset": {
+          "x": -63,
+          "y": 2
+        }
+      },
+      "11": {
+        "dir": 5,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 440,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 2,
+          "y": 17,
+          "w": 71,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 1223,
+          "y": 457,
+          "w": 71,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -61,
+          "y": -62,
+          "w": 71,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -63,
+          "y": 2
+        }
+      }
+    },
+    "6": {
+      "0": {
+        "dir": 6,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 3,
+          "w": 29,
+          "h": 78
+        },
+        "contentAtlas": {
+          "x": 44,
+          "y": 531,
+          "w": 29,
+          "h": 78
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -76,
+          "w": 29,
+          "h": 78
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "1": {
+        "dir": 6,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 4,
+          "w": 30,
+          "h": 77
+        },
+        "contentAtlas": {
+          "x": 155,
+          "y": 532,
+          "w": 30,
+          "h": 77
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -75,
+          "w": 30,
+          "h": 77
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "2": {
+        "dir": 6,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 5,
+          "w": 31,
+          "h": 76
+        },
+        "contentAtlas": {
+          "x": 266,
+          "y": 533,
+          "w": 31,
+          "h": 76
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -74,
+          "w": 31,
+          "h": 76
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "3": {
+        "dir": 6,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 13,
+          "w": 30,
+          "h": 68
+        },
+        "contentAtlas": {
+          "x": 377,
+          "y": 541,
+          "w": 30,
+          "h": 68
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -66,
+          "w": 30,
+          "h": 68
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "4": {
+        "dir": 6,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 1,
+          "w": 30,
+          "h": 81
+        },
+        "contentAtlas": {
+          "x": 488,
+          "y": 529,
+          "w": 30,
+          "h": 81
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -78,
+          "w": 30,
+          "h": 81
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "5": {
+        "dir": 6,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 8,
+          "w": 27,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 599,
+          "y": 536,
+          "w": 27,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -71,
+          "w": 27,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "6": {
+        "dir": 6,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 9,
+          "w": 27,
+          "h": 74
+        },
+        "contentAtlas": {
+          "x": 710,
+          "y": 537,
+          "w": 27,
+          "h": 74
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -70,
+          "w": 27,
+          "h": 74
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 5
+        }
+      },
+      "7": {
+        "dir": 6,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 9,
+          "w": 28,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 821,
+          "y": 537,
+          "w": 28,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -70,
+          "w": 28,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 6,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 7,
+          "w": 27,
+          "h": 74
+        },
+        "contentAtlas": {
+          "x": 932,
+          "y": 535,
+          "w": 27,
+          "h": 74
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -72,
+          "w": 27,
+          "h": 74
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "9": {
+        "dir": 6,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 9,
+          "w": 30,
+          "h": 72
+        },
+        "contentAtlas": {
+          "x": 1043,
+          "y": 537,
+          "w": 30,
+          "h": 72
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -70,
+          "w": 30,
+          "h": 72
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "10": {
+        "dir": 6,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 3,
+          "w": 33,
+          "h": 78
+        },
+        "contentAtlas": {
+          "x": 1154,
+          "y": 531,
+          "w": 33,
+          "h": 78
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -76,
+          "w": 33,
+          "h": 78
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      },
+      "11": {
+        "dir": 6,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 528,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 3,
+          "w": 36,
+          "h": 78
+        },
+        "contentAtlas": {
+          "x": 1265,
+          "y": 531,
+          "w": 36,
+          "h": 78
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -76,
+          "w": 36,
+          "h": 78
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 2
+        }
+      }
+    },
+    "7": {
+      "0": {
+        "dir": 7,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 16,
+          "w": 38,
+          "h": 69
+        },
+        "contentAtlas": {
+          "x": 44,
+          "y": 632,
+          "w": 38,
+          "h": 69
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -63,
+          "w": 38,
+          "h": 69
+        },
+        "sourceOffset": {
+          "x": -20,
+          "y": 6
+        }
+      },
+      "1": {
+        "dir": 7,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 111,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 39,
+          "y": 15,
+          "w": 40,
+          "h": 70
+        },
+        "contentAtlas": {
+          "x": 150,
+          "y": 631,
+          "w": 40,
+          "h": 70
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -64,
+          "w": 40,
+          "h": 70
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 6
+        }
+      },
+      "2": {
+        "dir": 7,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 222,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 32,
+          "y": 12,
+          "w": 41,
+          "h": 73
+        },
+        "contentAtlas": {
+          "x": 254,
+          "y": 628,
+          "w": 41,
+          "h": 73
+        },
+        "worldRect": {
+          "x": -31,
+          "y": -67,
+          "w": 41,
+          "h": 73
+        },
+        "sourceOffset": {
+          "x": -32,
+          "y": 6
+        }
+      },
+      "3": {
+        "dir": 7,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 333,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 25,
+          "y": 11,
+          "w": 44,
+          "h": 70
+        },
+        "contentAtlas": {
+          "x": 358,
+          "y": 627,
+          "w": 44,
+          "h": 70
+        },
+        "worldRect": {
+          "x": -38,
+          "y": -68,
+          "w": 44,
+          "h": 70
+        },
+        "sourceOffset": {
+          "x": -38,
+          "y": 4
+        }
+      },
+      "4": {
+        "dir": 7,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 444,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 22,
+          "y": 8,
+          "w": 47,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 466,
+          "y": 624,
+          "w": 47,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -41,
+          "y": -71,
+          "w": 47,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -42,
+          "y": 4
+        }
+      },
+      "5": {
+        "dir": 7,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 555,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 26,
+          "y": 10,
+          "w": 47,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 581,
+          "y": 626,
+          "w": 47,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -37,
+          "y": -69,
+          "w": 47,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -41,
+          "y": 6
+        }
+      },
+      "6": {
+        "dir": 7,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 666,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 23,
+          "y": 10,
+          "w": 50,
+          "h": 75
+        },
+        "contentAtlas": {
+          "x": 689,
+          "y": 626,
+          "w": 50,
+          "h": 75
+        },
+        "worldRect": {
+          "x": -40,
+          "y": -69,
+          "w": 50,
+          "h": 75
+        },
+        "sourceOffset": {
+          "x": -40,
+          "y": 6
+        }
+      },
+      "7": {
+        "dir": 7,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 777,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 39,
+          "y": 14,
+          "w": 42,
+          "h": 67
+        },
+        "contentAtlas": {
+          "x": 816,
+          "y": 630,
+          "w": 42,
+          "h": 67
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -65,
+          "w": 42,
+          "h": 67
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": 5
+        }
+      },
+      "8": {
+        "dir": 7,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 888,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 20,
+          "w": 62,
+          "h": 64
+        },
+        "contentAtlas": {
+          "x": 932,
+          "y": 636,
+          "w": 62,
+          "h": 64
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -59,
+          "w": 62,
+          "h": 64
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 5
+        }
+      },
+      "9": {
+        "dir": 7,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 999,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 20,
+          "w": 65,
+          "h": 61
+        },
+        "contentAtlas": {
+          "x": 1043,
+          "y": 636,
+          "w": 65,
+          "h": 61
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -59,
+          "w": 65,
+          "h": 61
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 5
+        }
+      },
+      "10": {
+        "dir": 7,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 1110,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 16,
+          "w": 66,
+          "h": 67
+        },
+        "contentAtlas": {
+          "x": 1154,
+          "y": 632,
+          "w": 66,
+          "h": 67
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -63,
+          "w": 66,
+          "h": 67
+        },
+        "sourceOffset": {
+          "x": -19,
+          "y": 4
+        }
+      },
+      "11": {
+        "dir": 7,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 1221,
+          "y": 616,
+          "w": 111,
+          "h": 88
+        },
+        "content": {
+          "x": 44,
+          "y": 14,
+          "w": 66,
+          "h": 71
+        },
+        "contentAtlas": {
+          "x": 1265,
+          "y": 630,
+          "w": 66,
+          "h": 71
+        },
+        "worldRect": {
+          "x": -19,
+          "y": -65,
+          "w": 66,
+          "h": 71
+        },
+        "sourceOffset": {
+          "x": -20,
+          "y": 6
+        }
+      }
+    }
+  },
+  "anim": {}
+}

@@ -1,0 +1,308 @@
+{
+  "$schema": "./skill_manifest.schema.json",
+  "version": "1.1.0",
+  "skills": {
+    "39": {
+      "skillId": "39",
+      "name": "Ice Bolt",
+      "category": "cold",
+      "template": "linear_missile",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 50
+      },
+      "parameters": {
+        "velocity": 12,
+        "range": 50,
+        "hitboxRadius": 22,
+        "aoeRadius": 0
+      },
+      "direction": {
+        "count": 16,
+        "preset": "standard_16"
+      },
+      "layers": [
+        {
+          "layerId": "projectile_main",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/icebolt.png",
+          "cellW": 94,
+          "cellH": 57,
+          "pivotX": 47,
+          "pivotY": 28,
+          "frames": 6,
+          "dirs": 16,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "45": {
+      "skillId": "45",
+      "name": "Ice Blast",
+      "category": "cold",
+      "template": "linear_missile",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 50
+      },
+      "parameters": {
+        "velocity": 12,
+        "range": 50,
+        "hitboxRadius": 22,
+        "aoeRadius": 0
+      },
+      "direction": {
+        "count": 16,
+        "preset": "standard_16"
+      },
+      "layers": [
+        {
+          "layerId": "projectile_main",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/iceblast.png",
+          "cellW": 171,
+          "cellH": 96,
+          "pivotX": 85,
+          "pivotY": 48,
+          "frames": 5,
+          "dirs": 16,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_burst",
+          "role": "impact_burst",
+          "atlasFile": "assets/atlases/freeze_explode_auth.png",
+          "cellW": 145,
+          "cellH": 142,
+          "pivotX": 76,
+          "pivotY": 116,
+          "frames": 15,
+          "dirs": 1,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "44": {
+      "skillId": "44",
+      "name": "Frost Nova",
+      "category": "cold",
+      "template": "radial_nova",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 14
+      },
+      "parameters": {
+        "velocity": 16,
+        "range": 14,
+        "hitboxRadius": 28,
+        "maxRadius": 224
+      },
+      "direction": {
+        "count": 16,
+        "preset": "sequential_16"
+      },
+      "layers": [
+        {
+          "layerId": "wave_body",
+          "role": "wave_body",
+          "atlasFile": "assets/atlases/frost_nova.png",
+          "cellW": 100,
+          "cellH": 70,
+          "pivotX": 50,
+          "pivotY": 35,
+          "frames": 14,
+          "dirs": 16,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "55": {
+      "skillId": "55",
+      "name": "Glacial Spike",
+      "category": "cold",
+      "template": "linear_missile",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 45
+      },
+      "parameters": {
+        "velocity": 16,
+        "range": 40,
+        "hitboxRadius": 24,
+        "aoeRadius": 70
+      },
+      "direction": {
+        "count": 16,
+        "preset": "standard_16"
+      },
+      "layers": [
+        {
+          "layerId": "projectile_main",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/glacialspike_auth.png",
+          "cellW": 175,
+          "cellH": 108,
+          "pivotX": 87,
+          "pivotY": 49,
+          "frames": 6,
+          "dirs": 16,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_burst",
+          "role": "impact_burst",
+          "atlasFile": "assets/atlases/freeze_explode_auth.png",
+          "cellW": 145,
+          "cellH": 142,
+          "pivotX": 76,
+          "pivotY": 116,
+          "frames": 15,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_ejecta",
+          "role": "impact_ejecta",
+          "atlasFile": "assets/atlases/freeze_explode_ejecta_auth.png",
+          "cellW": 251,
+          "cellH": 150,
+          "pivotX": 128,
+          "pivotY": 72,
+          "frames": 15,
+          "dirs": 8,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "59": {
+      "skillId": "59",
+      "name": "Blizzard",
+      "category": "cold",
+      "template": "area_barrage",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 90
+      },
+      "parameters": {
+        "radius": 160,
+        "shardInterval": 5,
+        "hitRadius": 40
+      },
+      "layers": [
+        {
+          "layerId": "falling_shard_pillar",
+          "role": "falling_shard_pillar",
+          "atlasFile": "assets/atlases/blizzard_shard_main_auth.png",
+          "cellW": 99,
+          "cellH": 155,
+          "pivotX": 72,
+          "pivotY": 153,
+          "frames": 8,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "falling_shard_round",
+          "role": "falling_shard_round",
+          "atlasFile": "assets/atlases/blizzard_shard_v1_auth.png",
+          "cellW": 58,
+          "cellH": 200,
+          "pivotX": 51,
+          "pivotY": 186,
+          "frames": 6,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_burst_v1",
+          "role": "impact_burst",
+          "atlasFile": "assets/atlases/blizzard_impact_v1_auth.png",
+          "cellW": 115,
+          "cellH": 89,
+          "pivotX": 55,
+          "pivotY": 80,
+          "frames": 6,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_burst_v2",
+          "role": "impact_burst_v2",
+          "atlasFile": "assets/atlases/blizzard_impact_v2_auth.png",
+          "cellW": 119,
+          "cellH": 87,
+          "pivotX": 56,
+          "pivotY": 80,
+          "frames": 6,
+          "dirs": 1,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "64": {
+      "skillId": "64",
+      "name": "Frozen Orb",
+      "category": "cold",
+      "template": "carrier_orb",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 36
+      },
+      "parameters": {
+        "velocity": 9,
+        "range": 36,
+        "sprayRate": 2,
+        "boltVelocity": 14,
+        "hitboxRadius": 26
+      },
+      "direction": {
+        "count": 16,
+        "preset": "standard_16"
+      },
+      "layers": [
+        {
+          "layerId": "orb_body",
+          "role": "orb_body",
+          "atlasFile": "assets/atlases/iceorb.png",
+          "cellW": 56,
+          "cellH": 55,
+          "pivotX": 28,
+          "pivotY": 28,
+          "frames": 16,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "spray_bolt",
+          "role": "spray_submissile",
+          "atlasFile": "assets/atlases/icebolt.png",
+          "cellW": 94,
+          "cellH": 57,
+          "pivotX": 47,
+          "pivotY": 28,
+          "frames": 6,
+          "dirs": 16,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "final_burst",
+          "role": "final_burst",
+          "atlasFile": "assets/atlases/iceorb_explode.png",
+          "cellW": 232,
+          "cellH": 193,
+          "pivotX": 116,
+          "pivotY": 96,
+          "frames": 17,
+          "dirs": 1,
+          "blendMode": "lighter"
+        }
+      ]
+    }
+  }
+}

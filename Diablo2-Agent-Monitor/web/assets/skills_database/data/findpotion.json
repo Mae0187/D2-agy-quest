@@ -1,0 +1,131 @@
+{
+  "id": "findpotion",
+  "name": "Find Potion",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "bar",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "find potion",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is bar"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "barbarian",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 1,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 10,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "skillname131",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    },
+    "name": {
+      "value": "Find Potion",
+      "source": "string.tbl skillname131 (key from SkillDesc.txt str name)"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 2,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 8,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": {
+      "value": "SC",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SC",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 69,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "0",
+        "description": "min chance to find heart",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "100",
+        "description": "max chance to find heart",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "30",
+        "description": "Chance of finding a mana potion",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 4,
+        "value": "10",
+        "description": "Chance of finding rejuv",
+        "source": "Skills.txt Param4",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  }
+}

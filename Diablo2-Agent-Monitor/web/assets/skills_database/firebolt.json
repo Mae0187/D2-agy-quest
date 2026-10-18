@@ -1,0 +1,38 @@
+{
+  "id": "firebolt",
+  "name": "Fire Bolt",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "FireBolt",
+    "celFile": "FireBolt",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 9,
+    "max": 15,
+    "level": 1,
+    "formula": "6 + 3x7 + 4x8 + 8x4",
+    "maxFormula": "12 + 3x7 + 6x8 + 10x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 5
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/FireBolt.png",
+    "numbers": "assets/skills/data/firebolt.json（Skills.txt / Missiles.txt）"
+  }
+}

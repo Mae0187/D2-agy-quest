@@ -1,0 +1,952 @@
+[
+  {
+    "class": "amazon",
+    "skill_id": "6",
+    "name_zh": "魔法箭",
+    "name_en": "Magic Arrow",
+    "clean_name": "magic_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/magicarrow01.jpg",
+    "size_str": "96 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "7",
+    "name_zh": "火箭",
+    "name_en": "Fire Arrow",
+    "clean_name": "fire_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/firearrow01.jpg",
+    "size_str": "86 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "11",
+    "name_zh": "冰箭",
+    "name_en": "Cold Arrow",
+    "clean_name": "cold_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/coldarrow01.jpg",
+    "size_str": "95 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "12",
+    "name_zh": "多重箭",
+    "name_en": "Multiple Shot",
+    "clean_name": "multiple_shot",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/multishot01.jpg",
+    "size_str": "91 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "16",
+    "name_zh": "爆裂箭",
+    "name_en": "Exploding Arrow",
+    "clean_name": "exploding_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/exploadingarrow01.jpg",
+    "size_str": "97 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "21",
+    "name_zh": "急凍箭",
+    "name_en": "Ice Arrow",
+    "clean_name": "ice_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/icearrow01.jpg",
+    "size_str": "92 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "22",
+    "name_zh": "導引箭",
+    "name_en": "Guided Arrow",
+    "clean_name": "guided_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/guidedarrow01.jpg",
+    "size_str": "92 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "27",
+    "name_zh": "燃燒箭",
+    "name_en": "Immolation Arrow",
+    "clean_name": "immolation_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/immolationarrow01.jpg",
+    "size_str": "96 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "26",
+    "name_zh": "掃射",
+    "name_en": "Strafe",
+    "clean_name": "strafe",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/strafe01.jpg",
+    "size_str": "100 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "31",
+    "name_zh": "凍結箭",
+    "name_en": "Freezing Arrow",
+    "clean_name": "freezing_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/freezingarrow01.jpg",
+    "size_str": "93 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "31",
+    "name_zh": "凍結箭",
+    "name_en": "Freezing Arrow",
+    "clean_name": "freezing_arrow",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/freezingarrow03.jpg",
+    "size_str": "97 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "amazon",
+    "skill_id": "20",
+    "name_zh": "閃電球/閃電標槍",
+    "name_en": "Lightning Bolt",
+    "clean_name": "lightning_bolt",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/lightningbolt01.jpg",
+    "size_str": "118 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "24",
+    "name_zh": "充能一擊",
+    "name_en": "Charged Strike",
+    "clean_name": "charged_strike",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/chargedstrike01.jpg",
+    "size_str": "81 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "25",
+    "name_zh": "瘟疫標槍",
+    "name_en": "Plague Javelin",
+    "clean_name": "plague_javelin",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/plaguejavelin01.jpg",
+    "size_str": "113 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "34",
+    "name_zh": "閃電一擊",
+    "name_en": "Lightning Strike",
+    "clean_name": "lightning_strike",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/lightningstrike01.jpg",
+    "size_str": "86 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "35",
+    "name_zh": "閃電之怒",
+    "name_en": "Lightning Fury",
+    "clean_name": "lightning_fury",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/lightningfury01.jpg",
+    "size_str": "103 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "amazon",
+    "skill_id": "32",
+    "name_zh": "女武神",
+    "name_en": "Valkyrie",
+    "clean_name": "valkyrie",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/valkyrie01.jpg",
+    "size_str": "90 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "254",
+    "name_zh": "虎擊",
+    "name_en": "Tiger Strike",
+    "clean_name": "tiger_strike",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/tigerstrike01.jpg",
+    "size_str": "129 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "255",
+    "name_zh": "龍爪/飛踢",
+    "name_en": "Dragon Talon",
+    "clean_name": "dragon_talon",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/dragontalon01.jpg",
+    "size_str": "41 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "259",
+    "name_zh": "焰拳",
+    "name_en": "Fists of Fire",
+    "clean_name": "fists_of_fire",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/fistsoffire01.jpg",
+    "size_str": "74 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "265",
+    "name_zh": "眼鏡蛇擊",
+    "name_en": "Cobra Strike",
+    "clean_name": "cobra_strike",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/cobrastrike01.jpg",
+    "size_str": "84 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "270",
+    "name_zh": "神龍擺尾",
+    "name_en": "Dragon Tail",
+    "clean_name": "dragon_tail",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/dragontail01.jpg",
+    "size_str": "81 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "269",
+    "name_zh": "雷電爪",
+    "name_en": "Claws of Thunder",
+    "clean_name": "claws_of_thunder",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/clawsofthunder01.jpg",
+    "size_str": "70 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "269",
+    "name_zh": "雷電爪",
+    "name_en": "Claws of Thunder",
+    "clean_name": "claws_of_thunder",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/clawsofthunder03.jpg",
+    "size_str": "89 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "assassin",
+    "skill_id": "274",
+    "name_zh": "寒冰刃",
+    "name_en": "Blades of Ice",
+    "clean_name": "blades_of_ice",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bladesofice01.jpg",
+    "size_str": "72 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "274",
+    "name_zh": "寒冰刃",
+    "name_en": "Blades of Ice",
+    "clean_name": "blades_of_ice",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bladesofice03.jpg",
+    "size_str": "89 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "assassin",
+    "skill_id": "257",
+    "name_zh": "刃之守衛",
+    "name_en": "Blade Sentinel",
+    "clean_name": "blade_sentinel",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bladesentinel01.jpg",
+    "size_str": "133 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "261",
+    "name_zh": "雷電網陷阱",
+    "name_en": "Charged Bolt Sentry",
+    "clean_name": "charged_bolt_sentry",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/chargedboltsentry01.jpg",
+    "size_str": "95 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "262",
+    "name_zh": "火之復甦陷阱",
+    "name_en": "Wake of Fire Sentry",
+    "clean_name": "wake_of_fire_sentry",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/wakeoffire01.jpg",
+    "size_str": "131 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "266",
+    "name_zh": "刃之狂怒",
+    "name_en": "Blade Fury",
+    "clean_name": "blade_fury",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bladefury01.jpg",
+    "size_str": "125 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "271",
+    "name_zh": "雷光守衛陷阱",
+    "name_en": "Lightning Sentry",
+    "clean_name": "lightning_sentry",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/lightningsentry01.jpg",
+    "size_str": "121 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "276",
+    "name_zh": "亡者守衛陷阱",
+    "name_en": "Death Sentry",
+    "clean_name": "death_sentry",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/deathsentry01.jpg",
+    "size_str": "78 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "assassin",
+    "skill_id": "277",
+    "name_zh": "刀刃之盾",
+    "name_en": "Blade Shield",
+    "clean_name": "blade_shield",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bladeshield01.jpg",
+    "size_str": "85 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "143",
+    "name_zh": "跳躍攻擊",
+    "name_en": "Leap Attack",
+    "clean_name": "leap_attack",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/leap01.jpg",
+    "size_str": "93 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "143",
+    "name_zh": "跳躍攻擊",
+    "name_en": "Leap Attack",
+    "clean_name": "leap_attack",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/leap03.jpg",
+    "size_str": "52 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "140",
+    "name_zh": "雙重投擲",
+    "name_en": "Double Throw",
+    "clean_name": "double_throw",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/doublethrow01.jpg",
+    "size_str": "87 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "143",
+    "name_zh": "跳躍攻擊",
+    "name_en": "Leap Attack",
+    "clean_name": "leap_attack",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/leapattack01.jpg",
+    "size_str": "66 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "151",
+    "name_zh": "旋風斬",
+    "name_en": "Whirlwind",
+    "clean_name": "whirlwind",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/whirlwind01.jpg",
+    "size_str": "72 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "152",
+    "name_zh": "狂戰士",
+    "name_en": "Berserk",
+    "clean_name": "berserk",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/berzerk01.jpg",
+    "size_str": "81 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "150",
+    "name_zh": "殘酷庇護所",
+    "name_en": "Grim Ward",
+    "clean_name": "grim_ward",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/grimward01.jpg",
+    "size_str": "94 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "barbarian",
+    "skill_id": "154",
+    "name_zh": "戰嚎/震撼戰嚎",
+    "name_en": "War Cry",
+    "clean_name": "war_cry",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/warcry01.jpg",
+    "size_str": "65 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "225",
+    "name_zh": "火風暴",
+    "name_en": "Firestorm",
+    "clean_name": "firestorm",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/firestorm01.jpg",
+    "size_str": "138 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "229",
+    "name_zh": "熔岩巨石",
+    "name_en": "Molten Boulder",
+    "clean_name": "molten_boulder",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/moltenboulder01.jpg",
+    "size_str": "55 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "230",
+    "name_zh": "極地風暴",
+    "name_en": "Arctic Blast",
+    "clean_name": "arctic_blast",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/arcticblast01.jpg",
+    "size_str": "111 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "230",
+    "name_zh": "極地風暴",
+    "name_en": "Arctic Blast",
+    "clean_name": "arctic_blast",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/arcticblast02.jpg",
+    "size_str": "72 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "druid",
+    "skill_id": "235",
+    "name_zh": "颶風裝甲",
+    "name_en": "Cyclone Armor",
+    "clean_name": "cyclone_armor",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/cyclonearmor01.jpg",
+    "size_str": "114 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "240",
+    "name_zh": "小旋風",
+    "name_en": "Twister",
+    "clean_name": "twister",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/twister01.jpg",
+    "size_str": "93 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "244",
+    "name_zh": "火山",
+    "name_en": "Volcano",
+    "clean_name": "volcano",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/volcano01.jpg",
+    "size_str": "110 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "249",
+    "name_zh": "毀天滅地",
+    "name_en": "Armageddon",
+    "clean_name": "armageddon",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/armageddon01.jpg",
+    "size_str": "105 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "233",
+    "name_zh": "撞擊/重擊",
+    "name_en": "Maul",
+    "clean_name": "maul",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/maul01.jpg",
+    "size_str": "79 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "238",
+    "name_zh": "狂犬病",
+    "name_en": "Rabies",
+    "clean_name": "rabies",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/rabies01.jpg",
+    "size_str": "86 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "221",
+    "name_zh": "烏鴉",
+    "name_en": "Raven",
+    "clean_name": "raven",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/ravens01.jpg",
+    "size_str": "137 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "226",
+    "name_zh": "橡木智者",
+    "name_en": "Oak Sage",
+    "clean_name": "oak_sage",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/oaksage01.jpg",
+    "size_str": "101 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "227",
+    "name_zh": "召喚鬼狼",
+    "name_en": "Summon Spirit Wolf",
+    "clean_name": "summon_spirit_wolf",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/spiritwolf01.jpg",
+    "size_str": "126 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "druid",
+    "skill_id": "247",
+    "name_zh": "召喚灰熊",
+    "name_en": "Summon Grizzly",
+    "clean_name": "summon_grizzly",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/grizzlybear01.jpg",
+    "size_str": "111 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "67",
+    "name_zh": "牙",
+    "name_en": "Teeth",
+    "clean_name": "teeth",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/teeth01.jpg",
+    "size_str": "88 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "68",
+    "name_zh": "白骨裝甲",
+    "name_en": "Bone Armor",
+    "clean_name": "bone_armor",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bonearmor01.jpg",
+    "size_str": "92 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "73",
+    "name_zh": "劇毒匕首",
+    "name_en": "Poison Dagger",
+    "clean_name": "poison_dagger",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/poisondagger01.jpg",
+    "size_str": "89 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "74",
+    "name_zh": "屍體爆炸",
+    "name_en": "Corpse Explosion",
+    "clean_name": "corpse_explosion",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/corpseexplosion01.jpg",
+    "size_str": "103 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "74",
+    "name_zh": "屍體爆炸",
+    "name_en": "Corpse Explosion",
+    "clean_name": "corpse_explosion",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/corpseexplosion03.jpg",
+    "size_str": "102 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "92",
+    "name_zh": "劇毒新星",
+    "name_en": "Poison Nova",
+    "clean_name": "poison_nova",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/poisonnova01.jpg",
+    "size_str": "106 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "93",
+    "name_zh": "骨魂",
+    "name_en": "Bone Spirit",
+    "clean_name": "bone_spirit",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bonespirit01.jpg",
+    "size_str": "89 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "necromancer",
+    "skill_id": "93",
+    "name_zh": "骨魂",
+    "name_en": "Bone Spirit",
+    "clean_name": "bone_spirit",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/bonespirit03.jpg",
+    "size_str": "98 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "paladin",
+    "skill_id": "101",
+    "name_zh": "聖光彈",
+    "name_en": "Holy Bolt",
+    "clean_name": "holy_bolt",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/holybolt01.jpg",
+    "size_str": "89 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "112",
+    "name_zh": "祝聖之槌",
+    "name_en": "Blessed Hammer",
+    "clean_name": "blessed_hammer",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/blessedhammer01.jpg",
+    "size_str": "98 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "117",
+    "name_zh": "神聖之盾",
+    "name_en": "Holy Shield",
+    "clean_name": "holy_shield",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/holyshield01.jpg",
+    "size_str": "100 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "121",
+    "name_zh": "天堂之拳",
+    "name_en": "Fist of the Heavens",
+    "clean_name": "fist_of_the_heavens",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/fistofheavens01.jpg",
+    "size_str": "78 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "98",
+    "name_zh": "力量靈氣",
+    "name_en": "Might",
+    "clean_name": "might",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/might01.jpg",
+    "size_str": "83 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "102",
+    "name_zh": "神聖火焰靈氣",
+    "name_en": "Holy Fire",
+    "clean_name": "holy_fire",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/holyfire01.jpg",
+    "size_str": "84 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "103",
+    "name_zh": "荊棘靈氣",
+    "name_en": "Thorns",
+    "clean_name": "thorns",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/thorns01.jpg",
+    "size_str": "77 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "108",
+    "name_zh": "精準祝福靈氣",
+    "name_en": "Blessed Aim",
+    "clean_name": "blessed_aim",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/blessedaim01.jpg",
+    "size_str": "47 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "113",
+    "name_zh": "專注靈氣",
+    "name_en": "Concentration",
+    "clean_name": "concentration",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/concentration01.jpg",
+    "size_str": "92 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "114",
+    "name_zh": "神聖冰凍靈氣",
+    "name_en": "Holy Freeze",
+    "clean_name": "holy_freeze",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/holyfreeze01.jpg",
+    "size_str": "63 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "118",
+    "name_zh": "神聖衝擊靈氣",
+    "name_en": "Holy Shock",
+    "clean_name": "holy_shock",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/holyshock01.jpg",
+    "size_str": "90 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "119",
+    "name_zh": "庇護所靈氣",
+    "name_en": "Sanctuary",
+    "clean_name": "sanctuary",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/sanctuary01.jpg",
+    "size_str": "46 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "119",
+    "name_zh": "庇護所靈氣",
+    "name_en": "Sanctuary",
+    "clean_name": "sanctuary",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/sanctuary03.jpg",
+    "size_str": "46 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "paladin",
+    "skill_id": "122",
+    "name_zh": "狂熱靈氣",
+    "name_en": "Fanaticism",
+    "clean_name": "fanaticism",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/fanaticism01.jpg",
+    "size_str": "93 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "paladin",
+    "skill_id": "123",
+    "name_zh": "審判/信念靈氣",
+    "name_en": "Conviction",
+    "clean_name": "conviction",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/conviction01.jpg",
+    "size_str": "88 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "44",
+    "name_zh": "冰霜新星",
+    "name_en": "Frost Nova",
+    "clean_name": "frost_nova",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/frostnova01.jpg",
+    "size_str": "82 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "45",
+    "name_zh": "冰風暴",
+    "name_en": "Ice Blast",
+    "clean_name": "ice_blast",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/iceblast01.jpg",
+    "size_str": "96 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "55",
+    "name_zh": "冰川之刺",
+    "name_en": "Glacial Spike",
+    "clean_name": "glacial_spike",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/glacierspike01.jpg",
+    "size_str": "53 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "59",
+    "name_zh": "暴風雪",
+    "name_en": "Blizzard",
+    "clean_name": "blizzard",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/blizzard01.jpg",
+    "size_str": "117 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "64",
+    "name_zh": "冰封球",
+    "name_en": "Frozen Orb",
+    "clean_name": "frozen_orb",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/frozenorb01.jpg",
+    "size_str": "70 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "36",
+    "name_zh": "火彈",
+    "name_en": "Fire Bolt",
+    "clean_name": "fire_bolt",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/firebolt02.jpg",
+    "size_str": "104 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "41",
+    "name_zh": "地獄之火",
+    "name_en": "Inferno",
+    "clean_name": "inferno",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/inferno01.jpg",
+    "size_str": "97 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "47",
+    "name_zh": "火球",
+    "name_en": "Fire Ball",
+    "clean_name": "fire_ball",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/fireball01.jpg",
+    "size_str": "61 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "51",
+    "name_zh": "火牆",
+    "name_en": "Fire Wall",
+    "clean_name": "fire_wall",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/firewall01.jpg",
+    "size_str": "98 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "56",
+    "name_zh": "隕石",
+    "name_en": "Meteor",
+    "clean_name": "meteor",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/meteor01.jpg",
+    "size_str": "67 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "56",
+    "name_zh": "隕石",
+    "name_en": "Meteor",
+    "clean_name": "meteor",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/meteor03.jpg",
+    "size_str": "78 KB ",
+    "shot_index": 2
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "62",
+    "name_zh": "九頭蛇",
+    "name_en": "Hydra",
+    "clean_name": "hydra",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/hydra01.jpg",
+    "size_str": "88 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "38",
+    "name_zh": "充能彈",
+    "name_en": "Charged Bolt",
+    "clean_name": "charged_bolt",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/chargedbolt02.jpg",
+    "size_str": "116 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "53",
+    "name_zh": "連鎖閃電",
+    "name_en": "Chain Lightning",
+    "clean_name": "chain_lightning",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/lightning01.jpg",
+    "size_str": "69 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "48",
+    "name_zh": "新星",
+    "name_en": "Nova",
+    "clean_name": "nova",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/nova01.jpg",
+    "size_str": "102 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "53",
+    "name_zh": "連鎖閃電",
+    "name_en": "Chain Lightning",
+    "clean_name": "chain_lightning",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/chainlightning01.jpg",
+    "size_str": "80 KB ",
+    "shot_index": 1
+  },
+  {
+    "class": "sorceress",
+    "skill_id": "57",
+    "name_zh": "雷暴",
+    "name_en": "Thunder Storm",
+    "clean_name": "thunder_storm",
+    "url": "https://classic.battle.net/images/battle/diablo2exp/images/skills/thunderstorm01.jpg",
+    "size_str": "102 KB ",
+    "shot_index": 1
+  }
+]

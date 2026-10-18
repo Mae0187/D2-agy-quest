@@ -1,0 +1,1062 @@
+[
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "36",
+    "name_zh": "火彈",
+    "name_en": "Fire Bolt",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "射出一發小型直射火球"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "41",
+    "name_zh": "地獄之火",
+    "name_en": "Inferno",
+    "mode": "SQ",
+    "anchor": "第五類：持續噴流",
+    "desc": "持續噴射出一道綿延不絕的火舌火柱"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "47",
+    "name_zh": "火球",
+    "name_en": "Fire Ball",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "發射巨大火球並在目標點產生範圍爆炸"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "51",
+    "name_zh": "火牆",
+    "name_en": "Fire Wall",
+    "mode": "SC",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "在目標地表水平面召喚一道阻隔烈焰火牆"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "56",
+    "name_zh": "隕石",
+    "name_en": "Meteor",
+    "mode": "SC",
+    "anchor": "第四類：天降打擊",
+    "desc": "天頂召喚燃燒隕石轟擊地表並留下火海殘留"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "62",
+    "name_zh": "九頭蛇",
+    "name_en": "Hydra",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "在地表召喚三頭火蛇固定砲台，持續噴吐火彈"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "38",
+    "name_zh": "充能彈",
+    "name_en": "Charged Bolt",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "向前呈波浪抖動散射多道微型閃電火花"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "48",
+    "name_zh": "新星",
+    "name_en": "Nova",
+    "mode": "SC",
+    "anchor": "第二類：地表水平面環形波",
+    "desc": "以施法者為中心向外貼地爆發一圈環形閃電環"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "53",
+    "name_zh": "連鎖閃電",
+    "name_en": "Chain Lightning",
+    "mode": "SQ",
+    "anchor": "第七類：幾何軌道/追蹤",
+    "desc": "閃電弧在敵人與敵人之間多次自動折射彈跳"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "57",
+    "name_zh": "雷暴",
+    "name_en": "Thunder Storm",
+    "mode": "SC",
+    "anchor": "第八類：身軀護甲/天降打擊",
+    "desc": "身軀環繞雷雲，週期性引天雷劈向周圍敵人"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "44",
+    "name_zh": "冰霜新星",
+    "name_en": "Frost Nova",
+    "mode": "SC",
+    "anchor": "第二類：地表水平面環形波",
+    "desc": "以腳底為中心貼地擴散 2:1 扁平寒冰衝擊波"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "45",
+    "name_zh": "冰風暴",
+    "name_en": "Ice Blast",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "發射高傷害冰彈完全凍結命中目標"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "55",
+    "name_zh": "冰川之刺",
+    "name_en": "Glacial Spike",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "巨大冰錐呼嘯而出，命中範圍群體急凍"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "59",
+    "name_zh": "暴風雪",
+    "name_en": "Blizzard",
+    "mode": "SC",
+    "anchor": "第四類：天降打擊",
+    "desc": "在指定區域上空持續降下大片暴風寒冰晶體"
+  },
+  {
+    "class_zh": "魔法使",
+    "class_en": "sorceress",
+    "id": "64",
+    "name_zh": "冰封球",
+    "name_en": "Frozen Orb",
+    "mode": "SC",
+    "anchor": "第一類/第七類：軌道投射",
+    "desc": "緩慢旋轉前進的冰球，沿途瘋狂向外散射密集冰彈"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "133",
+    "name_zh": "雙重打擊",
+    "name_en": "Double Swing",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "雙持武器時左右開弓快速連續揮擊兩刀"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "140",
+    "name_zh": "雙重投擲",
+    "name_en": "Double Throw",
+    "mode": "SQ",
+    "anchor": "第一類：直射投射物",
+    "desc": "雙手各持投擲武器同時朝目標擲出"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "143",
+    "name_zh": "跳躍攻擊",
+    "name_en": "Leap Attack",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰跳躍物理",
+    "desc": "騰空暴起撲向遠處指定敵人，從空中向下重劈造成毀滅打擊"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "151",
+    "name_zh": "旋風斬",
+    "name_en": "Whirlwind",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰打擊/旋轉序列",
+    "desc": "野蠻人最經典招牌！旋轉舞步旋風般穿梭於敵陣，多段持續斬擊"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "152",
+    "name_zh": "狂戰士",
+    "name_en": "Berserk",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "將所有防禦化為零，灌注全身力量造成純魔法破甲狂暴一擊"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "154",
+    "name_zh": "戰嚎/震撼戰嚎",
+    "name_en": "War Cry",
+    "mode": "SC",
+    "anchor": "第二類：地表水平面環形波",
+    "desc": "以肉身為中心震出衝擊音波，對範圍內敵人造成實體傷害與群體暈眩"
+  },
+  {
+    "class_zh": "野蠻人",
+    "class_en": "barbarian",
+    "id": "150",
+    "name_zh": "殘酷庇護所",
+    "name_en": "Grim Ward",
+    "mode": "SC",
+    "anchor": "第十類：地表屍體互動",
+    "desc": "將地表屍體做成骨頭圖騰稻草人，驚嚇驅逐周圍所有怪物"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "101",
+    "name_zh": "聖光彈",
+    "name_en": "Holy Bolt",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "發射聖光光球，傷害不死生物或治療受創隊友"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "106",
+    "name_zh": "熱誠/白熱",
+    "name_en": "Zeal",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "化為幻影以極高攻速連續斬擊身旁敵人多達 5 次"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "112",
+    "name_zh": "祝聖之槌",
+    "name_en": "Blessed Hammer",
+    "mode": "SC",
+    "anchor": "第七類：幾何軌道/自體迴旋",
+    "desc": "自施法者身旁拋出旋轉發光神聖之槌，呈阿基米德螺旋向外飛散"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "117",
+    "name_zh": "神聖之盾",
+    "name_en": "Holy Shield",
+    "mode": "SC",
+    "anchor": "第八類：身軀護甲與光效",
+    "desc": "盾牌散發神聖光輝，大幅提升防禦力、格擋率與重擊傷害"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "121",
+    "name_zh": "天堂之拳",
+    "name_en": "Fist of the Heavens",
+    "mode": "SC",
+    "anchor": "第四類/第一類：天降打擊",
+    "desc": "天空降下一道耀眼神聖雷霆直劈目標，隨後爆散成全方位聖光彈"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "98",
+    "name_zh": "力量靈氣",
+    "name_en": "Might",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底腳環金色靈氣，提升自身與隊友物理攻擊力"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "102",
+    "name_zh": "神聖火焰靈氣",
+    "name_en": "Holy Fire",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底燃燒烈火靈氣，週期性對周圍所有敵人造成火傷"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "103",
+    "name_zh": "荊棘靈氣",
+    "name_en": "Thorns",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底荊棘尖刺靈氣，反彈極高比例之近戰傷害給攻擊者"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "108",
+    "name_zh": "精準祝福靈氣",
+    "name_en": "Blessed Aim",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底齒輪符文靈氣，大幅提高命中率"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "113",
+    "name_zh": "專注靈氣",
+    "name_en": "Concentration",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底旋轉金色符文環，大幅提升攻擊力並降低攻擊中斷機率"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "114",
+    "name_zh": "神聖冰凍靈氣",
+    "name_en": "Holy Freeze",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底深藍雪花冰環，週期性造成冰傷並強行緩速周圍敵人"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "118",
+    "name_zh": "神聖衝擊靈氣",
+    "name_en": "Holy Shock",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底高壓電弧激盪靈氣，週期性引天雷轟擊周圍敵人"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "119",
+    "name_zh": "庇護所靈氣",
+    "name_en": "Sanctuary",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底金白聖光波紋，擊退周圍不死生物並無視其抗性造成重創"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "122",
+    "name_zh": "狂熱靈氣",
+    "name_en": "Fanaticism",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底血紅旋轉烈風靈氣，極限提升攻速、傷害與命中率"
+  },
+  {
+    "class_zh": "聖騎士",
+    "class_en": "paladin",
+    "id": "123",
+    "name_zh": "審判/信念靈氣",
+    "name_en": "Conviction",
+    "mode": "無 (被動/靈氣)",
+    "anchor": "第六類：地表前後雙層靈氣",
+    "desc": "腳底綠色逆向波紋靈氣，大幅粉碎周圍敵人防禦與元素抗性"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "221",
+    "name_zh": "烏鴉",
+    "name_en": "Raven",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚烏鴉盤旋於空中啄擊敵人並附帶致盲"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "222",
+    "name_zh": "劇毒藤蔓",
+    "name_en": "Plague Poppy",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚鑽地藤蔓在地面散佈毒路毒殺經過的怪物"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "226",
+    "name_zh": "橡木智者",
+    "name_en": "Oak Sage",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚漂浮的自然精靈，以靈氣大幅倍增全體生命上限"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "227",
+    "name_zh": "召喚鬼狼",
+    "name_en": "Summon Spirit Wolf",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚多達 5 隻能瞬間傳送咬擊敵人的幽靈狼"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "237",
+    "name_zh": "召喚狂狼/兇狼",
+    "name_en": "Summon Fenris",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚多達 3 隻兇狠撕咬敵人的狂暴狂狼，可吞噬屍體狂暴化"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "247",
+    "name_zh": "召喚灰熊",
+    "name_en": "Summon Grizzly",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚一隻體型巨大、血量極高、攻擊自帶擊退的灰熊盟友"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "223",
+    "name_zh": "狼人變化",
+    "name_en": "Wearwolf",
+    "mode": "SC",
+    "anchor": "變形型態切換",
+    "desc": "變身為迅捷靈敏的狼人，大幅增加攻速、命中與生命"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "228",
+    "name_zh": "熊人變化",
+    "name_en": "Wearbear",
+    "mode": "SC",
+    "anchor": "變形型態切換",
+    "desc": "變身為體型龐大、威猛無比的狂暴熊人，防禦與破壞力暴增"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "233",
+    "name_zh": "撞擊/重擊",
+    "name_en": "Maul",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "熊人專用！巨大熊掌拍擊敵人，疊加提高傷害與暈眩秒數"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "238",
+    "name_zh": "狂犬病",
+    "name_en": "Rabies",
+    "mode": "S3",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "狼人專用！將致命毒素咬入敵人體內，並在怪物群間傳染擴散"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "239",
+    "name_zh": "烈焰爪",
+    "name_en": "Fire Claws",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "變形型態近戰揮爪時附加極高額火焰爆發傷害"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "242",
+    "name_zh": "飢餓",
+    "name_en": "Hunger",
+    "mode": "S3",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "變形型態快速撕咬，犧牲部分攻擊力大幅偷取生命與法力"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "243",
+    "name_zh": "震波",
+    "name_en": "Shock Wave",
+    "mode": "SC",
+    "anchor": "第二類：地表水平面環形波",
+    "desc": "熊人專用！雙掌重擊地表向前方震出半圓形震波，大範圍群體擊暈"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "248",
+    "name_zh": "狂怒",
+    "name_en": "Fury",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "狼人最頂級大招！以肉眼無法捕捉的高速連續撕咬 5 次"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "225",
+    "name_zh": "火風暴",
+    "name_en": "Firestorm",
+    "mode": "SC",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "在地表召喚三道蛇行蜿蜒翻騰的地火游動燃燒"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "229",
+    "name_zh": "熔岩巨石",
+    "name_en": "Molten Boulder",
+    "mode": "SC",
+    "anchor": "第一類/第三類：地表滾動投射",
+    "desc": "凝聚滾燙火山巨石貼地向前滾動，擊退沿途怪物最後爆炸"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "230",
+    "name_zh": "極地風暴",
+    "name_en": "Arctic Blast",
+    "mode": "SQ",
+    "anchor": "第五類：持續噴流",
+    "desc": "引導持續噴射出一股呼嘯的冷冽暴風霜凍雪柱"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "234",
+    "name_zh": "裂縫",
+    "name_en": "Eruption",
+    "mode": "SC",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "使指定區域地表地殼撕裂，間歇性噴出熾熱岩漿火浪"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "235",
+    "name_zh": "颶風裝甲",
+    "name_en": "Cyclone Armor",
+    "mode": "SC",
+    "anchor": "第八類：身軀護甲與光效",
+    "desc": "身軀環繞呼嘯旋轉風盾，完全吸收火、冰、電三系元素傷害"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "240",
+    "name_zh": "小旋風",
+    "name_en": "Twister",
+    "mode": "SC",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "向前放出多個微型旋風，呈隨機 Z 字軌跡游動並短暫暈眩敵人"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "244",
+    "name_zh": "火山",
+    "name_en": "Volcano",
+    "mode": "SC",
+    "anchor": "第四類/第三類：地表噴發打擊",
+    "desc": "在目標地表隆起一座小型活火山，持續向天空噴射熔岩火球"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "245",
+    "name_zh": "龍捲風",
+    "name_en": "Tornado",
+    "mode": "SC",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "原廠風眼接地向前翻滾推進的實體狂風，穿透並撕裂沿途一切"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "249",
+    "name_zh": "毀天滅地",
+    "name_en": "Armageddon",
+    "mode": "SC",
+    "anchor": "第四類：天降打擊",
+    "desc": "在德魯伊周圍天頂持續降下無數燃燒巨石流星雨轟擊地表"
+  },
+  {
+    "class_zh": "德魯伊",
+    "class_en": "druid",
+    "id": "250",
+    "name_zh": "暴風",
+    "name_en": "Hurricane",
+    "mode": "SC",
+    "anchor": "第八類/第三類：身軀環繞實體氣旋",
+    "desc": "以自身為中心形成持續跟隨的旋轉寒冰颶風，持續急凍身旁敵人"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "67",
+    "name_zh": "牙",
+    "name_en": "Teeth",
+    "mode": "SC",
+    "anchor": "第一類：直射投射物",
+    "desc": "扇形發射多道白骨碎牙投射物"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "68",
+    "name_zh": "白骨裝甲",
+    "name_en": "Bone Armor",
+    "mode": "SC",
+    "anchor": "第八類：身軀護甲與光效",
+    "desc": "身軀環繞三面旋轉骨盾，吸收固定物理傷害"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "73",
+    "name_zh": "劇毒匕首",
+    "name_en": "Poison Dagger",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "匕首近戰刺擊附加超高劇毒持續傷害"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "74",
+    "name_zh": "屍體爆炸",
+    "name_en": "Corpse Explosion",
+    "mode": "SC",
+    "anchor": "第十類：地表屍體互動",
+    "desc": "引爆地表一具屍體，造成血肉橫飛的巨額範圍火/物傷害"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "92",
+    "name_zh": "劇毒新星",
+    "name_en": "Poison Nova",
+    "mode": "SC",
+    "anchor": "第二類：地表水平面環形波",
+    "desc": "以腳底接地點為中心向外貼地爆發一圈墨綠色劇毒光環"
+  },
+  {
+    "class_zh": "死靈法師",
+    "class_en": "necromancer",
+    "id": "93",
+    "name_zh": "骨魂",
+    "name_en": "Bone Spirit",
+    "mode": "SC",
+    "anchor": "第七類：幾何軌道/追蹤",
+    "desc": "召喚發光的幽靈骷髏頭，緩慢但必定追蹤鎖定目標轟擊"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "6",
+    "name_zh": "魔法箭",
+    "name_en": "Magic Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "轉化物理傷害為魔法傷害並生成魔法箭矢"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "7",
+    "name_zh": "火箭",
+    "name_en": "Fire Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "為箭矢附加火焰傷害與點燃特效"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "11",
+    "name_zh": "冰箭",
+    "name_en": "Cold Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "附加冰冷傷害並緩速命中目標"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "12",
+    "name_zh": "多重箭",
+    "name_en": "Multiple Shot",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "扇形散射多支箭矢覆蓋全場"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "16",
+    "name_zh": "爆裂箭",
+    "name_en": "Exploding Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "箭矢命中爆發範圍火焰爆震"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "21",
+    "name_zh": "急凍箭",
+    "name_en": "Ice Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "完全凍結目標敵人及其周圍小範圍敵人"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "22",
+    "name_zh": "導引箭",
+    "name_en": "Guided Arrow",
+    "mode": "A1",
+    "anchor": "第七類：追蹤飛彈",
+    "desc": "自動轉彎尋標並追蹤鎖定目標的箭矢"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "26",
+    "name_zh": "掃射",
+    "name_en": "Strafe",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "站樁向周圍所有怪物急速連續傾瀉箭雨"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "27",
+    "name_zh": "燃燒箭",
+    "name_en": "Immolation Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "爆裂並在地表留下燃燒火海篝火"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "31",
+    "name_zh": "凍結箭",
+    "name_en": "Freezing Arrow",
+    "mode": "A1",
+    "anchor": "第一類：直射投射物",
+    "desc": "爆裂擴散極大範圍冰霜急凍風暴"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "32",
+    "name_zh": "女武神",
+    "name_en": "Valkyrie",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚一名身著黃金重甲手持長矛的強大女武神戰士"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "19",
+    "name_zh": "刺爆",
+    "name_en": "Impale",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "強力沉重的一擊但會消耗武器耐久度"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "20",
+    "name_zh": "閃電球/閃電標槍",
+    "name_en": "Lightning Bolt",
+    "mode": "TH",
+    "anchor": "第一類：直射投射物",
+    "desc": "擲出純閃電構成的穿透型雷電標槍"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "24",
+    "name_zh": "充能一擊",
+    "name_en": "Charged Strike",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "戳刺時自敵人受創點炸裂多道充能彈弧"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "25",
+    "name_zh": "瘟疫標槍",
+    "name_en": "Plague Javelin",
+    "mode": "TH",
+    "anchor": "第一類：直射投射物",
+    "desc": "擲出標槍並在爆裂點擴散大片劇毒之雲"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "30",
+    "name_zh": "擊退/刺擊",
+    "name_en": "Fend",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "向周圍所有相鄰敵人發動連續全方位長矛戳刺"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "34",
+    "name_zh": "閃電一擊",
+    "name_en": "Lightning Strike",
+    "mode": "A1",
+    "anchor": "第十一類：近戰打擊",
+    "desc": "近戰戳刺引發連鎖閃電在怪物群間彈跳"
+  },
+  {
+    "class_zh": "亞馬遜",
+    "class_en": "amazon",
+    "id": "35",
+    "name_zh": "閃電之怒",
+    "name_en": "Lightning Fury",
+    "mode": "TH",
+    "anchor": "第一類：直射投射物",
+    "desc": "擲出標槍命中後炸裂成無數道全螢幕閃電分岔"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "251",
+    "name_zh": "火焰爆震",
+    "name_en": "Fire Trauma",
+    "mode": "S2",
+    "anchor": "第一類：直射拋物投射物",
+    "desc": "投擲出一枚小型火焰炸彈在地表爆發火海"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "256",
+    "name_zh": "電能網",
+    "name_en": "Shock Field",
+    "mode": "S2",
+    "anchor": "第三類：地表貼地實體",
+    "desc": "投擲出在地面鋪開的交織電網，持續電擊踩踏其上的敵人"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "257",
+    "name_zh": "刃之守衛",
+    "name_en": "Blade Sentinel",
+    "mode": "S2",
+    "anchor": "第七類：幾何軌道旋轉",
+    "desc": "擲出一面在兩點之間來回穿梭旋轉的鋒利刀刃盤"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "261",
+    "name_zh": "雷電網陷阱",
+    "name_en": "Charged Bolt Sentry",
+    "mode": "S2",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "在地表架設陷阱砲台，感知敵人後射出多發充能彈"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "262",
+    "name_zh": "火之復甦陷阱",
+    "name_en": "Wake of Fire Sentry",
+    "mode": "S2",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "在地表架設陷阱砲台，週期性向前扇形噴發波浪火焰波"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "266",
+    "name_zh": "刃之狂怒",
+    "name_en": "Blade Fury",
+    "mode": "SQ",
+    "anchor": "第一類：直射飛鏢投射物",
+    "desc": "站樁急速連續射出無數片穿透飛鏢刀刃"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "271",
+    "name_zh": "雷光守衛陷阱",
+    "name_en": "Lightning Sentry",
+    "mode": "S2",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "刺客招牌陷阱！在地表立起砲台，向敵人瘋狂射出直線穿透雷電"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "272",
+    "name_zh": "復甦獄火陷阱",
+    "name_en": "Inferno Sentry",
+    "mode": "S2",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "在地表立起火焰陷阱，向靠近的敵人持續噴射高溫地獄火柱"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "276",
+    "name_zh": "亡者守衛陷阱",
+    "name_en": "Death Sentry",
+    "mode": "S2",
+    "anchor": "第十類/第十二類：屍體引爆陷阱",
+    "desc": "神級陷阱！除了射出電芒，更能自動引爆周圍怪物屍體引發連鎖炸屍"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "277",
+    "name_zh": "刀刃之盾",
+    "name_en": "Blade Shield",
+    "mode": "SC",
+    "anchor": "第八類：身軀護甲與光效",
+    "desc": "旋轉飛刃緊緊環繞刺客身軀旋轉，切碎任何接近的近戰敵人"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "279",
+    "name_zh": "暗影宗師",
+    "name_en": "Shadow Master",
+    "mode": "SC",
+    "anchor": "第十二類：僕從與召喚實體",
+    "desc": "召喚擁有獨立 AI 的最高階暗影刺客，能靈活運用刺客全技能"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "254",
+    "name_zh": "虎擊",
+    "name_en": "Tiger Strike",
+    "mode": "A1",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "揮爪連擊集氣最多三段，大幅度成倍暴增下一擊物理傷害"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "255",
+    "name_zh": "龍爪/飛踢",
+    "name_en": "Dragon Talon",
+    "mode": "KK",
+    "anchor": "第十一類：近戰連續飛踢 (KK)",
+    "desc": "原廠 KK 飛踢動作！依等級急速連續踢擊敵人多達數次"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "259",
+    "name_zh": "焰拳",
+    "name_en": "Fists of Fire",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "雙爪纏繞烈火集氣，釋放火焰衝擊波與地表火海"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "260",
+    "name_zh": "雙龍爪",
+    "name_en": "Dragon Claw",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰雙持打擊",
+    "desc": "雙持爪類武器同時交叉斬擊釋放集氣效果"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "265",
+    "name_zh": "眼鏡蛇擊",
+    "name_en": "Cobra Strike",
+    "mode": "A1",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "毒蛇爪法集氣，釋放時同時吸取極巨量之生命與法力"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "269",
+    "name_zh": "雷電爪",
+    "name_en": "Claws of Thunder",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "雙爪凝聚雷霆，釋放充能彈、閃電球與直射閃電三段爆發"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "270",
+    "name_zh": "神龍擺尾",
+    "name_en": "Dragon Tail",
+    "mode": "KK",
+    "anchor": "第十一類：近戰迴旋踢擊 (KK)",
+    "desc": "原廠 KK 動作！強力爆發迴旋踢，命中時引發大範圍火焰衝擊波"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "274",
+    "name_zh": "寒冰刃",
+    "name_en": "Blades of Ice",
+    "mode": "SQ",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "雙爪附著嚴冬霜氣，釋放寒冰彈、冰霜爆震與大範圍群體急凍"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "275",
+    "name_zh": "飛龍在天",
+    "name_en": "Dragon Flight",
+    "mode": "SQ",
+    "anchor": "第十一類：瞬移飛踢 (SQ/KK)",
+    "desc": "瞬間傳送並飛踢至遠處敵人身旁，直接踢爆目標"
+  },
+  {
+    "class_zh": "刺客",
+    "class_en": "assassin",
+    "id": "280",
+    "name_zh": "鳳凰連擊",
+    "name_en": "Royal Strike",
+    "mode": "A1",
+    "anchor": "第十一類：近戰集氣打擊",
+    "desc": "武術頂峰！集氣分別釋放隕石天降、連鎖閃電與混沌冰霜混沌三重奏"
+  }
+]

@@ -1,0 +1,114 @@
+{
+  "id": "maggotegg",
+  "name": "MaggotEgg",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 6 monster row(s), 0 of them bosses"
+    ],
+    "kind": "monster",
+    "usedBy": {
+      "bosses": [],
+      "monsters": [
+        {
+          "id": "maggotegg1",
+          "name": "SandMaggotEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        },
+        {
+          "id": "maggotegg2",
+          "name": "RockWormEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        },
+        {
+          "id": "maggotegg3",
+          "name": "DevourerEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        },
+        {
+          "id": "maggotegg4",
+          "name": "GiantLampreyEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        },
+        {
+          "id": "maggotegg5",
+          "name": "WorldKillerEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        },
+        {
+          "id": "maggotegg6",
+          "name": "WorldKillerEgg",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "MaggotEgg",
+          "slot": "Skill1"
+        }
+      ],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    }
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 84,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  }
+}

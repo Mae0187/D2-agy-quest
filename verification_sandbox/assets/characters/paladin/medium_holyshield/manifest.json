@@ -1,0 +1,97 @@
+{
+  "character": "paladin",
+  "armor_tier": "medium_holyshield",
+  "description": "Diablo II Paladin Medium Armor with Authentic Golden Holy Shield Integrated",
+  "directions_order": [
+    4,
+    8,
+    0,
+    9,
+    5,
+    10,
+    1,
+    11,
+    6,
+    12,
+    2,
+    13,
+    7,
+    14,
+    3,
+    15
+  ],
+  "actions": {
+    "idle": {
+      "name": "idle",
+      "file": "paladin_idle.png",
+      "directions": 16,
+      "frames": 8,
+      "cell_width": 78,
+      "cell_height": 101,
+      "anchor_x": 39,
+      "anchor_y": 85,
+      "fps": 12,
+      "loop": true
+    },
+    "walk": {
+      "name": "walk",
+      "file": "paladin_walk.png",
+      "directions": 16,
+      "frames": 10,
+      "cell_width": 92,
+      "cell_height": 96,
+      "anchor_x": 46,
+      "anchor_y": 84,
+      "fps": 14,
+      "loop": true
+    },
+    "run": {
+      "name": "run",
+      "file": "paladin_run.png",
+      "directions": 16,
+      "frames": 8,
+      "cell_width": 86,
+      "cell_height": 99,
+      "anchor_x": 43,
+      "anchor_y": 89,
+      "fps": 18,
+      "loop": true
+    },
+    "attack": {
+      "name": "attack",
+      "file": "paladin_attack.png",
+      "directions": 16,
+      "frames": 15,
+      "cell_width": 166,
+      "cell_height": 121,
+      "anchor_x": 83,
+      "anchor_y": 99,
+      "fps": 20,
+      "loop": false
+    },
+    "cast": {
+      "name": "cast",
+      "file": "paladin_cast.png",
+      "directions": 16,
+      "frames": 16,
+      "cell_width": 85,
+      "cell_height": 108,
+      "anchor_x": 43,
+      "anchor_y": 93,
+      "fps": 16,
+      "loop": false
+    },
+    "special1": {
+      "name": "special1",
+      "file": "paladin_special1.png",
+      "directions": 16,
+      "frames": 12,
+      "cell_width": 161,
+      "cell_height": 121,
+      "anchor_x": 80,
+      "anchor_y": 90,
+      "fps": 20,
+      "loop": false
+    }
+  }
+}

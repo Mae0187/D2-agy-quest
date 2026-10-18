@@ -1,0 +1,329 @@
+你好，這個專案的方向很有意思。我把五個問題分開講，重點放在「原版引擎實際是怎麼做的」以及「網頁端該怎麼對應」。有幾個地方我會標註信心程度——D2 的逆向資料散落在 Phrozen Keep 論壇、OpenDiablo2 / Paul Siramy 的工具原始碼裡，部分細節（特別是硬編碼座標）我建議你最後還是對著實作原始碼驗證一次。
+
+---
+
+## 問題一：等距地圖的座標換算與圖層排序
+
+### Sub-tile 座標系統
+
+D2 的空間有三層單位，搞清楚這三層是所有後續工作的基礎：
+
+| 單位 | 尺寸（像素，螢幕空間） | 用途 |
+|---|---|---|
+| Tile（DT1 圖塊） | 160 × 80 菱形 | DS1 佈局的基本格 |
+| Sub-tile | 32 × 16 菱形 | 5×5 個組成一個 Tile；碰撞、單位座標 |
+| World unit | Sub-tile 再細分 256 | 移動插值用的定點數 |
+
+世界座標 → 螢幕座標的換算就是標準等距投影：
+
+```js
+// Tile 層級
+screenX = (tileX - tileY) * 80;
+screenY = (tileX + tileY) * 40;
+
+// Sub-tile 層級（單位、怪物、物件用這個）
+screenX = (subX - subY) * 16;
+screenY = (subX + subY) * 8;
+
+// Sub-tile → Tile
+tileX = Math.floor(subX / 5);
+tileY = Math.floor(subY / 5);
+```
+
+注意 DS1 裡的物件（Object / NPC）座標是 sub-tile，而圖塊是 tile，兩套要分開存。另外 DT1 裡每個 tile 的 25 個 sub-tile 各有一個 walkable flag，走路判定就是查這個位元陣列，不要自己做多邊形碰撞。
+
+### DT1 的 Block 解碼有個坑
+
+DT1 的每個 tile 由若干 32×32 的 block 組成，但 block 有兩種編碼格式：
+
+- **format == 1（等距地板格式）**：沒有 RLE，就是一串連續的 pixel，但要按固定的梯形展開。每個 block 內有 15 行，寬度依序是 `4, 8, 12, 16, 20, 24, 28, 32, 28, 24, 20, 16, 12, 8, 4`，對應的 x 起始位移是 `14, 12, 10, 8, 6, 4, 2, 0, 2, 4, 6, 8, 10, 12, 14`。這是寫死的菱形遮罩，地板/屋頂幾乎都用這個。
+- **format == 0（RLE 格式）**：牆壁用，有 `xOffset / yOffset / runLength / transparentLength` 的 RLE 流。
+
+如果你的地板圖塊出現「錯位的平行四邊形」或「鋸齒」，99% 是這張表用錯了。
+
+### 圖層排序演算法
+
+DS1 本身已經幫你分好層了，它的結構是：最多 2 層 Floor、最多 4 層 Wall、1 層 Shadow、1 層 Tag。真正決定繪製順序的是 **Wall cell 裡的 orientation 欄位**。常見的對照（這份我有相當把握，但建議對照 OpenDiablo2 的 `ds1.go` 再確認）：
+
+```
+0  = Floor
+1  = Left Wall
+2  = Right Wall
+3  = Right part of Left-Right corner
+4  = Left End Wall
+5  = Right End Wall
+6  = Left Wall with Door
+7  = Right Wall with Door
+8  = Special Tile 1     (通常是傳送點/入口標記)
+9  = Special Tile 2
+10 = Pillar / Corner
+11 = Shadow
+12 = Tree
+13 = Roof
+14~17 = Lower Wall（牆壁貼在地面的下半截）
+```
+
+實務上的繪製迴圈不要用單一 z-index 全域排序（太慢而且會閃），而是用**對角掃描 + 分階段**：
+
+```js
+for (let ty = 0; ty < height; ty++) {
+  for (let tx = 0; tx < width; tx++) {
+    drawFloors(tx, ty);        // Floor layer 1, 2
+  }
+}
+for (let ty = 0; ty < height; ty++) {
+  for (let tx = 0; tx < width; tx++) {
+    drawShadows(tx, ty);       // orientation 11，用 50% alpha
+    drawLowerWalls(tx, ty);    // orientation 14~17
+    drawWalls(tx, ty);         // orientation 1~10, 12
+    drawEntitiesInRow(tx, ty); // 該 tile 內的單位，依 sub-tile 的 (subX+subY) 二次排序
+  }
+}
+for (...) drawRoofs();         // orientation 13，最後獨立一遍
+```
+
+關鍵三點：
+
+1. **地板必須整張畫完再畫牆**，否則後面的地板會蓋掉前面的牆腳。
+2. **單位要插在該列的牆之間**，不能全部最後畫，不然角色會浮在牆前面。判定基準是單位的 `subX + subY`（等距深度值）跟該 tile 牆的深度值比較。
+3. **屋頂單獨一遍**，而且要用 DT1 header 裡的 `roofY`（一個負的 Y 位移）把它往上推，不然屋頂會蓋在牆上而不是牆頂。
+
+牆壁的繪製 Y 座標也要減去 tile 高度：`drawY = screenY - (tileHeight - 80)`，因為 DT1 的牆圖塊原點在底部菱形的中心。
+
+---
+
+## 問題二：DCC 方向映射與幀率
+
+### 方向索引不是順時針排列的
+
+這是最多人踩的坑：**DCC/DC6 裡的方向儲存順序不等於邏輯方向順序**。D2 用了一個近似位元反轉的排列，目的是讓 4 方向、8 方向、16 方向的資產可以共用前幾個 index。
+
+```js
+// 邏輯方向 index → 檔案內實際儲存的 direction index
+const DIR_LOOKUP_8  = [4, 0, 5, 1, 6, 2, 7, 3];
+const DIR_LOOKUP_16 = [4, 8, 0, 9, 5, 10, 1, 11, 6, 12, 2, 13, 7, 14, 3, 15];
+// 4 方向則是 [0, 1, 2, 3]
+```
+
+如果你看到角色「往左走卻面向右」或「斜角動畫跟正向動畫對調」，就是漏了這張表。
+
+### 從移動向量算方向
+
+注意要用**世界座標**的向量算角度，不是螢幕座標，否則等距變形會讓 8 個方向的角度分佈不平均：
+
+```js
+function getDirectionIndex(dx, dy, numDirs) {
+  // D2 的方向 0 慣例上是「南方」(世界 +Y)，螢幕上看起來是左下
+  let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+  deg = (deg + 360) % 360;
+  const step = 360 / numDirs;
+  // +step/2 是為了讓角度落在扇形中心而非邊界
+  const logical = Math.floor((deg + step / 2) / step) % numDirs;
+  return DIR_LOOKUP_8[logical]; // 依 numDirs 換表
+}
+```
+
+方向 0 對應哪個實際朝向，各家實作的基準點不一樣（有人以 +X 為 0，有人以 +Y 為 0）。最省事的做法是：先寫死一個常數 `DIR_OFFSET`，在畫面上讓角色繞圈走一次，肉眼校正到對為止，然後把這個 offset 固定下來。這比查文件快。
+
+另外一定要做**方向遲滯（hysteresis）**：當移動向量剛好落在兩個扇形交界時，角色會瘋狂抖動。做法是要求新方向與舊方向的角度差超過 `step * 0.6` 才切換。
+
+### 幀率基準
+
+D2 的遊戲邏輯固定跑 **25 fps**（每 frame 40ms），這是硬性基準，所有動畫都掛在這個 tick 上。但每個動畫有自己的速度倍率：
+
+```
+實際播放 fps = 25 × (animSpeed / 256)
+```
+
+`animSpeed` 預設 256（= 正好 25fps），來源有兩處：
+
+- **AnimData.D2**：這是一個 hash table，key 是 COF token（例如 `AMBOWA1HTH`），存了 `FramesPerDirection` 和 `AnimationSpeed`。這是最權威的來源，你應該解包它。
+- **COF 檔頭**：也有 frame 數與 direction 數，可以交叉驗證。
+
+攻擊速度（IAS）與跑步速度會動態修改 `animSpeed`，計算公式在 D2 社群有完整的 Frame-per-Attack 表，但如果你只是做視覺化面板，直接給每種「AI 狀態」指定一個固定 animSpeed 就夠了。
+
+實作上建議用累加器而不是 `requestAnimationFrame` 的 delta 直接除：
+
+```js
+accumulator += deltaMs;
+const frameDuration = 1000 / (25 * (animSpeed / 256));
+while (accumulator >= frameDuration) {
+  currentFrame = (currentFrame + 1) % framesPerDirection;
+  accumulator -= frameDuration;
+}
+```
+
+還有一點：角色是**多層合成**的。一個完整的角色由 COF 定義的 16 個 layer 組成（HD 頭、TR 軀幹、LG 腿、RA/LA 手臂、RH/LH 武器、SH 盾、S1–S8 特效），而且**COF 裡每個方向、每個 frame 的 layer 繪製順序都可能不同**（因為轉身時手臂會跑到身體前後）。如果你只想要「野蠻人揮砍」這種效果，可以偷懶用預先合成好的序列；但如果要換裝備，就必須實作 COF 的 per-frame layer ordering。
+
+---
+
+## 問題三：技能特效的混合模式
+
+你的直覺是對的，原版絕對不只是透明 PNG。
+
+### 原版的機制：預計算的查表混合
+
+因為 D2 是 8-bit indexed color 的軟體渲染器，它**不可能做浮點混色**。它的做法是在 PL2 檔案裡預先算好 256×256 的查表：
+
+- `AlphaBlend[3][256][256]` — 25% / 50% / 75% 三段透明度
+- `AdditiveBlend[256][256]` — 加法混合（screen/lighten 效果）
+- `MultiplyBlend[256][256]` — 乘法混合（burn，用於暗影類效果）
+
+繪製時 `dstIndex = BlendTable[srcIndex][dstIndex]`，一次查表就完成混色。
+
+決定用哪張表的是單位/物件的 **DrawEffect** 欄位（來自 monstats.txt、missiles.txt 等）。社群整理的對照大致是：
+
+```
+0 = 25% alpha
+1 = 50% alpha
+2 = 75% alpha
+3 = Modulate（加法，發光法術用這個）
+4 = Burn（乘法，暗影、詛咒用）
+5 = Normal（不混合）
+```
+
+火球、閃電、暴風雪的光暈、聖光柱這類，基本上都是 **3 (Modulate)**。
+
+### 網頁端怎麼還原
+
+**如果你走 Canvas 2D**：加法效果用 `globalCompositeOperation = 'lighter'`，這是最接近 Modulate 的。`'screen'` 雖然 Canvas 也支援，但它的定義是 `1-(1-a)(1-b)`，在暗色背景上看起來比原版柔，而且瀏覽器實作效能差很多。我建議 `'lighter'`。
+
+用 `'lighter'` 時有個必踩的坑：**素材的透明區域必須是純黑 (0,0,0,0)，不能是黑色以外的顏色配 alpha=0**。很多 PNG 工具會在透明像素裡留下垃圾 RGB 值，加法混合時那些垃圾會整片發亮。導出時記得把 alpha=0 的像素 RGB 強制清成 0。
+
+**如果你走 WebGL**（我強烈建議，理由見問題四）：
+
+```js
+// Normal (premultiplied alpha)
+gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+// Modulate / 加法
+gl.blendFunc(gl.ONE, gl.ONE);
+
+// Screen（如果你想要更柔和的版本）
+gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_COLOR);
+
+// Burn / 乘法
+gl.blendFunc(gl.DST_COLOR, gl.ZERO);
+```
+
+效能上的關鍵：**依 blend mode 分批（batch）**。不要每個 sprite 切一次 blend state。實務做法是把同一深度區間內的所有 normal sprite 畫完，再切到 additive 把所有特效畫完。法術特效通常疊在最上層，視覺上影響不大，但 draw call 能從幾百降到個位數。
+
+另外，閃電系技能在原版還有一個額外處理：它們的 palette 會做週期性的 index 位移（palette cycling），產生電流閃爍感。這個在 shader 裡就是對 LUT 的 u 座標加一個隨時間變化的 offset，成本近乎為零，加上去質感會差很多。
+
+---
+
+## 問題四：PalShift 與環境光——不要預先烘焙 RGB
+
+這題是整個專案的架構分水嶺，我的建議很明確：
+
+> **不要把 DCC 轉成彩色 PNG。要轉成「索引圖（index map）」，在 GPU 上做調色盤查表。**
+
+你現在遇到的「顏色壞掉或純黑」，根源就是在 CPU 端提前把 index → RGB 烘焙死了。一旦烘焙，palshift 就失去了作用對象，因為 palshift 操作的是 **index，不是 RGB**。
+
+### 正確的資料鏈路
+
+D2 的顏色管線是三段查表：
+
+```
+sprite 的 pixel value (0~255)
+   ↓  ① ColorShift LUT（裝備變色 / 怪物變體）
+新的 index
+   ↓  ② LightLevel LUT（環境亮度，32 級）
+再新的 index
+   ↓  ③ Palette（act 專屬的 256×RGB）
+最終 RGB
+```
+
+- **① 來源**：`palshift.dat`（單位用，內含多張 256-byte 的重映射表）、`/data/global/items/palette/*.dat`（物品染色），對應到 armor.txt / weapons.txt 的 `Transform` 欄位與 item 的 color code。
+- **② 來源**：PL2 檔裡的 `LightLevelVariations[32][256]`。地下室變暗**不是把 RGB 乘 0.5**，而是查第 N 級的重映射表。這就是為什麼 D2 的暗處會有那種特殊的、帶點色偏的質感，用乘法怎麼調都調不像。
+- **③ 來源**：`/data/global/palette/{ACT1..ACT5, units, fechar, menu0, sky, ...}/pal.dat`，每個 256×3 bytes（注意是 **BGR 順序**，不是 RGB，這也是常見的「顏色壞掉」原因之一）。
+
+### 實作方式
+
+**匯出階段**：把 DCC/DC6 每一 frame 轉成 PNG，但 `R = palette index`、`G = 0`、`B = 0`、`A = (index == 0 ? 0 : 255)`。**index 0 在 D2 裡永遠是透明色**，這點要寫死。
+
+**載入階段**：這張 index texture 一定要 `gl.NEAREST`，開了線性過濾就會在 index 之間插值，產生完全隨機的顏色——這是「顏色壞掉」的第二大主因。
+
+**Shader**：
+
+```glsl
+precision mediump float;
+uniform sampler2D uIndexTex;   // 精靈圖，R = index
+uniform sampler2D uColorShift; // 256x1，裝備變色表
+uniform sampler2D uLightLUT;   // 256x1，當前亮度等級的表
+uniform sampler2D uPalette;    // 256x1，RGB
+uniform bool uUseShift;
+varying vec2 vUV;
+
+void main() {
+  vec4 src = texture2D(uIndexTex, vUV);
+  if (src.a < 0.5) discard;          // index 0 = 透明
+
+  float idx = src.r;                 // 0.0 ~ 1.0，對應 0~255
+  if (uUseShift) idx = texture2D(uColorShift, vec2(idx, 0.5)).r;
+  idx = texture2D(uLightLUT, vec2(idx, 0.5)).r;
+
+  vec3 rgb = texture2D(uPalette, vec2(idx, 0.5)).rgb;
+  gl_FragColor = vec4(rgb, 1.0);
+}
+```
+
+這樣一來：同一組 DCC 動畫，只要換 `uColorShift` 這張 256×1 的貼圖，就能生出所有防具顏色；只要換 `uLightLUT`，就能做出地下室的陰暗感。記憶體成本幾乎是零，而且 100% 忠於原版。
+
+**精度陷阱**：用 8-bit 紋理存 index 時，`texture2D` 回傳的是 `index/255.0`。用它當 u 座標去查 256 寬的 LUT 時，必須確保取樣落在 texel 中心，否則會差一格。安全寫法是 `vec2(idx * (255.0/256.0) + (0.5/256.0), 0.5)`，或者直接把 LUT 做成 256 寬並用 NEAREST。這種「顏色整體偏移一格」的 bug 很難察覺，建議一開始就處理掉。
+
+---
+
+## 問題五：營火選角畫面
+
+### 碎片拼接：一半有資料，一半在 binary 裡
+
+要分兩個層次講：
+
+**（a）單一 DC6 檔內部的多個 frame——有精確偏移，不需要猜。**
+
+DC6 的每個 frame header 都包含 `offsetX` 和 `offsetY`。D2 對大型背景圖的處理方式是切成 256×256 的區塊，每塊一個 frame，並在 header 裡記錄它在整張圖中的位置。所以：
+
+```js
+// 注意：DC6 的 offsetY 是 frame 的「底部」座標（原點在左下）
+drawX = baseX + frame.offsetX;
+drawY = baseY + frame.offsetY - frame.height;
+```
+
+如果你照這個公式拼出來是對的，那恭喜；如果上下顛倒，就是把 offsetY 當成頂部了。另外 DC6 header 有個 `flip` 欄位，為 1 時 scanline 是反的，也要處理。
+
+**（b）不同 DC6 檔在螢幕上的相對位置——這個在 `D2Launch.dll` 裡硬編碼，不在任何 MPQ 資料檔中。**
+
+`sceneL1.DC6`、`sceneR.DC6` 這些的擺放座標是寫死在執行檔的 UI 程式碼裡的。原版沒有提供一個「版面配置檔」給你讀。所以你有三條路：
+
+1. **抄社群已經逆向好的常數**。OpenDiablo2 的 `character_select.go`、以及 Phrozen Keep 上關於前端畫面的討論，都有整理過這些座標。這是最實際的做法。
+2. 自己用除錯器 hook `Direct3D` 的 blit 呼叫把座標 dump 出來。準確但麻煩。
+3. 用一張原版截圖當底圖，寫個小工具把碎片拖到對齊為止，然後把座標存成 JSON。對你的專案來說這可能是投報率最高的——你只需要對齊一次。
+
+我會建議先試路線 1，對不上再用路線 3 微調。
+
+### AMNU1.DC6 全黑的問題
+
+這個幾乎可以確定是**調色盤選錯了**。
+
+角色選擇畫面用的是專屬的 `/data/global/palette/fechar/pal.dat`（fechar = **F**ront **E**nd **Char**acter）。如果你套的是 `units/pal.dat` 或 `ACT1/pal.dat`，因為這些檔案裡的 index 分配完全不同，AMNU 系列的像素 index 會落在該調色盤的深色區段，結果就是整片黑或整片爛色。
+
+換成 `fechar/pal.dat` 之後，你會發現角色本來就是帶著暖色調的——也就是說，**「被營火照亮」這件事已經烘焙在美術資產與這個調色盤裡了**，不需要你額外打光。原版並沒有對選角畫面的角色做即時光照計算。
+
+如果換了 palette 還是黑，依序檢查這三件事：
+
+- **BGR / RGB 順序**：pal.dat 是 BGR。反了的話膚色會變成詭異的藍色，不一定是黑，但一起檢查。
+- **index 0 沒被當成透明**：D2 所有 sprite 的 index 0 都是透明色。如果你把它渲染成調色盤第 0 格的顏色（通常是黑），整個 sprite 的背景就會是實心黑方塊。
+- **DC6 的 RLE 解碼**：DC6 用 `0x80` 當控制碼——大於 0x80 的值表示「跳過 (value - 0x80) 個透明像素」，`0x80` 本身是「換行」。如果你把這些控制碼當成實際像素值寫進 buffer，畫面會是一團黑色雜訊。
+
+至於**火光閃爍**，原版的做法是營火本身就是一組循環播放的 DC6 動畫（在 `fire.dc6` 之類的檔案裡），而不是動態光源。如果你想讓角色也跟著閃，最低成本的加分做法是：在角色上方疊一層橘紅色的半透明 quad，用 `gl.blendFunc(gl.ONE, gl.ONE)` 加法混合，強度用 `0.85 + 0.15 * (noise(t) )` 之類的函式驅動。這不是原版行為，但視覺上很有說服力，而且成本極低。
+
+---
+
+## 給整個專案的兩點架構建議
+
+**第一，先做技術驗證再做功能。** 建議的順序是：DC6 單張解碼並正確上色（驗證 palette 管線）→ DCC 單方向動畫播放（驗證 frame 解碼）→ DT1 單張圖塊（驗證等距 block 格式）→ DS1 小地圖拼接（驗證排序）→ 才開始接 AI 狀態。這五個底層格式任何一個解錯，上層都是在除錯幻覺。
+
+**第二，走 WebGL 不要走 Canvas 2D。** 主要不是為了效能，而是因為問題四的調色盤管線在 Canvas 2D 裡實作起來非常痛苦（你得用 `putImageData` 在 CPU 端逐像素轉換，每 frame 都要做）。在 WebGL 裡這是一個 20 行的 shader。既然你的核心需求是「同一組動畫要呈現不同顏色」，這個決定基本上是被需求決定的。如果不想直接寫原生 WebGL，PixiJS 支援自訂 shader 與 sprite batching，可以省掉大量樣板程式碼。
+
+需要的話，我可以針對其中某一塊（例如 DT1 的 block 解碼器，或 COF 的 layer ordering）寫一份比較完整的實作範例。

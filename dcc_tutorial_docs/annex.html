@@ -1,0 +1,32 @@
+<title>Joel, Alkalund & Nefarius' Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#6633FF" alink="#336699"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou, Alkalund and Nefarius<br>
+  for The Phrozen Keep</h4>
+
+<h2><u>Annex: Additional Tokens</u></h2>
+ 
+
+<p>To do this we will need a few files: <b>monstats.txt</b>, <b>montype.txt</b> and <b>animdata.d2</b>. You will also need <a href="http://paul.siramy.free.fr/_divers/animdata_edit.zip">animdata_edit</a> to rehash animdata.d2.</p>
+
+<p>First, create a new animation and new cof files, the modes are not really important as we add a NEW token, which means there are NO restrictions.</p>
+
+<p>However, I suggest you at least create A1, A2, DD, DT, GH, NU and WL. After you have those new animations and cof files, you will need to find an unused token code; for this, browse through my token datasheet, that can be found here (http://dynamic2.gamespy.com/~phrozenkeep/site/mon_tokens.php) </p>
+
+<p>For this example we will use <b>FU</b> as our new token. First, rename the animation files to <b>FUTRLIT??HTH.DCC</b>. Do the same with your new cof files so that they will read like FU??HTH.COF. Create a palshift file if you want and add it into your new monster's directory (data\global\monsters\fu\cof\palshift.dat), put the cof files in the same folder; also repeat this with the dccs, just put those into data\global\monsters\fu\tr\*.dcc. </p>
+
+<p>After this has been done open montype.txt, we will use the gorgon rows for this example. Change the token from GO to FU. Save the file and open monstats.txt, go down to the gorgon rows and change the code column to FU (tells the game which token's palshift file to use); go over to the mode?? columns and set those modes our new animation has to 1 (aka ModeA1, ModeA2, etc). Mode KB and Mode SQ are "special" modes, SQ doesn't exist as the sequence is handled through the skillXseq columns (also through skills.txt and d2common.dll); KB is for knockback, it uses GH, setting it to 0 will make a monster unknockbackable like act bosses and Izual. Now, after this is done, adjust the height/width/overlayHeight and PixelHeight columns in monstats, they do seem to have a function: lowering them stopped my monsters from hitting me from a distance. These seem to control the bounding boxes of the monster instance. Save monstats.txt. </p>
+
+<p>Now you must load the ANIMDATA_EDIT program, extract animdata.d2 into a text file using it and edit this text file in Excel. </p>
+
+<p>Now, after you loaded the animdata.txt file into excel we will have to add the new animation data into this file: </p>
+
+<p>Add new entries for FUDDHTH, FUDTHTH, FUA1HTH, FUA2HTH, FUGHHTH, FUNUHTH and FUWLHTH. Adjust the frames per direction column (<b>NOTE</b> use <i>decimal</i> values in this file, its not like the normal animdata.d2) </p>
+
+<p>Set the animation speed to 256 (default speed), now except for A1 and A2 set all the other columns to 0. </p>
+
+<p>Now to FUA1HTH, go over to lets say column 8 and change the entry to 1, this will tell the game this is a MELEE attack and that the damage is dealt on frame 8 (note you COF files MUST match this value!); do the same for FUA2HTH, set all the other columns to 0 and save animdata.txt. </p>
+
+<p>Use animdata_edit to rehash (pack) the file back into animdata.d2. Put it into "data\global\" and start a game (of course SET spawnable to 1 for your new enemies and spawn them somewhere!) Note you must also change the AI of your new enemies. currently they will do nothing, as the gorgons HAD NO AI! </p>
+
+<p>Congrats! You have just added a new token!</p>

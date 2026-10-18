@@ -1,0 +1,38 @@
+{
+  "id": "shockfield",
+  "name": "Shock Field",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "caltrops",
+    "celFile": "caltrops",
+    "speed": 12.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 6
+  },
+  "impact": null,
+  "damage": {
+    "min": 2,
+    "max": 26,
+    "level": 1,
+    "formula": "2 + 0x7 + 0x8 + 0x4",
+    "maxFormula": "20 + 6x7 + 12x8 + 20x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 6
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/caltrops.png",
+    "numbers": "assets/skills/data/shockfield.json（Skills.txt / Missiles.txt）"
+  }
+}

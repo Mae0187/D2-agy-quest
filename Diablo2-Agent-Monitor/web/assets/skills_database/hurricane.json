@@ -1,0 +1,38 @@
+{
+  "id": "hurricane",
+  "name": "Hurricane",
+  "class": "druid",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "hurricaneSwoosh",
+    "celFile": "hurricane_Swoosh",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 32,
+    "max": 57,
+    "level": 1,
+    "formula": "25 + 7x7 + 10x8 + 12x4",
+    "maxFormula": "50 + 7x7 + 10x8 + 12x4",
+    "type": "cold"
+  },
+  "cost": {
+    "mana": 30
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "druid_light_cast",
+    "frameRate": 25.0,
+    "frames": 15
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/hurricaneSwoosh.png",
+    "numbers": "assets/skills/data/hurricane.json（Skills.txt / Missiles.txt）"
+  }
+}

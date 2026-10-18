@@ -1,0 +1,342 @@
+以下兩個檔案依你提供的介面摘要實作。我沒看到實際原始碼，所以 import 路徑與少數欄位名（`active`、`pool` 為陣列）是**假設**，已集中標註，方便你對接。
+
+## loop.ts
+
+```ts
+// loop.ts — 25Hz 固定邏輯步長主迴圈
+import type { MissileManager } from './manager'; // ← 依實際路徑調整
+
+export const TICK_MS = 40;          // 25Hz
+export const MAX_CATCHUP_TICKS = 5; // 單次畫面更新最多追 5 tick (200ms)
+
+export interface MissileLoopOptions {
+  /** 每次 manager.step() 之後呼叫（動畫幀推進等「每 Tick 一次」的工作放這裡） */
+  onTick?: () => void;
+  /** 每個畫面幀呼叫一次，alpha ∈ [0,1] 為插值比例 */
+  onRender: (alpha: number) => void;
+  /** 失焦時是否掛起，預設 true */
+  pauseOnBlur?: boolean;
+  /** 可注入以利測試 */
+  raf?: (cb: (t: number) => void) => number;
+  caf?: (id: number) => void;
+  now?: () => number;
+}
+
+export class MissileLoop {
+  private readonly manager: MissileManager;
+  private readonly opt: MissileLoopOptions;
+  private readonly raf: (cb: (t: number) => void) => number;
+  private readonly caf: (id: number) => void;
+  private readonly pauseOnBlur: boolean;
+
+  private wantRunning = false;   // 使用者意圖：start() 後為 true
+  private rafId = 0;
+  private lastTime: number | null = null; // null = 下一幀重設基準戳
+  private acc = 0;
+  private focused = true;
+
+  /** 最近一次畫面更新實際執行的 tick 數（除錯 / 統計用） */
+  public lastTicks = 0;
+  /** 最近一次插值比例 */
+  public alpha = 0;
+
+  constructor(manager: MissileManager, opt: MissileLoopOptions) {
+    this.manager = manager;
+    this.opt = opt;
+    this.pauseOnBlur = opt.pauseOnBlur ?? true;
+    this.raf = opt.raf ?? ((cb) => requestAnimationFrame(cb));
+    this.caf = opt.caf ?? ((id) => cancelAnimationFrame(id));
+
+    if (typeof document !== 'undefined') {
+      this.focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
+      document.addEventListener('visibilitychange', this.onVisibility);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('blur', this.onBlur);
+      window.addEventListener('focus', this.onFocus);
+    }
+  }
+
+  get running(): boolean {
+    return this.rafId !== 0;
+  }
+
+  start(): void {
+    if (this.wantRunning) return;
+    this.wantRunning = true;
+    this.syncState();
+  }
+
+  stop(): void {
+    this.wantRunning = false;
+    this.syncState();
+  }
+
+  /** 移除全域事件監聽，銷毀時呼叫 */
+  dispose(): void {
+    this.stop();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.onVisibility);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('blur', this.onBlur);
+      window.removeEventListener('focus', this.onFocus);
+    }
+  }
+
+  // ───────── 掛起 / 恢復 ─────────
+
+  private onVisibility = (): void => this.syncState();
+  private onBlur = (): void => { this.focused = false; this.syncState(); };
+  private onFocus = (): void => { this.focused = true; this.syncState(); };
+
+  private shouldRun(): boolean {
+    if (!this.wantRunning) return false;
+    if (typeof document !== 'undefined' && document.hidden) return false;
+    if (this.pauseOnBlur && !this.focused) return false;
+    return true;
+  }
+
+  private syncState(): void {
+    const should = this.shouldRun();
+    if (should && this.rafId === 0) {
+      // 恢復：清掉累加器並讓下一幀重設基準戳，避免把掛起期間當成 delta
+      this.lastTime = null;
+      this.acc = 0;
+      this.rafId = this.raf(this.frame);
+    } else if (!should && this.rafId !== 0) {
+      this.caf(this.rafId);
+      this.rafId = 0;
+      this.lastTime = null;
+    }
+  }
+
+  // ───────── 主迴圈 ─────────
+
+  private frame = (timestamp: number): void => {
+    this.rafId = 0;
+    if (!this.shouldRun()) { this.lastTime = null; return; }
+
+    // 先排下一幀，這樣 step/render 拋例外也不會讓迴圈永久死掉
+    this.rafId = this.raf(this.frame);
+
+    if (this.lastTime === null) {
+      this.lastTime = timestamp; // 第一幀 / 恢復後第一幀：只建立基準
+    }
+    let delta = timestamp - this.lastTime;
+    this.lastTime = timestamp;
+    if (delta < 0) delta = 0; // 防時間戳倒退
+
+    this.acc += delta;
+
+    let ticks = 0;
+    while (this.acc >= TICK_MS && ticks < MAX_CATCHUP_TICKS) {
+      this.manager.step();
+      this.opt.onTick?.();
+      this.acc -= TICK_MS;
+      ticks++;
+    }
+
+    // 防死亡螺旋：仍有超額時間 → 捨棄，只保留相位餘數，並重設基準戳
+    if (this.acc >= TICK_MS) {
+      this.acc %= TICK_MS;
+      this.lastTime = timestamp;
+    }
+
+    this.lastTicks = ticks;
+    this.alpha = Math.min(1, Math.max(0, this.acc / TICK_MS));
+    this.opt.onRender(this.alpha);
+  };
+}
+```
+
+## render.ts
+
+```ts
+// render.ts — Canvas 投射物渲染器
+import type { MissileManager, MissileRuntime } from './manager'; // ← 依實際路徑調整
+import { applyBlend } from './blend';                            // ← 依實際路徑調整
+
+/** 由外部提供每個投射物對應的貼圖資訊，渲染器不依賴 spec 的內部結構 */
+export interface SpriteInfo {
+  image: CanvasImageSource;
+  frameW: number;
+  frameH: number;
+  frameCount: number;
+  /** 256 進位動畫速度：每 Tick 累加，滿 256 進 1 幀 */
+  speed: number;
+  /** 繪製錨點（圖內像素，通常為腳底中心） */
+  anchorX: number;
+  anchorY: number;
+  /** 方向列（圖集第幾列），預設 0 */
+  row?: number;
+  /** 是否循環，預設 true；false 則停在最後一幀 */
+  loop?: boolean;
+  /** 混色強度 0~1，預設 1 */
+  opacity?: number;
+}
+
+export type SpriteResolver = (m: MissileRuntime) => SpriteInfo | null;
+
+export class MissileRenderer {
+  constructor(
+    private readonly ctx: CanvasRenderingContext2D,
+    private readonly manager: MissileManager,
+    private readonly resolve: SpriteResolver,
+  ) {}
+
+  /**
+   * 每個「邏輯 Tick」呼叫一次（掛在 MissileLoop.onTick）。
+   * 動畫必須跟著 Tick 走而非畫面幀，否則會隨螢幕更新率變速。
+   */
+  tickAnimations(): void {
+    const pool = this.manager.pool;
+    for (let i = 0; i < pool.length; i++) {
+      const m = pool[i];
+      if (!m.active) return void 0 as never; // 見下方 continue 版本
+    }
+  }
+}
+```
+
+抱歉，上面 `tickAnimations` 我寫錯了（`return` 會中斷迴圈），以下是完整正確版本，請以此為準：
+
+```ts
+// render.ts — Canvas 投射物渲染器
+import type { MissileManager, MissileRuntime } from './manager'; // ← 依實際路徑調整
+import { applyBlend } from './blend';                            // ← 依實際路徑調整
+
+/** 由外部提供每個投射物對應的貼圖資訊，渲染器不依賴 spec 內部結構 */
+export interface SpriteInfo {
+  image: CanvasImageSource;
+  frameW: number;
+  frameH: number;
+  frameCount: number;
+  /** 256 進位動畫速度：每 Tick 累加，滿 256 進 1 幀 */
+  speed: number;
+  /** 繪製錨點（圖內像素，通常為腳底中心） */
+  anchorX: number;
+  anchorY: number;
+  /** 方向列（圖集第幾列），預設 0 */
+  row?: number;
+  /** 是否循環，預設 true；false 則停在最後一幀 */
+  loop?: boolean;
+  /** 混色強度 0~1，預設 1（注意：這不是位置插值的 alpha） */
+  opacity?: number;
+}
+
+export type SpriteResolver = (m: MissileRuntime) => SpriteInfo | null;
+
+/** 256 進位整數動畫推進（純函式，便於單元測試） */
+export function advanceAnim(
+  m: { animAcc: number; animFrame: number },
+  speed: number,
+  frameCount: number,
+  loop = true,
+): void {
+  if (frameCount <= 0) return;
+  const acc = (m.animAcc | 0) + (speed | 0);
+  const carry = acc >> 8;   // 進位幀數（speed ≥ 256 時可能 > 1）
+  m.animAcc = acc & 255;    // 保留餘數
+  if (carry === 0) return;
+  const next = m.animFrame + carry;
+  m.animFrame = loop ? next % frameCount : Math.min(next, frameCount - 1);
+}
+
+export class MissileRenderer {
+  constructor(
+    private readonly ctx: CanvasRenderingContext2D,
+    private readonly manager: MissileManager,
+    private readonly resolve: SpriteResolver,
+  ) {}
+
+  /** 每個邏輯 Tick 呼叫一次（掛在 MissileLoop.onTick），動畫不可跟著畫面幀跑 */
+  tickAnimations(): void {
+    const pool = this.manager.pool;
+    for (let i = 0; i < pool.length; i++) {
+      const m = pool[i];
+      if (!m.active) continue;
+      const s = this.resolve(m);
+      if (s) advanceAnim(m, s.speed, s.frameCount, s.loop ?? true);
+    }
+  }
+
+  /** 每個畫面幀呼叫一次；alpha 為 MissileLoop 提供的插值比例 */
+  render(alpha: number): void {
+    if (this.manager.liveCount === 0) return;
+
+    const ctx = this.ctx;
+    const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+    const inv = 1 - a;
+
+    // 每幀設定：canvas 被 resize 時此屬性會被重設
+    ctx.imageSmoothingEnabled = false;
+
+    const pool = this.manager.pool;
+    for (let i = 0; i < pool.length; i++) {
+      const m = pool[i];
+      if (!m.active) continue;
+
+      // 位置插值；瞬移幀不插值
+      let rx: number, ry: number;
+      if (m.teleported) {
+        rx = Math.round(m.x);
+        ry = Math.round(m.y);
+      } else {
+        rx = Math.round(m.prevX * inv + m.x * a);
+        ry = Math.round(m.prevY * inv + m.y * a);
+      }
+
+      const s = this.resolve(m);
+      if (s) {
+        const frame = m.animFrame % (s.frameCount > 0 ? s.frameCount : 1);
+        const sx = frame * s.frameW;
+        const sy = (s.row ?? 0) * s.frameH;
+        const dx = rx - Math.round(s.anchorX);
+        const dy = ry - Math.round(s.anchorY);
+
+        try {
+          applyBlend(ctx, m.blendMode, s.opacity ?? 1);
+          ctx.drawImage(s.image, sx, sy, s.frameW, s.frameH, dx, dy, s.frameW, s.frameH);
+        } finally {
+          // 無條件重設，杜絕狀態污染（即使 drawImage 拋例外）
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
+      // 瞬移旗標只管「當幀」。同時把 prev 對齊 current：
+      // 否則同一 Tick 內後續的畫面幀會從舊位置滑向新位置，等於沒有瞬移。
+      if (m.teleported) {
+        m.teleported = false;
+        m.prevX = m.x;
+        m.prevY = m.y;
+      }
+    }
+  }
+}
+```
+
+## 接線範例
+
+```ts
+const renderer = new MissileRenderer(ctx, manager, resolveSprite);
+const loop = new MissileLoop(manager, {
+  onTick: () => renderer.tickAnimations(),
+  onRender: (alpha) => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // ...先畫地圖/角色...
+    renderer.render(alpha);
+  },
+});
+loop.start();
+```
+
+## 設計說明與需要你確認的地方
+
+1. **動畫推進放在 `tickAnimations()`，不在 `render()`**：render 每個畫面幀都會跑（60/144Hz），若在其中累加會讓動畫速度隨螢幕更新率改變。因此由 loop 的 `onTick` 每個邏輯 Tick 呼叫一次。
+2. **`teleported` 重設時同步 `prev = current`**：依規格「繪製後重設旗標」，但同一個 Tick 內通常有多個畫面幀，若只清旗標，第二幀開始就會從舊位置插值滑過去。這是我刻意加的處理。若你的 `manager.step()` 已在每 Tick 開頭執行 `prev = cur`，行為仍一致。
+3. **追趕多個 Tick 時的旗標**：若一次畫面更新連跑多個 `step()`，而 `step()` 每次都會清除 `teleported`，瞬移幀可能被吞掉。請確認 manager 是「只設不清」，由 renderer 清除。
+4. **假設的欄位**：`m.active`（是否存活）、`manager.pool` 為可索引陣列。若實際是別的命名（例如 `alive`、`free list`），只需改 `tickAnimations` 與 `render` 的兩處迴圈。
+5. **死亡螺旋處理**：超過 5 Tick 時用 `acc %= 40` 丟棄超額時間，只保留相位餘數，所以 alpha 不會跳變，並同步重設 `lastTime`。
+6. **掛起／恢復**：`visibilitychange`、`blur`、`focus` 皆走同一個 `syncState()`；恢復時清空累加器並讓下一幀只建立基準戳，不會出現「補跑掛起期間」的爆衝。`pauseOnBlur: false` 可僅在隱藏分頁時掛起。

@@ -1,0 +1,35 @@
+{
+  "id": "magicarrow",
+  "name": "Magic Arrow",
+  "class": "amazon",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "Safearrow",
+    "celFile": "Safearrow",
+    "speed": 24.0,
+    "range": 40.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 2,
+    "type": "physical"
+  },
+  "cost": {
+    "mana": 12
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "amazon_light_cast",
+    "frameRate": 25.0,
+    "frames": 20
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/Safearrow.png",
+    "numbers": "assets/skills/data/magicarrow.json（Skills.txt / Missiles.txt）"
+  }
+}

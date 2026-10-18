@@ -1,0 +1,153 @@
+<title>Joel, Alkalund & Nefarius' Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#000000" vlink="#000000" alink="#000000"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou, Alkalund and Nefarius<br>
+  for The Phrozen Keep</h4>
+<h2><u>Chapter Four : Animation Conversion - Part One :</u></h2>
+
+<p> Now that we have extracted and converted our beloved goblin animations, we are going to 
+  start the trickiest part<br>
+  of the process : Offset adjustment. First, we'll see what are exactly the offsets 
+  system and how to easily<br>
+  find them. Then we'll see how to use CV5 to save our gif into DCC with correct 
+  offsets, framecount etc ...</p>
+<h4><i><u>4.1 Discussion about DCC offsets :</u></i></h4>
+<p>This part is a bit technical and is extracted from the Billian Belchev comprehensive 
+  DCC Format documentation. <br>
+  If you don't feel confident with such tricks, you can skip this part. However, a 
+  bit of knowledge on the subject helps<br>
+  a bit for the next section.</p>
+<p>When Diablo II loads a DCC file and decompresses it, it uses some lossy compression 
+  algorithm.<br>
+  It reads a stream of data called bitstreams that are stored by directions and 
+  frames. </p>
+<p>Since there is no dependence between the direction data bitstreams of different 
+  directions in one and the same Dcc file, <br>
+  those bitstreams can be processed independently. In fact that is actually the 
+  case. The game decompresses the data for a <br>
+  particular direction from a particular Dcc file only if it needs the frames 
+  that direction contains. For example if the player <br>
+  enters the game, shoots only once in a particular direction and exits the game 
+  probably the game will decompress the frames <br>
+  for the arrow only for that direction. So below except if otherwise noted, we 
+  will look at the frames for a particular direction only.</p>
+<p>In general all the frames of one direction are of different sizes and have 
+  different offsets. The X offset (from the frame header<br>
+  in the Dcc file) always specifies how many pixels right of the base point, the 
+  left edge of the frame is. If the frame is a <br>
+  top-down frame the Y offset (the one from the frame header) specifies how many 
+  pixels down from the base point, <br>
+  the bottom edge (or the bottom-left corner, if you prefer) of the frame is. 
+  Here is an example: <br>
+  <br>
+  <center>
+    <IMG SRC="images/chapter4/top.gif" TITLE="Example for three top-down encoded frames." width="471" height="150"> 
+  </CENTER>
+  <br>
+  The red axes are the axes for rendering on the screen. The point that they intersect 
+  is the base point on the screen. <br>
+  However these taken directly from the frame headers per frame offsets are not 
+  the ones used for rendering on the <br>
+  screen. They must not be misidentified with the offsets for the different directions 
+  that have to be passed to the <br>
+  cvdcc add-on for Cv5 when saving Dcc files. These offsets are used for frame 
+  alignment during the decompression<br>
+  and also to calculate the offsets for rendering on the screen.<br>
+  <br>
+</p>
+<h4><i><u>4.2 Conversion from GIF to DCC format :</u></i><br>
+</h4>
+<p>Now we are more confident on the signification of the offsets, we'll start 
+  to look at how tp fix them to have an animation that is<br>
+  properly aligned in game. So we take one of our freshly converted goblin GIF 
+  and open it with our beloved CV5. Then click on the<br>
+  &quot;Save&quot; button which is the lower right corner of the dialog box :</p>
+<p align="center"><img src="images/chapter4/screen01.jpg" width="440" height="137"></p>
+<p align="left">There we arrive on the classic Windows &quot;Save As ...&quot; 
+  dialog box. Here type in the dcc filename and choose &quot;Blizzard Compressed<br>
+  Images/Animations (*.dcc)&quot;. This step is very important and can be the 
+  fatal error many newbies do and make them wonder<br>
+  for a long time. If you don't specify this , CV5 will refuse to do anything.<br>
+  <br>
+  So, now we have a screen that looks like that :</p>
+<p align="center"><img src="images/chapter4/screen02.jpg" width="396" height="464" align="absmiddle"><img src="images/chapter4/screen03.jpg" width="71" height="87" align="bottom"><br>
+</p>
+<p>We have on the left a big chunk of edit boxes filled with zeroes and at the right 
+  a little preview of our animation.<br>
+  As you may have seen (remember chapter 2), the CV5 DCC plug-in allows you to save 
+  a dcc with a given number of directions.<br>
+  For classic monster animations, this value is 8, so we click on the radio 
+  button labelled &quot;8 Directions x 32 Frames&quot;.<br>
+  After doing that, 8 edit boxes are activated, one for each direction in fact. Quite 
+  easy isn't it ?<br>
+  <br>
+  Now we have to find the offset for these eight directions. How ?<br>
+  Easy ! Thanks to Billian Belchev we now have a preveiw of the offset in the 
+  shape of a cross-hair on the preview.<br>
+  But if we want to save some time, here's some tricks.</p>
+<ul>
+  <li>First , look for symmetry. If an animation is 100 pixels wide and centered 
+    into its box,<br>
+    it's obvious that its Y offset is 50.<br>
+    <br>
+  </li>
+  <li>Other symmetries to look for : the left and right directions are sometimes 
+    identical and just flipped around the vertical<br>
+    axis. They almost always have the same offset pair.<br>
+    <br>
+  </li>
+  <li>Think in 3D !! A Diablo II animation is made to fit a 3D isometric view. 
+    Imagine a disk on the feet of your animation,<br>
+    like the Paladin's Auras. When your animation is perfectly &quot;offsetized&quot;, 
+    it must stand in the center of the disk, like this :<br>
+    <br>
+    <div align="center"><img src="images/chapter4/fond.gif" width="109" height="77"></div>
+  <br>
+    <br>
+    When I've started making animation conversions, I sometimes used a small image 
+    containing a frame of the Conversion Aura<br>
+    and I tried to put it on the feet of my gifs to find the offsets. When you'll 
+    become more used to this technique, you'll see the offsets<br>
+    at first sight !<br>
+    <br>
+    So as an example, we'll do the first neutral direction's offset together, 
+    OK ?<br>
+    So look at the preview :<br>
+    <br>
+  </li>
+</ul>
+
+<div align="center">
+  <p><img src="images/chapter4/screen03.jpg" width="71" height="87"></p>
+  <p align="left">We have to find the X and Y values of the offset to center the 
+    animation in a virtual 3D isometric space.<br>
+    First, we'll try to find the X Offset. The X value is sometimes the easiest 
+    offset to find. We remember that the original gif was<br>
+    65 x 65. As it seems that our little goblin is somewhat centered, we enter 
+    a value of 33 for the X offset.</p>
+  <p align="left">We so have this preview now :<br>
+  </p>
+  <p align="center"><img src="images/chapter4/screen04.jpg" width="71" height="87"> 
+  </p>
+  <p align="left">Quite good, now we have to find the Y offset. Here again we 
+    have to be smart. If you look closely at the animation, you'll see that it<br>
+    could be cut into six slices :</p>
+  <p align="center"><img src="images/chapter4/slices.gif" width="65" height="61"></p>
+  <p align="left">The optimal position for the Y offset will be near the top of 
+    the last slice. So as the animation is 65 pixels height, we could guess 
+    that the<br>
+    Y offset is near 50. Some trials will give an optimal position at around 53 :</p>
+  <p align="center"><img src="images/chapter4/screen05.jpg" width="71" height="87"></p>
+  <p align="left">Now, as an exercice, I'll let you find the offsets for the seven other directions. 
+    Keep in mind those little tricks. Don't be afraid to use papers and pencils, it<br>
+    sometimes helps to find some symmetry or slicing tricks.<br>
+    <br>
+    Now, before saving, just select the &quot;Units&quot; palettes in the Palettes 
+    combo box. This palette is well suited for animations as it's designed<br>
+    to be the same whatever act you are in. That's avoid some pink or grey dotted 
+    animations problems. REMEMBER, use the Units palette !</p>
+  <p align="left">Now, after finding the offsets for the other modes, our Goblin 
+    is finally ready, hop to the <a href="chapter5.html">Chapter Five</a> to 
+    perform the last tricks before<br>
+    having our green friend rock'n'rolling in the Wilderness ...</p>
+  </div>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Diablo II 投射物引擎實機動態播放沙盒 (Missile Engine Sandbox)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: #060709;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .header { margin-bottom: 12px; text-align: center; }
+    .header h1 {
+      font-size: 22px; color: #F59E0B;
+      text-shadow: 0 0 10px rgba(245,158,11,0.4);
+      margin-bottom: 4px; letter-spacing: 1px;
+    }
+    .header p { font-size: 13px; color: #94A3B8; }
+    .toolbar {
+      display: flex; gap: 8px; margin-bottom: 12px;
+      background: #111827; padding: 8px 16px;
+      border-radius: 8px; border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      flex-wrap: wrap; justify-content: center;
+    }
+    button {
+      background: #1F2937; color: #D1D5DB;
+      border: 1px solid #4B5563; padding: 8px 14px;
+      border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    button:hover { background: #374151; color: #FFF; border-color: #9CA3AF; }
+    button.active { background: #B45309; color: #FEF3C7; border-color: #F59E0B; box-shadow: 0 0 12px rgba(245,158,11,0.5); }
+    button#btn-spawn-hydra {
+      background: #78350F; border-color: #F59E0B; color: #FEF3C7;
+    }
+    button#btn-spawn-hydra:hover {
+      background: #92400E; box-shadow: 0 0 10px rgba(245,158,11,0.5);
+    }
+    button#btn-toggle-panel {
+      background: #1E3A5F; border-color: #3B82F6; color: #DBEAFE;
+    }
+    button#btn-toggle-panel:hover { background: #1D4ED8; }
+    button#btn-toggle-panel.active { background: #1D4ED8; border-color: #60A5FA; }
+    button#btn-toggle-debug { background: #1F2937; border-color: #4B5563; color: #94A3B8; }
+    button#btn-toggle-debug.active { background: #1E3A5F; border-color: #3B82F6; color: #DBEAFE; }
+
+    /* ── 主體佈局：畫布 + 右側面板並排 ── */
+    .main-area {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .canvas-container {
+      position: relative;
+      border: 2px solid #374151; border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
+      overflow: hidden; background: #0B0D11;
+    }
+    canvas { display: block; cursor: crosshair; }
+
+    /* ── 九頭海蛇調整面板 (預設直接常駐展開) ── */
+    #hydra-panel {
+      width: 320px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    #hydra-panel.hidden { display: none !important; }
+    #hydra-panel h2 {
+      font-size: 14px; color: #F59E0B; font-weight: 700;
+      border-bottom: 1px solid #374151; padding-bottom: 6px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-group {
+      background: #0F172A;
+      border: 1px solid #1E293B;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .panel-group-title {
+      font-size: 12px; color: #94A3B8; font-weight: 700;
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .slider-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 36px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .slider-row label { font-size: 12px; color: #CBD5E1; }
+    .slider-row input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px;
+      background: #374151; outline: none; cursor: pointer;
+    }
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: #F59E0B; cursor: pointer;
+      border: 2px solid #111827;
+    }
+    .slider-row .val-display {
+      font-size: 12px; color: #F59E0B; font-family: monospace;
+      font-weight: 700; text-align: right; min-width: 36px;
+    }
+    .apply-note {
+      font-size: 11px; color: #94A3B8; margin-top: 2px;
+      line-height: 1.5;
+    }
+    .action-btn {
+      background: #064E3B; color: #6EE7B7;
+      border: 1px solid #059669; padding: 9px;
+      border-radius: 6px; font-size: 12px; font-weight: 700;
+      cursor: pointer; text-align: center; width: 100%;
+      transition: all 0.15s ease;
+    }
+    .action-btn:hover { background: #065F46; border-color: #10B981; }
+    .action-btn.copied { background: #065F46; color: #A7F3D0; }
+    .action-btn.spawn {
+      background: #78350F; border-color: #D97706; color: #FEF3C7;
+      margin-bottom: 4px;
+    }
+    .action-btn.spawn:hover {
+      background: #92400E; border-color: #F59E0B;
+    }
+    #data-output {
+      background: #0F172A; border: 1px solid #1E293B;
+      border-radius: 6px; padding: 8px 10px;
+      font-size: 11px; color: #94A3B8; font-family: monospace;
+      word-break: break-all; line-height: 1.6;
+      display: none;
+    }
+    #data-output.visible { display: block; }
+
+    .footer {
+      margin-top: 12px;
+      display: flex; gap: 20px; font-size: 12px; color: #64748B;
+      background: #0F172A; padding: 6px 16px;
+      border-radius: 6px; border: 1px solid #1E293B;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .key-badge {
+      background: #334155; color: #F1F5F9;
+      padding: 2px 6px; border-radius: 4px;
+      font-family: monospace; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔥 魔法使【純火體系】原廠 MPQ 技能實機驗證沙盒 (Sorceress Fire Tree Sandbox)</h1>
+    <p>25Hz 固定邏輯步長 | 原廠 DCC 聯集盒無損圖集 | 100% 暴雪原版判定 | 零 GC 物件池 | 軀幹中心 -18px 碰撞</p>
+  </div>
+
+  <div class="toolbar">
+    <button id="btn-skill-0">🔥 [1] 火彈</button>
+    <button id="btn-skill-1">💥 [2] 火球</button>
+    <button id="btn-skill-2">♨️ [3] 地獄火</button>
+    <button id="btn-skill-3">🧱 [4] 火牆</button>
+    <button id="btn-skill-4">☄️ [5] 隕石天降</button>
+    <button id="btn-skill-5" class="active">🐉 [6] 九頭海蛇</button>
+    <button id="btn-spawn-hydra">🐲 立即召喚海蛇</button>
+    <button id="btn-toggle-debug" class="active">🛠️ [D] 除錯錨點</button>
+    <button id="btn-toggle-panel" class="active">⚙️ [P] 調整面板</button>
+  </div>
+
+  <div class="main-area">
+    <div class="canvas-container">
+      <canvas id="demo-canvas" width="1000" height="600"></canvas>
+    </div>
+
+    <!-- 九頭海蛇即時調整面板 (預設常駐展開) -->
+    <div id="hydra-panel">
+      <h2>
+        <span>🐉 九頭海蛇位置即時微調</span>
+        <span style="font-size:11px;color:#94A3B8;cursor:pointer;" id="btn-close-panel">✕ 關閉</span>
+      </h2>
+
+      <button class="action-btn spawn" id="btn-panel-spawn">🐲 在畫面中央召喚一隻海蛇</button>
+
+      <p class="apply-note">
+        💡 <strong>即時響應</strong>：滑動火焰滑桿時，畫面上所有的地表火焰會<strong>立刻跟隨移動</strong>，不用重新召喚！<br>
+        蛇頭身軀偏移於點擊畫面召喚時套用。<br>
+        <span style="color:#00FF00">🟢 綠色十字</span> = 蛇底接地基準線<br>
+        <span style="color:#FF8C00">🟠 橙色交叉</span> = 地表火舌中心錨點
+      </p>
+
+      <!-- 火焰偏移 (優先放在上方方便調整) -->
+      <div class="panel-group" style="border-color:#78350F">
+        <div class="panel-group-title" style="color:#FB923C">🔥 火焰 0（左後蛇頭下）— 相對蛇底</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="f0fox" min="-60" max="60" value="-11">
+          <span class="val-display" id="f0fox-v">-11</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="f0foy" min="-50" max="30" value="-6">
+          <span class="val-display" id="f0foy-v">-6</span>
+        </div>
+      </div>
+
+      <div class="panel-group" style="border-color:#78350F">
+        <div class="panel-group-title" style="color:#FB923C">🔥 火焰 1（中央蛇頭下）— 相對蛇底</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="f1fox" min="-60" max="60" value="-10">
+          <span class="val-display" id="f1fox-v">-10</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="f1foy" min="-50" max="30" value="-6">
+          <span class="val-display" id="f1foy-v">-6</span>
+        </div>
+      </div>
+
+      <div class="panel-group" style="border-color:#78350F">
+        <div class="panel-group-title" style="color:#FB923C">🔥 火焰 2（右後蛇頭下）— 相對蛇底</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="f2fox" min="-60" max="60" value="-8">
+          <span class="val-display" id="f2fox-v">-8</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="f2foy" min="-50" max="30" value="-6">
+          <span class="val-display" id="f2foy-v">-6</span>
+        </div>
+      </div>
+
+      <!-- 蛇頭 0~2 身軀偏移 -->
+      <div class="panel-group">
+        <div class="panel-group-title">🐍 蛇頭 0（左後）— 蛇身偏移</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="h0ox" min="-60" max="60" value="-22">
+          <span class="val-display" id="h0ox-v">-22</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="h0oy" min="-40" max="40" value="-8">
+          <span class="val-display" id="h0oy-v">-8</span>
+        </div>
+      </div>
+
+      <div class="panel-group">
+        <div class="panel-group-title">🐍 蛇頭 1（中央）— 蛇身偏移</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="h1ox" min="-60" max="60" value="0">
+          <span class="val-display" id="h1ox-v">0</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="h1oy" min="-40" max="40" value="6">
+          <span class="val-display" id="h1oy-v">6</span>
+        </div>
+      </div>
+
+      <div class="panel-group">
+        <div class="panel-group-title">🐍 蛇頭 2（右後）— 蛇身偏移</div>
+        <div class="slider-row">
+          <label>X 水平</label>
+          <input type="range" id="h2ox" min="-60" max="60" value="22">
+          <span class="val-display" id="h2ox-v">22</span>
+        </div>
+        <div class="slider-row">
+          <label>Y 垂直</label>
+          <input type="range" id="h2oy" min="-40" max="40" value="-8">
+          <span class="val-display" id="h2oy-v">-8</span>
+        </div>
+      </div>
+
+      <button class="action-btn" id="btn-copy">📋 複製調整數據</button>
+      <pre id="data-output"></pre>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>🖱️ <span class="key-badge">滑鼠點擊畫布</span> 在該位置施展招式 (九頭海蛇點地召喚)</div>
+    <div>⌨️ <span class="key-badge">數字鍵 1 ~ 6</span> 切換技能</div>
+    <div>🐉 <span class="key-badge">點擊「立即召喚海蛇」按鈕</span> 即可在中央立刻生成一隻進行調試</div>
+    <div>🔍 <span class="key-badge">D</span> 開關除錯十字錨點</div>
+    <div>⚙️ <span class="key-badge">P</span> 開關微調面板</div>
+  </div>
+
+  <script src="demo.bundle.js"></script>
+  <script>
+    // ── 即時調整面板控制邏輯 ──
+
+    // 初始化全域設定物件
+    window.__hydraConfig__ = {
+      heads: [
+        { ox: -22, oy: -8 },
+        { ox:   0, oy:  6 },
+        { ox:  22, oy: -8 },
+      ],
+      fires: [
+        { fox: -11, foy: -6 },
+        { fox: -10, foy: -6 },
+        { fox:  -8, foy: -6 },
+      ],
+    };
+
+    function bindSlider(id, objPath, key) {
+      const input = document.getElementById(id);
+      const display = document.getElementById(id + '-v');
+      if (!input || !display) return;
+      input.addEventListener('input', () => {
+        const v = parseInt(input.value, 10);
+        display.textContent = v;
+        const m = objPath.match(/(\w+)\[(\d+)\]/);
+        if (m) {
+          window.__hydraConfig__[m[1]][parseInt(m[2])][key] = v;
+        }
+      });
+    }
+
+    // 蛇頭偏移
+    bindSlider('h0ox', 'heads[0]', 'ox');
+    bindSlider('h0oy', 'heads[0]', 'oy');
+    bindSlider('h1ox', 'heads[1]', 'ox');
+    bindSlider('h1oy', 'heads[1]', 'oy');
+    bindSlider('h2ox', 'heads[2]', 'ox');
+    bindSlider('h2oy', 'heads[2]', 'oy');
+
+    // 火焰偏移
+    bindSlider('f0fox', 'fires[0]', 'fox');
+    bindSlider('f0foy', 'fires[0]', 'foy');
+    bindSlider('f1fox', 'fires[1]', 'fox');
+    bindSlider('f1foy', 'fires[1]', 'foy');
+    bindSlider('f2fox', 'fires[2]', 'fox');
+    bindSlider('f2foy', 'fires[2]', 'foy');
+
+    // 面板開關邏輯
+    const hydraPanel = document.getElementById('hydra-panel');
+    const btnTogglePanel = document.getElementById('btn-toggle-panel');
+    const btnClosePanel = document.getElementById('btn-close-panel');
+
+    function togglePanel() {
+      hydraPanel.classList.toggle('hidden');
+      if (hydraPanel.classList.contains('hidden')) {
+        btnTogglePanel.classList.remove('active');
+      } else {
+        btnTogglePanel.classList.add('active');
+      }
+    }
+
+    btnTogglePanel.addEventListener('click', togglePanel);
+    if (btnClosePanel) {
+      btnClosePanel.addEventListener('click', () => {
+        hydraPanel.classList.add('hidden');
+        btnTogglePanel.classList.remove('active');
+      });
+    }
+
+    // 立即召喚海蛇快捷按鈕 (支援頂部按鈕與面板內按鈕)
+    function doSpawnHydra() {
+      if (window.castSandboxSkill) {
+        window.castSandboxSkill(5, 500, 320);
+      }
+      if (hydraPanel.classList.contains('hidden')) {
+        hydraPanel.classList.remove('hidden');
+        btnTogglePanel.classList.add('active');
+      }
+    }
+    document.getElementById('btn-spawn-hydra').addEventListener('click', doSpawnHydra);
+    document.getElementById('btn-panel-spawn').addEventListener('click', doSpawnHydra);
+
+    // 複製數據按鈕
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      const cfg = window.__hydraConfig__;
+      const lines = [
+        '// 蛇頭偏移 (castHydra head offsetX/offsetY)',
+        `heads: [`,
+        `  { ox: ${cfg.heads[0].ox}, oy: ${cfg.heads[0].oy} },  // 蛇頭0（左後）`,
+        `  { ox: ${cfg.heads[1].ox}, oy: ${cfg.heads[1].oy} },  // 蛇頭1（中央）`,
+        `  { ox: ${cfg.heads[2].ox}, oy: ${cfg.heads[2].oy} },  // 蛇頭2（右後）`,
+        `],`,
+        '',
+        '// 火焰偏移 (HYDRA_FIRE_OFFSETS / getHydraConfig fires)',
+        `fires: [`,
+        `  { fox: ${cfg.fires[0].fox}, foy: ${cfg.fires[0].foy} },  // 火焰0`,
+        `  { fox: ${cfg.fires[1].fox}, foy: ${cfg.fires[1].foy} },  // 火焰1`,
+        `  { fox: ${cfg.fires[2].fox}, foy: ${cfg.fires[2].foy} },  // 火焰2`,
+        `],`,
+      ].join('\n');
+
+      const out = document.getElementById('data-output');
+      out.textContent = lines;
+      out.classList.add('visible');
+
+      navigator.clipboard.writeText(lines).catch(() => {});
+      const btn = document.getElementById('btn-copy');
+      btn.textContent = '✅ 已複製！';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '📋 複製調整數據';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+
+    // 頁面載入後自動在中央召喚一隻海蛇，讓使用者進入頁面就有海蛇可調！
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (window.castSandboxSkill) {
+          window.castSandboxSkill(5, 500, 320);
+        }
+      }, 300);
+    });
+  </script>
+</body>
+</html>

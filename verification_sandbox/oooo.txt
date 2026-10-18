@@ -1,0 +1,1571 @@
+可以。這次直接給你一份**完整、可直接貼給 Agent 執行的提示詞**。核心要求是：**先逆向分析現有成功動畫 → 找共同規則 → 抽象成標準模板 → 建立共用 Builder → 用原本成功動畫回歸測試 → 再讓新動畫走同一流程。**
+
+# D2 動畫系統重構任務
+
+## 任務名稱：將現有正確動畫逆向整理成「Standard Animation Template + Shared Animation Builder」
+
+你現在的任務不是單純新增動畫。
+
+你的首要任務是：
+
+> **把目前專案中已經能正確顯示、方向正確、Frame 播放正確、Offset 正確、組合正確的現有動畫，全部逆向分析，找出它們共同遵循的規則，然後重構成一套可供所有未來 D2 動畫共用的標準動畫模板與共用 Builder。**
+
+完成後，未來加入新的角色、怪物、技能、投射物、死亡動畫、攻擊動畫、施法動畫等，都必須優先走這套共用 Pipeline，而不是為每個動畫重新寫一套特殊處理。
+
+---
+
+# 1. 核心目標
+
+最終架構必須從：
+
+```text
+每個動畫各自處理
+    ↓
+各自找 DCC
+    ↓
+各自處理方向
+    ↓
+各自處理 Frame
+    ↓
+各自處理 Offset
+    ↓
+各自處理 Timing
+    ↓
+各自組合
+    ↓
+各自播放
+```
+
+重構成：
+
+```text
+                    D2 原始資源
+                         │
+                         ▼
+                ┌─────────────────┐
+                │ Resource Index  │
+                └────────┬────────┘
+                         │
+                         ▼
+                ┌─────────────────┐
+                │ Asset Resolver  │
+                └────────┬────────┘
+                         │
+                         ▼
+              ┌─────────────────────┐
+              │ Shared Animation     │
+              │ Builder              │
+              │                     │
+              │ DCC                 │
+              │ COF                 │
+              │ Palette             │
+              │ Direction           │
+              │ Frame               │
+              │ Offset              │
+              │ Anchor              │
+              │ Timing              │
+              │ Layer               │
+              │ Event               │
+              └──────────┬──────────┘
+                         │
+                         ▼
+                Standard Animation
+                     Manifest
+                         │
+                         ▼
+                Web Runtime Player
+```
+
+---
+
+# 2. 第一階段：先盤點目前「已經正確」的動畫
+
+在修改任何程式之前：
+
+1. 搜尋整個專案。
+2. 找出目前已經可以正常工作的動畫。
+3. 不要只依照檔名判斷。
+4. 必須根據實際程式碼、輸出資料、Manifest、Atlas、執行邏輯與畫面結果來判斷。
+5. 列出所有已成功動畫。
+
+例如可能得到：
+
+```text
+Character:
+- Sorceress Idle
+- Sorceress Cast
+- Sorceress Attack
+
+Monster:
+- Monster Idle
+- Monster Attack
+- Monster Hit
+- Monster Death
+
+Skill:
+- Fireball
+
+Projectile:
+- Fireball Projectile
+```
+
+實際專案中有哪些，就使用哪些。
+
+不要自行假設不存在的動畫。
+
+---
+
+# 3. 對每一個成功動畫做「逆向分析」
+
+對每個已成功動畫，建立完整資料表。
+
+至少分析：
+
+```text
+Animation ID
+Entity Type
+Character / Monster / Skill / Projectile
+Token
+Mode
+DCC
+COF
+Palette
+Related DAT
+Related TXT/Data
+Direction Count
+Frame Count
+Frame Rate
+Frame Duration
+Animation Length
+Layer Count
+Layer Order
+Anchor
+OffsetX
+OffsetY
+Width
+Height
+Direction Mapping
+World Direction
+Logical Direction
+DCC Direction
+Spawn Timing
+Hit Timing
+Death Timing
+Other Animation Events
+Atlas Location
+Manifest Format
+Runtime Playback Logic
+```
+
+必須找出：
+
+> 為什麼這個動畫現在是正確的？
+
+而不是只描述：
+
+> 它用了哪些檔案。
+
+---
+
+# 4. 尋找成功動畫之間的共同規則
+
+這一步非常重要。
+
+將目前所有成功動畫做交叉比對。
+
+找出：
+
+## 4.1 資源解析共同規則
+
+確認：
+
+```text
+MPQ
+→ Resource
+→ DCC
+→ COF
+→ Palette
+→ Animation
+```
+
+之間到底如何解析。
+
+不要根據檔名猜測。
+
+如果專案已經有正確的 Resolver，將其抽出成共用模組。
+
+---
+
+## 4.2 Direction 共同規則
+
+找出現有成功動畫如何處理：
+
+```text
+World Direction
+        ↓
+Logical Direction
+        ↓
+DCC Direction
+```
+
+不要直接：
+
+```text
+sprite rotate 45°
+```
+
+也不要讓不同動畫各自使用不同方向算法。
+
+建立統一方向介面，例如：
+
+```text
+World Direction
+Logical Direction
+Asset Direction
+```
+
+實際命名依現有程式碼決定。
+
+必須支援不同動畫可能存在：
+
+```text
+4 directions
+8 directions
+16 directions
+32 directions
+```
+
+甚至其他實際 D2 資源形式。
+
+不要硬編碼所有動畫都一定 16 方向。
+
+---
+
+# 5. 逆向整理 Frame 結構
+
+分析成功動畫目前如何取得：
+
+```text
+Frame 0
+Frame 1
+Frame 2
+Frame 3
+...
+```
+
+確認：
+
+* Frame 是否依方向分組
+* Frame 是否有獨立 Offset
+* Frame 是否有 Width / Height
+* Frame 是否存在 origin
+* Frame 是否存在 pivot
+* Frame 是否存在 layer
+* Frame 是否需要 compositing
+* Frame 是否直接來自 DCC
+* Frame 是否由多個 DCC layer 組成
+
+建立統一 Frame 結構。
+
+例如概念上：
+
+```json
+{
+  "frame": 0,
+  "width": 64,
+  "height": 80,
+  "offsetX": -32,
+  "offsetY": -70,
+  "anchorX": 32,
+  "anchorY": 70,
+  "duration": 40,
+  "atlas": {
+    "x": 128,
+    "y": 64,
+    "w": 64,
+    "h": 80
+  }
+}
+```
+
+實際欄位依現有專案需求決定。
+
+不要為了範例而硬套不必要欄位。
+
+---
+
+# 6. 逆向整理 Anchor / Offset
+
+這是非常重要的一項。
+
+分析目前成功動畫為什麼沒有：
+
+```text
+角色上下抖動
+角色左右漂移
+角色腳底漂移
+角色施法時位置跳動
+投射物方向發生位移
+```
+
+找出它實際採用的：
+
+```text
+Entity World Position
+        +
+Sprite Anchor
+        +
+Frame Offset
+        ↓
+Screen Position
+```
+
+建立統一 Anchor 系統。
+
+角色、怪物、技能、投射物都必須使用相同概念。
+
+例如：
+
+```text
+World Position = 實體在遊戲世界的邏輯座標
+
+Anchor = 該動畫應該固定在世界座標上的參考點
+
+Frame Offset = 每張圖片相對 Anchor 的偏移
+
+Screen Position = Isometric Projection(World Position)
+                 + Animation Offset
+```
+
+禁止使用「每個動畫手工調一組畫面座標」的方式解決問題。
+
+---
+
+# 7. 逆向整理 COF / Layer Composite
+
+確認目前成功動畫是不是單一 DCC。
+
+如果不是，必須找出：
+
+```text
+COF
+ ↓
+Layer 0
+Layer 1
+Layer 2
+Layer 3
+...
+ ↓
+Composite Frame
+```
+
+例如：
+
+```text
+Body
+Arm
+Weapon
+Shield
+Effect
+Overlay
+```
+
+建立通用 Composite Animation 機制。
+
+概念：
+
+```text
+CompositeAnimation
+├── Layer 0
+├── Layer 1
+├── Layer 2
+├── Layer 3
+└── Layer N
+```
+
+每一層都必須能夠有：
+
+```text
+Token
+DCC
+COF Layer
+Palette
+Direction
+Frame
+Offset
+Blend
+Draw Order
+```
+
+不要把目前成功動畫中寫死的 Layer 組合方式保留在單一技能裡。
+
+---
+
+# 8. 逆向整理 Palette
+
+確認成功動畫的顏色到底怎麼取得。
+
+分析：
+
+```text
+DCC
++
+Palette
+=
+RGBA Frame
+```
+
+確認目前程式是否存在：
+
+```text
+固定 Palette
+Palette Variant
+Character Palette
+Monster Palette
+Skill Palette
+Color Transform
+```
+
+把通用部分抽出。
+
+如果相同 DCC 僅因 Palette 不同而產生不同顏色，不應該複製大量重複資產。
+
+優先設計成：
+
+```text
+Shared Base Asset
+        +
+Palette Variant
+        ↓
+Visual Variant
+```
+
+---
+
+# 9. 逆向整理 Animation Timing
+
+確認成功動畫的真正播放速度。
+
+不要直接假設：
+
+```text
+FPS = 25
+```
+
+必須找出實際來源。
+
+可能來源包含：
+
+```text
+AnimData
+Animation metadata
+COF
+TXT
+Skill data
+自訂 Timing
+```
+
+分析成功動畫之後，建立統一 Timing 結構。
+
+例如：
+
+```json
+{
+  "fps": 25,
+  "frameDuration": 40,
+  "loop": true
+}
+```
+
+或：
+
+```json
+{
+  "frameDurations": [
+    40,
+    40,
+    60,
+    80,
+    40
+  ]
+}
+```
+
+視成功動畫的真實需求設計。
+
+---
+
+# 10. 逆向整理 Animation Event
+
+特別分析技能動畫。
+
+例如 Fireball：
+
+```text
+Cast Start
+   ↓
+Cast Frame 0
+   ↓
+Cast Frame 1
+   ↓
+Cast Frame 2
+   ↓
+Cast Frame 3
+   ↓
+Projectile Spawn
+   ↓
+Cast Frame 4
+   ↓
+Cast End
+```
+
+不能簡單寫成：
+
+```text
+cast()
+→ spawn projectile immediately
+```
+
+必須建立 Animation Event。
+
+例如：
+
+```json
+{
+  "frame": 3,
+  "event": "projectile_spawn"
+}
+```
+
+未來可以支援：
+
+```text
+projectile_spawn
+hit
+sound
+effect
+camera_shake
+attack
+damage
+animation_end
+state_change
+```
+
+Event 系統必須與動畫播放核心分離。
+
+---
+
+# 11. 建立 Standard Animation Schema
+
+把目前成功動畫整理成一個統一 Schema。
+
+建立專案內唯一的標準動畫格式，例如：
+
+```text
+StandardAnimation
+```
+
+內容至少包含：
+
+```text
+identity
+type
+source
+mode
+directions
+frames
+timing
+anchor
+layers
+events
+atlas
+metadata
+```
+
+概念結構：
+
+```json
+{
+  "id": "fireball",
+  "type": "skill",
+
+  "source": {
+    "token": "...",
+    "dcc": "...",
+    "cof": "...",
+    "palette": "..."
+  },
+
+  "animation": {
+    "mode": "cast",
+    "directions": 16,
+    "frameCount": 8,
+    "fps": 25,
+    "loop": false
+  },
+
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+
+  "directions": {
+    "0": {
+      "frames": []
+    }
+  },
+
+  "events": [
+    {
+      "frame": 3,
+      "event": "projectile_spawn"
+    }
+  ],
+
+  "atlas": {
+    "file": "...",
+    "frames": {}
+  }
+}
+```
+
+以上只是 Schema 方向。
+
+請根據目前成功動畫實際使用的資料調整。
+
+---
+
+# 12. 建立 Shared Animation Builder
+
+建立真正的共用 Builder。
+
+Builder 必須負責：
+
+```text
+Input
+ ↓
+Resource Resolver
+ ↓
+DCC Decoder
+ ↓
+COF Parser
+ ↓
+Palette Resolver
+ ↓
+Direction Resolver
+ ↓
+Frame Builder
+ ↓
+Anchor Resolver
+ ↓
+Offset Resolver
+ ↓
+Timing Resolver
+ ↓
+Composite Renderer
+ ↓
+Atlas Generator
+ ↓
+Manifest Generator
+ ↓
+Validation
+ ↓
+Output
+```
+
+要求：
+
+> **任何新動畫都應該可以透過這個 Builder 建立。**
+
+---
+
+# 13. Builder 必須資料驅動
+
+新增動畫不應該需要：
+
+```text
+新增一個新的 Python parser
+新增一個新的 JS animation class
+新增一套特殊 Direction 算法
+新增一套特殊 Offset
+新增一套特殊 Frame 播放器
+```
+
+而應該像：
+
+```json
+{
+  "id": "new_animation",
+  "source": {
+    "token": "...",
+    "mode": "...",
+    "dcc": "...",
+    "cof": "...",
+    "palette": "..."
+  }
+}
+```
+
+然後：
+
+```text
+builder.build("new_animation")
+```
+
+即可產生標準動畫資料。
+
+---
+
+# 14. 允許「特殊規則」，但禁止複製整套流程
+
+有些 D2 資源可能存在特殊情況。
+
+例如：
+
+```text
+特殊 Direction
+特殊 Layer
+特殊 Timing
+特殊 Palette
+特殊 Offset
+特殊 Event
+```
+
+這時可以提供：
+
+```text
+Extension / Override / Adapter
+```
+
+但必須遵守：
+
+```text
+共用 Pipeline
+     ↓
+標準流程
+     ↓
+必要時
+     ↓
+局部 Override
+```
+
+而不是：
+
+```text
+特殊動畫
+     ↓
+完全複製一套 Builder
+```
+
+---
+
+# 15. 建立 Animation Template
+
+至少建立以下概念模板：
+
+```text
+CharacterAnimation
+MonsterAnimation
+SkillAnimation
+ProjectileAnimation
+EffectAnimation
+CompositeAnimation
+```
+
+所有模板都必須繼承或實作共同的：
+
+```text
+StandardAnimation
+```
+
+概念：
+
+```text
+StandardAnimation
+│
+├── CharacterAnimation
+├── MonsterAnimation
+├── SkillAnimation
+├── ProjectileAnimation
+├── EffectAnimation
+└── CompositeAnimation
+```
+
+實際程式語言與架構依目前專案決定。
+
+不要為了形式而引入過度複雜的 OOP。
+
+---
+
+# 16. Web Runtime 必須與 Builder 分離
+
+這一點非常重要。
+
+Builder 是：
+
+```text
+Build Time
+```
+
+Web Renderer 是：
+
+```text
+Runtime
+```
+
+不要讓瀏覽器重新解析：
+
+```text
+MPQ
+DCC
+COF
+Palette
+```
+
+除非現有架構已明確要求。
+
+理想架構：
+
+```text
+MPQ
+ ↓
+Asset Builder
+ ↓
+PNG / WebP / Atlas
++
+Animation Manifest
+ ↓
+Web
+ ↓
+Renderer
+```
+
+Browser 只負責：
+
+```text
+讀取標準動畫資料
+ ↓
+選方向
+ ↓
+選 Frame
+ ↓
+計算位置
+ ↓
+播放
+ ↓
+觸發 Event
+```
+
+---
+
+# 17. 建立「新動畫自動加入」流程
+
+未來增加新動畫時，流程應該是：
+
+```text
+新增資源
+ ↓
+新增 Animation Definition
+ ↓
+Shared Builder
+ ↓
+自動處理
+ ↓
+Validation
+ ↓
+Atlas
+ ↓
+Manifest
+ ↓
+Web 自動載入
+```
+
+不能要求開發者同時修改十幾個地方。
+
+---
+
+# 18. 建立動畫自動驗證系統
+
+這是必要功能。
+
+對每個成功動畫與新動畫自動檢查：
+
+```text
+✓ DCC 是否存在
+✓ COF 是否存在
+✓ Palette 是否存在
+✓ Direction 是否正確
+✓ Frame 是否完整
+✓ Frame 數量是否一致
+✓ Atlas frame 是否存在
+✓ Offset 是否存在
+✓ Anchor 是否存在
+✓ Timing 是否存在
+✓ Event Frame 是否超出範圍
+✓ Layer 是否缺失
+✓ Manifest 是否有效
+```
+
+若存在問題：
+
+```text
+ERROR
+WARNING
+INFO
+```
+
+必須明確指出：
+
+```text
+Animation ID
+Asset Path
+Direction
+Frame
+Layer
+Error Type
+```
+
+---
+
+# 19. 建立「成功動畫回歸測試」
+
+這是整個任務最重要的驗證方式。
+
+重構之前：
+
+```text
+Existing Animation
+        ↓
+Correct
+```
+
+重構之後：
+
+```text
+Existing Animation
+        ↓
+New Shared Builder
+        ↓
+Must Still Be Correct
+```
+
+至少對目前全部已成功動畫做 Regression Test。
+
+要求：
+
+> **不能因為建立共用 Builder，而破壞目前已經正常的動畫。**
+
+如果新 Builder 造成舊動畫錯誤：
+
+```text
+STOP
+分析差異
+修正 Builder
+再次 Regression
+```
+
+不要直接修改舊動畫資料去掩蓋 Builder 的錯誤。
+
+---
+
+# 20. 建立 Before / After 比較
+
+對目前已成功動畫：
+
+```text
+Original Pipeline
+        VS
+Shared Builder
+```
+
+比較：
+
+```text
+Direction
+Frame Count
+Timing
+Anchor
+Offset
+Layer
+Palette
+Final Composite
+```
+
+最好能輸出：
+
+```text
+comparison report
+```
+
+例如：
+
+```text
+Animation: Fireball
+
+Direction:
+Original = 16
+Builder  = 16
+PASS
+
+Frame Count:
+Original = 8
+Builder  = 8
+PASS
+
+Timing:
+Original = 320ms
+Builder  = 320ms
+PASS
+
+Anchor:
+MATCH
+PASS
+
+Layer:
+MATCH
+PASS
+```
+
+---
+
+# 21. 建立 Animation Forensics / Debug View
+
+如果專案目前沒有，請加入一個簡單的動畫除錯模式。
+
+至少顯示：
+
+```text
+Animation ID
+Entity
+Mode
+Direction
+Logical Direction
+DCC Direction
+Frame
+Frame Count
+FPS
+World Position
+Screen Position
+Anchor
+Offset
+Layer
+Asset Path
+Atlas Region
+Event
+```
+
+畫面最好可以：
+
+```text
+上一幀
+下一幀
+播放
+停止
+選方向
+選動畫
+顯示 Anchor
+顯示 Sprite Bounding Box
+顯示 World Position
+顯示 Offset
+```
+
+目的不是做漂亮 UI。
+
+目的是：
+
+> **可以快速判斷「動畫到底在哪一層出錯」。**
+
+---
+
+# 22. Fireball 必須作為第一個完整驗證案例
+
+Fireball 是第一個 Vertical Slice。
+
+完整鏈路：
+
+```text
+Sorceress
+ ↓
+Cast Animation
+ ↓
+Animation Event
+ ↓
+Projectile Spawn
+ ↓
+World Direction
+ ↓
+Isometric Projection
+ ↓
+Projectile Animation
+ ↓
+Monster Collision
+ ↓
+Monster Hit Animation
+ ↓
+Monster Death Animation
+```
+
+必須全部使用：
+
+```text
+Shared Animation Builder
++
+Standard Animation Manifest
+```
+
+不能 Fireball 使用新系統，而 Monster 又使用舊系統。
+
+---
+
+# 23. 絕對禁止的做法
+
+禁止：
+
+```text
+❌ 為每個動畫複製一份 Builder
+❌ 為每個技能寫一套 Direction 演算法
+❌ 為每個動畫手動硬編 Screen Position
+❌ 用旋轉 Sprite 模擬 D2 Direction
+❌ 用固定 Frame Count 套所有動畫
+❌ 用固定 FPS 套所有動畫
+❌ 看到動畫錯誤就直接手動位移 Sprite
+❌ 直接猜 DCC / COF 關係
+❌ 只依照檔名判斷資源關聯
+❌ 將瀏覽器變成 DCC/MPQ 解析器
+❌ 為了修一個動畫而破壞其他成功動畫
+❌ 把特殊案例硬寫進通用核心
+```
+
+---
+
+# 24. 特別要求：不要「重新做出一個看起來差不多的動畫」
+
+本專案追求的是：
+
+> **盡可能忠實重建 D2 原始動畫資料的播放與組合邏輯。**
+
+因此：
+
+```text
+看起來差不多
+```
+
+不等於：
+
+```text
+正確
+```
+
+必須優先保留：
+
+```text
+Original Direction
+Original Frame Order
+Original Frame Timing
+Original Layer Order
+Original Anchor
+Original Offset
+Original Palette
+Original Animation Event
+```
+
+---
+
+# 25. 修改前先建立完整現況報告
+
+在實際重構之前，先輸出：
+
+```text
+D2 Animation Reverse Engineering Report
+```
+
+內容：
+
+## A. 已成功動畫清單
+
+```text
+Animation
+Type
+Current Implementation
+Source Assets
+```
+
+## B. 每個成功動畫的資源鏈
+
+```text
+MPQ
+→ DCC
+→ COF
+→ Palette
+→ Animation
+```
+
+## C. 共通規則
+
+```text
+Direction
+Frame
+Timing
+Anchor
+Offset
+Layer
+Event
+```
+
+## D. 不共通的特殊規則
+
+```text
+Animation X
+特殊 Direction
+
+Animation Y
+特殊 Layer
+
+Animation Z
+特殊 Timing
+```
+
+## E. 可以抽成 Shared Core 的功能
+
+## F. 必須保留 Override 的功能
+
+## G. 建議的新專案結構
+
+---
+
+# 26. 建議的程式架構
+
+依目前專案實際狀況修改，但原則上應接近：
+
+```text
+asset-builder/
+│
+├── core/
+│   ├── asset_resolver
+│   ├── animation_builder
+│   ├── animation_schema
+│   ├── direction_resolver
+│   ├── frame_builder
+│   ├── timing_resolver
+│   ├── anchor_resolver
+│   ├── palette_resolver
+│   ├── layer_composer
+│   ├── atlas_builder
+│   └── manifest_builder
+│
+├── d2/
+│   ├── mpq
+│   ├── dcc
+│   ├── cof
+│   ├── palette
+│   └── data
+│
+├── validators/
+│
+└── templates/
+    ├── character
+    ├── monster
+    ├── skill
+    ├── projectile
+    └── effect
+```
+
+Web：
+
+```text
+web/
+│
+├── animation/
+│   ├── AnimationPlayer
+│   ├── AnimationRuntime
+│   ├── AnimationEvent
+│   ├── DirectionController
+│   └── CompositeAnimation
+│
+├── entity/
+│
+├── combat/
+│
+├── projectile/
+│
+└── renderer/
+```
+
+---
+
+# 27. 新動畫的最終使用方式
+
+最終我要能做到：
+
+```text
+新增一個動畫資源
+        ↓
+加入 animation definition
+        ↓
+執行 Builder
+        ↓
+自動輸出
+        ↓
+Web 直接可用
+```
+
+例如：
+
+```json
+{
+  "id": "ice_bolt",
+  "type": "skill",
+  "source": {
+    "token": "...",
+    "mode": "...",
+    "dcc": "...",
+    "cof": "...",
+    "palette": "..."
+  }
+}
+```
+
+然後：
+
+```text
+build animation ice_bolt
+```
+
+即可。
+
+未來：
+
+```text
+fireball
+ice_bolt
+lightning
+blizzard
+frozen_orb
+meteor
+teleport
+monster_attack
+monster_hit
+monster_death
+```
+
+都走同一套 Builder。
+
+---
+
+# 28. 最終驗收標準
+
+完成後必須確認：
+
+### 舊動畫
+
+```text
+✓ 所有目前正確動畫仍然正確
+✓ 無方向偏移
+✓ 無 Frame 抖動
+✓ 無 Anchor 漂移
+✓ 無 Timing 改變
+✓ 無 Layer 錯誤
+✓ 無 Palette 錯誤
+```
+
+### Builder
+
+```text
+✓ 可以處理不同動畫
+✓ 不需要複製核心程式
+✓ 支援不同 Direction Count
+✓ 支援不同 Frame Count
+✓ 支援不同 Timing
+✓ 支援 Composite Layer
+✓ 支援 Palette Variant
+✓ 支援 Animation Event
+✓ 支援局部 Override
+```
+
+### 新動畫
+
+至少拿一個目前「還沒有做好」的動畫進行測試：
+
+```text
+New Animation
+ ↓
+Shared Builder
+ ↓
+Standard Manifest
+ ↓
+Web Renderer
+```
+
+證明新動畫可以直接套用共用流程。
+
+---
+
+# 29. 最重要的輸出結果
+
+完成任務後，不要只告訴我「完成」。
+
+必須輸出以下內容：
+
+```text
+1. Reverse Engineering Report
+2. Existing Animation Inventory
+3. Standard Animation Schema
+4. Shared Animation Builder
+5. Animation Template
+6. Direction System
+7. Frame / Offset / Anchor System
+8. Timing System
+9. Animation Event System
+10. Composite Layer System
+11. Validation System
+12. Regression Test Results
+13. Old vs New Comparison
+14. One New Animation Test
+15. 修改過的檔案清單
+16. 新增的檔案清單
+17. 最終專案結構
+18. 如何新增下一個動畫
+```
+
+---
+
+# 30. 執行原則
+
+請嚴格按照以下順序：
+
+```text
+Step 1
+盤點現有成功動畫
+
+↓
+
+Step 2
+逆向分析成功動畫
+
+↓
+
+Step 3
+找共同規則
+
+↓
+
+Step 4
+區分 Common / Special
+
+↓
+
+Step 5
+設計 Standard Animation Schema
+
+↓
+
+Step 6
+建立 Shared Animation Builder
+
+↓
+
+Step 7
+將一個成功動畫遷移到 Builder
+
+↓
+
+Step 8
+Regression Test
+
+↓
+
+Step 9
+將其他成功動畫遷移到 Builder
+
+↓
+
+Step 10
+再次 Regression Test
+
+↓
+
+Step 11
+加入一個新的動畫
+
+↓
+
+Step 12
+確認新動畫完全透過 Builder 建立
+
+↓
+
+Step 13
+整理文件
+```
+
+---
+
+# 31. 最終目標
+
+我要的是：
+
+```text
+不是：
+
+「我們已經做出很多動畫」
+
+而是：
+
+「我們已經建立一套可以持續製作 D2 動畫的系統」
+```
+
+真正的最終架構：
+
+```text
+               D2 Raw Assets
+                     │
+                     ▼
+             Resource Resolver
+                     │
+                     ▼
+         ┌────────────────────────┐
+         │ Shared Animation Builder│
+         ├────────────────────────┤
+         │ DCC                    │
+         │ COF                    │
+         │ Palette                │
+         │ Direction              │
+         │ Frame                  │
+         │ Timing                 │
+         │ Anchor                 │
+         │ Offset                 │
+         │ Layer                  │
+         │ Event                  │
+         └───────────┬────────────┘
+                     │
+                     ▼
+          Standard Animation Data
+                     │
+                     ▼
+              Atlas + Manifest
+                     │
+                     ▼
+               Web Runtime
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+       Character   Monster     Skill
+          │          │          │
+          └──────────┼──────────┘
+                     ▼
+               Same Pipeline
+```
+
+## 最終規則
+
+**一次把「成功動畫」的正確邏輯找清楚。**
+
+**把正確邏輯放進 Shared Builder。**
+
+**舊動畫全部回歸驗證。**
+
+**之後所有新動畫一律走 Shared Builder。**
+
+**不要再讓 Agent 為每一個新動畫重新猜一次 D2 的動畫組合方式。**
+
+這份提示詞比較適合你現在的狀況，因為它不是單純要求 Agent「抽象化程式碼」，而是強制它先把**現有成功案例當作 Ground Truth**，再建立共用系統。這樣可以避免把目前那些「看似能動、實際上方向或 Offset 不完全正確」的邏輯直接抽成錯誤模板。

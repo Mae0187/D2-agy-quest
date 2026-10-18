@@ -1,0 +1,38 @@
+{
+  "id": "fistsoffire",
+  "name": "Fists of Fire",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "groundFireSmall",
+    "celFile": "groundFireSmall",
+    "speed": 20.0,
+    "range": 64.0,
+    "size": 2,
+    "collideType": 8
+  },
+  "impact": null,
+  "damage": {
+    "min": 11,
+    "max": 15,
+    "level": 1,
+    "formula": "6 + 5x7 + 10x8 + 20x4",
+    "maxFormula": "10 + 5x7 + 11x8 + 22x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 2
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/groundFireSmall.png",
+    "numbers": "assets/skills/data/fistsoffire.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "id": "magicarrow",
+  "name": "Magic Arrow",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "ama",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "magic arrow",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is ama"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "amazon",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 1,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 1,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 2,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 0,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "skillname6",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    },
+    "name": {
+      "value": "Magic Arrow",
+      "source": "string.tbl skillname6 (key from SkillDesc.txt str name)"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 12,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 5,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": {
+      "value": "A1",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "A1",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": null,
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  },
+  "missiles": [
+    {
+      "value": "magicarrow",
+      "source": "Skills.txt srvmissile",
+      "missile": {
+        "name": "magicarrow",
+        "resolved": true,
+        "celFile": {
+          "value": "SafeArrow",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 24,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 24,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 40,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 1,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": {
+          "value": 1,
+          "source": "Missiles.txt CollideKill"
+        },
+        "nextHit": null,
+        "nextDelay": null,
+        "pierce": {
+          "value": 1,
+          "source": "Missiles.txt Pierce"
+        },
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 1,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": {
+          "value": "teethexplode",
+          "source": "Missiles.txt ExplosionMissile"
+        },
+        "elemental": {
+          "type": {
+            "value": "mag",
+            "source": "Missiles.txt EType"
+          },
+          "min": null,
+          "max": null
+        },
+        "parameters": [],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "",
+          "known": null,
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    }
+  ],
+  "clientMissiles": [
+    {
+      "value": "magicarrow",
+      "source": "Skills.txt cltmissile"
+    }
+  ]
+}

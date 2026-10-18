@@ -1,0 +1,68 @@
+# ==========================================
+# Diablo II Agent Monitor - .gitignore
+# ==========================================
+
+# 1. 遊戲原始光碟、巨型 MPQ 與萃取中繼檔案 (避免 GB 級大檔入庫)
+Diablo II 1.13c/
+*.mpq
+*.MPQ
+*.zip
+*.tar
+*.gz
+*.mp4
+**/mpq_raw/
+tools/mpq_raw/
+Diablo2-Agent-Monitor/tools/mpq_raw/
+**/tools/listfiles/
+Diablo2-Agent-Monitor/tools/listfiles/
+
+# 1.1 巨型原始圖集切片、未壓縮音效與臨時測試圖 (避免推送超過 GitHub 2GB 上限)
+diablo2_normalized_assets/
+Diablo2-Agent-Monitor/assets/
+Diablo2-Agent-Monitor/sounds/
+Diablo2-Agent-Monitor/sounds_normalized/
+sounds/
+sounds_normalized/
+testimages/
+map/
+maps1/
+gif/
+
+# 2. Python 快取、編譯物與虛擬環境
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.venv/
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+node_modules/
+**/node_modules/
+
+# 3. 執行期日誌與暫存檔案
+*.log
+debug.log
+session_auth.json
+scratch/
+**/scratch/
+
+# 4. 作業系統與 IDE 暫存
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# 5. 根目錄自動化測試產生的除錯截圖與臨時圖
+test_*.png
+test_*.gif
+bear_*.png
+layer_verification_live.png
+arrow_*.png
+row*.png
+golem_cell*.png
+wolf_*_dirs.png

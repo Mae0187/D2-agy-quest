@@ -1,0 +1,214 @@
+{
+  "project": "Diablo II Sorceress Fire Skills Standard Manifests",
+  "version": "2.0.0",
+  "groundTruthCheckpoint": "checkpoint-fire-1100",
+  "skills": {
+    "36": {
+      "skillId": "36",
+      "name": "Firebolt (火彈)",
+      "category": "fire",
+      "template": "linear_missile",
+      "timing": { "stepHz": 25, "tickMs": 40, "durationTicks": 60, "releaseFrame": 8 },
+      "parameters": { "velocity": 18, "range": 60, "collideType": "unit" },
+      "direction": { "count": 16, "preset": "dcc_16_standard" },
+      "layers": [
+        {
+          "layerId": "missile_body",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/firebolt_norm.png",
+          "cellW": 118, "cellH": 70, "pivotX": 59, "pivotY": 35,
+          "frames": 5, "dirs": 16, "blendMode": "lighter", "alpha": 1.0
+        }
+      ]
+    },
+    "47": {
+      "skillId": "47",
+      "name": "Fireball (火球)",
+      "category": "fire",
+      "template": "linear_missile",
+      "timing": { "stepHz": 25, "tickMs": 40, "durationTicks": 55, "releaseFrame": 8 },
+      "parameters": { "velocity": 16, "range": 55, "aoeRadius": 80, "subMissileId": "fireball_explode" },
+      "direction": { "count": 16, "preset": "dcc_16_standard" },
+      "layers": [
+        {
+          "layerId": "missile_body",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/fireball_norm.png",
+          "cellW": 148, "cellH": 86, "pivotX": 74, "pivotY": 30,
+          "frames": 5, "dirs": 16, "blendMode": "lighter", "alpha": 1.0
+        },
+        {
+          "layerId": "impact_burst",
+          "role": "impact_burst",
+          "atlasFile": "assets/atlases/fireball_explode.png",
+          "cellW": 80, "cellH": 72, "pivotX": 40, "pivotY": 36,
+          "frames": 12, "dirs": 1, "blendMode": "lighter", "alpha": 1.0
+        }
+      ]
+    },
+    "41": {
+      "skillId": "41",
+      "name": "Inferno (地獄之火)",
+      "category": "fire",
+      "template": "continuous_stream",
+      "timing": { "stepHz": 25, "tickMs": 40, "durationTicks": 30, "streamIntervalTicks": 2 },
+      "parameters": { "velocity": 12, "range": 30, "particleLifetime": 18 },
+      "direction": { "count": 1, "preset": "omnidirectional" },
+      "layers": [
+        {
+          "layerId": "stream_particle",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/flamethrower_norm.png",
+          "cellW": 78, "cellH": 78, "pivotX": 37, "pivotY": 40,
+          "frames": 15, "dirs": 1, "blendMode": "lighter", "fadeWithLife": true
+        }
+      ]
+    },
+    "51": {
+      "skillId": "51",
+      "name": "Firewall (火牆)",
+      "category": "fire",
+      "template": "ground_hazard",
+      "timing": { "stepHz": 25, "tickMs": 40, "durationTicks": 90 },
+      "parameters": { "pillarCount": 7, "spacingPx": 24, "layoutAngleDeg": 45 },
+      "direction": { "count": 1, "preset": "isometric_line" },
+      "layers": [
+        {
+          "layerId": "pillar_fire",
+          "role": "ground_fire",
+          "atlasFile": "assets/atlases/groundfire_big.png",
+          "cellW": 68, "cellH": 169, "pivotX": 34, "pivotY": 158,
+          "frames": 37, "dirs": 1, "blendMode": "lighter", "anchor": "bottom"
+        }
+      ]
+    },
+    "56": {
+      "skillId": "56",
+      "name": "Meteor (隕石天降)",
+      "category": "fire",
+      "template": "timed_multistage",
+      "timing": {
+        "stepHz": 25, "tickMs": 40,
+        "stages": {
+          "indicator": { "startTick": 0, "endTick": 42 },
+          "falling": { "startTick": 25, "endTick": 42 },
+          "impact": { "triggerTick": 42, "aoeRadius": 80 },
+          "residualFire": { "startTick": 42, "endTick": 140 }
+        }
+      },
+      "parameters": { "fallingVector": { "dx": 160, "dy": 280 }, "aoeRadius": 80 },
+      "layers": [
+        {
+          "layerId": "indicator",
+          "role": "indicator",
+          "atlasFile": "assets/atlases/meteor_indicator.png",
+          "cellW": 114, "cellH": 76, "pivotX": 57, "pivotY": 45,
+          "frames": 17, "dirs": 1, "blendMode": "lighter", "alpha": 0.85
+        },
+        {
+          "layerId": "falling_rock",
+          "role": "falling_body",
+          "atlasFile": "assets/atlases/meteor.png",
+          "cellW": 24, "cellH": 26, "pivotX": 12, "pivotY": 13,
+          "frames": 12, "dirs": 1, "blendMode": "lighter"
+        },
+        {
+          "layerId": "falling_tail",
+          "role": "falling_tail",
+          "atlasFile": "assets/atlases/meteor_tail.png",
+          "cellW": 79, "cellH": 128, "pivotX": 47, "pivotY": 83,
+          "frames": 12, "dirs": 1, "blendMode": "lighter"
+        },
+        {
+          "layerId": "impact_explode",
+          "role": "impact_burst",
+          "atlasFile": "assets/atlases/meteor_explode.png",
+          "cellW": 210, "cellH": 176, "pivotX": 109, "pivotY": 125,
+          "frames": 16, "dirs": 1, "blendMode": "lighter"
+        },
+        {
+          "layerId": "residual_fire",
+          "role": "ground_fire",
+          "atlasFile": "assets/atlases/groundfire_med.png",
+          "cellW": 68, "cellH": 138, "pivotX": 34, "pivotY": 127,
+          "frames": 37, "dirs": 1, "blendMode": "lighter", "anchor": "bottom"
+        }
+      ]
+    },
+    "62": {
+      "skillId": "62",
+      "name": "Hydra (九頭海蛇)",
+      "category": "fire",
+      "template": "composite_minion",
+      "timing": {
+        "stepHz": 25, "tickMs": 40, "durationTicks": 250,
+        "fireStageTicks": { "start": 25, "end": 25 }
+      },
+      "parameters": {
+        "headCount": 3,
+        "targetRadius": 280,
+        "mouthOffsets": {
+          "0": [18, -32], "1": [24, -38], "2": [0, -42], "3": [-24, -38],
+          "4": [-18, -32], "5": [-26, -26], "6": [0, -22], "7": [26, -26]
+        },
+        "calibratedHeads": [
+          { "ox": -22, "oy": -8 },
+          { "ox": 0, "oy": 6 },
+          { "ox": 22, "oy": -8 }
+        ],
+        "calibratedFires": [
+          { "fox": -11, "foy": -6 },
+          { "fox": -10, "foy": -6 },
+          { "fox": -8, "foy": -6 }
+        ]
+      },
+      "direction": { "count": 8, "preset": "dcc_8_hydra" },
+      "layers": [
+        {
+          "layerId": "back_glow",
+          "role": "predraw_glow",
+          "preDraw": 1,
+          "atlasFile": "assets/atlases/hydra_groundfire.png",
+          "cellW": 65, "cellH": 92, "pivotX": 32, "pivotY": 71,
+          "frames": 20, "dirs": 1, "blendMode": "lighter", "alpha": 0.45
+        },
+        {
+          "layerId": "head_idle",
+          "role": "minion_body",
+          "atlasFile": "assets/atlases/hydra_nu.png",
+          "cellW": 66, "cellH": 84, "pivotX": 46, "pivotY": 77,
+          "frames": 12, "dirs": 8, "blendMode": "normal"
+        },
+        {
+          "layerId": "head_attack",
+          "role": "minion_attack",
+          "atlasFile": "assets/atlases/hydra_a1.png",
+          "cellW": 111, "cellH": 88, "pivotX": 63, "pivotY": 79,
+          "frames": 12, "dirs": 8, "blendMode": "normal"
+        },
+        {
+          "layerId": "foreground_flame",
+          "role": "predraw_flame",
+          "preDraw": 0,
+          "atlasFile": "assets/atlases/hydra_groundfire.png",
+          "cellW": 65, "cellH": 92, "pivotX": 32, "pivotY": 71,
+          "frames": 20, "dirs": 1, "blendMode": "lighter", "alpha": 0.95
+        },
+        {
+          "layerId": "fire_start",
+          "role": "predraw_flame",
+          "atlasFile": "assets/atlases/hydra_groundfire_start.png",
+          "cellW": 116, "cellH": 101, "pivotX": 59, "pivotY": 61,
+          "frames": 16, "dirs": 1, "blendMode": "lighter"
+        },
+        {
+          "layerId": "fire_end",
+          "role": "predraw_flame",
+          "atlasFile": "assets/atlases/hydra_groundfire_end.png",
+          "cellW": 62, "cellH": 83, "pivotX": 30, "pivotY": 63,
+          "frames": 16, "dirs": 1, "blendMode": "lighter"
+        }
+      ]
+    }
+  }
+}

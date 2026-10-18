@@ -1,0 +1,1315 @@
+<title>Joel & Alkalund's Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#6633FF" alink="#336699"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou & Alkalund<br>
+  for The Phrozen Keep</h4>
+<h2><u>Chapter Six : Errors and Tips</u></h2>
+
+<h3><i><u>6.1 About Multi-part Animations</u></i></h3>
+
+<p align="justify">When dealing with some monsters, you'll surely encounter some 
+  strange
+  configurations. Take for example the Fallen Token (FA). If you look at it,
+  you'll see that it's composed of 6 parts.</p>
+<p align="justify"><img src="images/chapter6/fatoken.jpg" width="291" height="407"></p>
+<p align="justify">Each part holds the animations for a body part (arm,torso etc 
+  ...) or some kind of overlay.
+  If you want to replace this Token, you'll have to change some of this parts 
+  with your
+  animations but what will you do with the others ...
+  
+  You can't let the arms or shield of the original animation be displayed over 
+  your
+  new superb Monsters !</p>
+<p align="justify">The solution : <strong>Invisible DCC</strong>.</p>
+<p align="justify">Before changing a multi-part animation, you have to find the 
+  sub-token that holds the needed modes (A1, A2 etc ...) 
+  and note down which subtokens are unused. In our example, you'll see that the 
+  core animations are displayed in the TR 
+  subtoken and that the subtokens SH,S1 and RH have to be &quot;cancelled&quot;. 
+  Take for example this part of the SH subtoken :</p>
+<p align="justify"><img src="images/chapter6/shpart.jpg" width="350" height="127"></p>
+<p align="justify">So following the first part of the tutorials, you are now able 
+  to change the contents of the TR folder. 
+  Do so and head up to next step ...</p>
+<p align="justify">After completing this part, you still need to cancel the other 
+  subtokens.
+  <a href="files/chapter6/void_files.zip">Take this file</a>, it contains a set of dcc files with 8, 16 and 32 directions, and 
+  255 frames per direction.
+  If you open it, you'll see that each frame is 1x1 pixel with transparency. It could be 
+  used to replace any dcc you want to cancel. 
+  Note down the dcc name of the files you want to cancel, copy the void.dcc to 
+  the forementioned folder, duplicate it and 
+  rename it.</p>
+<p align="justify">Now launch Diablo II, head to your monster and it should be 
+  fine.</p>
+
+<h3><i><u>6.2 The eComponent < NUM_COMPONENTS Assertion Failure:</u></i></h3>
+
+<p>If after giving a monster new animations the game crashes with this assertion message:<p/>
+
+<table border><td><b><i>Assertion Failure<br> 
+Location : C:\Projects\Diablo2\Source\D2Client\Engine\GfxUtil.cpp, line #1352<br> 
+Expression : eComponent < NUM_COMPONENTS</i></b></td></table>
+
+<p>that means the .COF and .D2 editing of the framecounts has an error somewhere. Refer to Chapter 5 of this tutorial for a thorough explanation of the process. Make sure you edited both the .COF and animdata.d2, and that you correcly placed in the <b>data\global</b> folder the .d2 files that can be downloaded <a href="files/chapter5/speciald2.zip">here</a>. If you don't, your .COF modifications won't work.</p>
+
+<h3><i><u>6.3 The (UINT)nAnimFrame <= tCelContext.dwCelsPerDirection Assertion Failure - Animation Sequences:</u></i></h4>
+
+<p>So, you gave a monster token fresh new graphics, and all seems to be working good; but, all of the sudden, the game crashes with this assertion message:</p>
+
+<table border><td><b><i>Assertion Failure <br>
+Location : C:\Projects\Diablo2\Source\D2Client\UNIT\CUnit.cpp, line #1436 <br>
+Expression : (UINT)nAnimFrame <= tCelContext.dwCelsPerDirection</i></b></td></table>
+
+<p>This error is related to an <b>animation sequence</b>. Let's now take a look at animation sequences, and how to solve the error above:</p>
+
+<h4><i><u>6.3.1 What are animation sequences, and how to work with them :</u></i></h4>
+
+<p>We saw before that there are .dcc files corresponding to the animation modes, like attack, walk, neutral and so on. But if we take those little flayers that appear in the act 3 jungles for example, you will see that there is no .dcc file with the animation of these flayers being revived. Still, they <b>do</b> rise from their remains in the game. Where is this animation then, if it is not together with the other animations?</p>
+
+<p>Actually, it <i>is</i> there. If you look closely, you will see that the reviving animation for the flayer is exactly the same as their death animation, only <i>played backwards</i>!!</p>
+
+<p>The reviving animation of the flayer is an example of an animation sequence. In more precise words now: an animation sequence for a monster is a sequence of certain specific frames taken from the existing dcc files, in a certain specific order. There is a table in d2common.dll that contain the information on all animation sequences the D2 monsters use; there are 57 monster animation sequences in total.</p>
+
+<p>You can check what animation sequences the monster you are working with uses, if it uses any. To do so, open <b>monstats.txt</b>, and search for the monster you want. Now, look for the columns called <b>Skill1Seq</b>, <b>Skill2Seq</b>, <b>Skill3Seq</b>, <b>Skill4Seq</b>, <b>Skill5Seq</b>. The numbers in these columns indicate what animation sequences the skills performed by the monster use. In our Flayer example, you will notice that Skill1, 158, uses animation sequence 32. Skill 158 is <i>Skeleton Raise</i> (you can check this in skills.txt), the skill used among other things to revive Flayers. So, 32 is the number of the animation sequence displayed when a flayer is being revived.</p>
+
+<p>Sometimes, the skill sequence used to perform a certain skill could be replaced by an animation mode without problems; for instance, certain attack animation sequences could be replaced with the attack1 animation mode. If you do so (and I will explain how in a second), the game will use the attack1 dcc instead of building an animation sequence for the skill. If the monster that is crashing on you uses an animation sequence that is visually replaceable by an animation mode dcc (check skills.txt to determine what skill is using an animation sequence like I exemplified above), I suggest you do so, as it is an easy fix. Here's how to solve it:</p>
+
+<p>First, get in monstats.txt the ID of the monster skill that is crashing on you, in the <b>Skill1</b>, <b>Skill2</b>, <b>Skill3</b>, <b>Skill4</b>, or <b>Skill5</b> column. Now, open skills.txt, and go to the skill you need to change. For this skill, you have to modify the values in two columns, <b>anim</b> and <b>monanim</b>:</p>
+
+<ul>
+  <li>Change the value of the <b>anim</b> column to <b><i>seq</i></b>;</li>
+  <li>Change the value of the <b>monanim</b> column to one of the following: <b><i>a1</i></b>, <b><i>a2</i></b>, <b><i>sk1</i></b>, <b><i>sk2</i></b>, <b><i>sk3</i></b>, <b><i>sk4</i></b>, depending on the animation mode you want to use for this skill. Note this must be a valid animation mode, don't try to put <b>a2</b> here if the monster does not have an attack2 animation for example.</li>
+</ul>
+
+<p>The modifications above should solve your problem with the game crashing.</p>
+
+<p>Sometimes, however, there is no existing animation mode that would look good for the skill that is crashing on you (for example, the reviving animation sequence). It is in those cases that you will have to open a hex-editor and work in d2common.dll.</p>
+
+<p> In the rest of this discussion on animation sequences, we will see what is causing the error above, and how to solve it by editing the animation sequences directly in d2common.dll.</p>
+
+<h4><i><u>6.3.2 The animation sequence tables in d2common.dll :</u></i></h4>
+
+<p>As I mentioned before, there are 57 monster sequences in total. They are numbered from 1 to 59 (that's because numbers 28 and 29 aren't assigned to any skill sequence). To explain how a skill sequence is structured in d2common.dll and how to modify it, I'll use an example:</p>
+
+<p>Let's say we want to modify the sequence used by the Sand Leaper (token SL) when performing the <i>Leap</i>. If you check monstats.txt, you will see the sand leaper uses the skill sequence number <b>13</b> while performing the Leap skill. To find the place in d2common.dll where you will find this skill sequence, check the table below:</p>
+
+<p><b><u><i>Table 1: Animation sequences - offsets and memory addresses</i></u></b></p>
+
+<table border>
+	<td align=center><u><b>Sequence Number</b></u></td>
+	<td align=center><u><b>File Offset - 1.09b</b></u></td>
+	<td align=center><u><b>Memory Address - 1.09b</b></u></td>
+	<td align=center><u><b>File Offset - 1.09d</b></u></td>
+	<td align=center><u><b>Memory Address - 1.09d</b></u></td>
+<tr>
+	<td align=center>01</td>
+	<td align=center>8EA70</td>
+	<td align=center>6FDCEA70</td>
+	<td align=center>8EA18</td>
+	<td align=center>6FDCEA18</td>
+</tr>
+<tr>
+	<td align=center>02</td>
+	<td align=center>8EB60</td>
+	<td align=center>6FDCEB60</td>
+	<td align=center>8EB08</td>
+	<td align=center>6FDCEB08</td>
+</tr>
+<tr>
+	<td align=center>03</td>
+	<td align=center>8ECA0</td>
+	<td align=center>6FDCECA0</td>
+	<td align=center>8EC48</td>
+	<td align=center>6FDCEC48</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>04</td>
+	<td align=center>8ED80</td>
+	<td align=center>6FDCED80</td>
+	<td align=center>8ED28</td>
+	<td align=center>6FDCED28</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>05</td>
+	<td align=center>8EEA0</td>
+	<td align=center>6FDCEEA0</td>
+	<td align=center>8EE48</td>
+	<td align=center>6FDCEE48</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>06</td>
+	<td align=center>8F130</td>
+	<td align=center>6FDCF130</td>
+	<td align=center>8F0D8</td>
+	<td align=center>6FDCF0D8</td>
+</tr>
+<tr>
+	<td align=center>07</td>
+	<td align=center>8F230</td>
+	<td align=center>6FDCF230</td>
+	<td align=center>8F1D8</td>
+	<td align=center>6FDCF1D8</td>
+</tr>
+<tr>
+	<td align=center>08</td>
+	<td align=center>8F350</td>
+	<td align=center>6FDCF350</td>
+	<td align=center>8F2F8</td>
+	<td align=center>6FDCF2F8</td>
+</tr>
+<tr>
+	<td align=center>09</td>
+	<td align=center>8F420</td>
+	<td align=center>6FDCF420</td>
+	<td align=center>8F3C8</td>
+	<td align=center>6FDCF3C8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>10</td>
+	<td align=center>8F4F0</td>
+	<td align=center>6FDCF4F0</td>
+	<td align=center>8F498</td>
+	<td align=center>6FDCF498</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>11</td>
+	<td align=center>8F5E0</td>
+	<td align=center>6FDCF5E0</td>
+	<td align=center>8F588</td>
+	<td align=center>6FDCF588</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>12</td>
+	<td align=center>8F710</td>
+	<td align=center>6FDCF710</td>
+	<td align=center>8F6B8</td>
+	<td align=center>6FDCF6B8</td>
+</tr>
+<tr>
+	<td align=center>13</td>
+	<td align=center>8F860</td>
+	<td align=center>6FDCF860</td>
+	<td align=center>8F808</td>
+	<td align=center>6FDCF808</td>
+</tr>
+<tr>
+	<td align=center>14</td>
+	<td align=center>8F8F0</td>
+	<td align=center>6FDCF8F0</td>
+	<td align=center>8F898</td>
+	<td align=center>6FDCF898</td>
+</tr>
+<tr>
+	<td align=center>15</td>
+	<td align=center>8FAF0</td>
+	<td align=center>6FDCFAF0</td>
+	<td align=center>8FA98</td>
+	<td align=center>6FDCFA98</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>16</td>
+	<td align=center>8FC40</td>
+	<td align=center>6FDCFC40</td>
+	<td align=center>8FBE8</td>
+	<td align=center>6FDCFBE8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>17</td>
+	<td align=center>8FCC0</td>
+	<td align=center>6FDCFCC0</td>
+	<td align=center>8FC68</td>
+	<td align=center>6FDCFC68</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>18</td>
+	<td align=center>8FD20</td>
+	<td align=center>6FDCFD20</td>
+	<td align=center>8FCC8</td>
+	<td align=center>6FDCFCC8</td>
+</tr>
+<tr>
+	<td align=center>19</td>
+	<td align=center>8FFC0</td>
+	<td align=center>6FDCFFC0</td>
+	<td align=center>8FF68</td>
+	<td align=center>6FDCFF68</td>
+</tr>
+<tr>
+	<td align=center>20</td>
+	<td align=center>90120</td>
+	<td align=center>6FDD0120</td>
+	<td align=center>900C8</td>
+	<td align=center>6FDD00C8</td>
+</tr>
+<tr>
+	<td align=center>21</td>
+	<td align=center>90160</td>
+	<td align=center>6FDD0160</td>
+	<td align=center>90108</td>
+	<td align=center>6FDD0108</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>22</td>
+	<td align=center>902D0</td>
+	<td align=center>6FDD02D0</td>
+	<td align=center>90278</td>
+	<td align=center>6FDD0278</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>23</td>
+	<td align=center>90400</td>
+	<td align=center>6FDD0400</td>
+	<td align=center>903A8</td>
+	<td align=center>6FDD03A8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>24</td>
+	<td align=center>90520</td>
+	<td align=center>6FDD0520</td>
+	<td align=center>904C8</td>
+	<td align=center>6FDD04C8</td>
+</tr>
+<tr>
+	<td align=center>25</td>
+	<td align=center>8EBF0</td>
+	<td align=center>6FDCEBF0</td>
+	<td align=center>8EB98</td>
+	<td align=center>6FDCEB98</td>
+</tr>
+<tr>
+	<td align=center>26</td>
+	<td align=center>8FDC0</td>
+	<td align=center>6FDCFDC0</td>
+	<td align=center>8FD68</td>
+	<td align=center>6FDCFD68</td>
+</tr>
+<tr>
+	<td align=center>27</td>
+	<td align=center>8FEE0</td>
+	<td align=center>6FDCFEE0</td>
+	<td align=center>8FE88</td>
+	<td align=center>6FDCFE88</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>28</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>29</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>30</td>
+	<td align=center>90610</td>
+	<td align=center>6FDD0610</td>
+	<td align=center>905B8</td>
+	<td align=center>6FDD05B8</td>
+</tr>
+<tr>
+	<td align=center>31</td>
+	<td align=center>90760</td>
+	<td align=center>6FDD0760</td>
+	<td align=center>90708</td>
+	<td align=center>6FDD0708</td>
+</tr>
+<tr>
+	<td align=center>32</td>
+	<td align=center>8F140</td>
+	<td align=center>6FDCF140</td>
+	<td align=center>8F0E8</td>
+	<td align=center>6FDCF0E8</td>
+</tr>
+<tr>
+	<td align=center>33</td>
+	<td align=center>8EEB0</td>
+	<td align=center>6FDCEEB0</td>
+	<td align=center>8EE58</td>
+	<td align=center>6FDCEE58</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>34</td>
+	<td align=center>90910</td>
+	<td align=center>6FDD0910</td>
+	<td align=center>908B8</td>
+	<td align=center>6FDD08B8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>35</td>
+	<td align=center>90A30</td>
+	<td align=center>6FDD0A30</td>
+	<td align=center>909D8</td>
+	<td align=center>6FDD09D8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>36</td>
+	<td align=center>90C30</td>
+	<td align=center>6FDD0C30</td>
+	<td align=center>90BD8</td>
+	<td align=center>6FDD0BD8</td>
+</tr>
+<tr>
+	<td align=center>37</td>
+	<td align=center>90D10</td>
+	<td align=center>6FDD0D10</td>
+	<td align=center>90CB8</td>
+	<td align=center>6FDD0CB8</td>
+</tr>
+<tr>
+	<td align=center>38</td>
+	<td align=center>90DC0</td>
+	<td align=center>6FDD0DC0</td>
+	<td align=center>90D68</td>
+	<td align=center>6FDD0D68</td>
+</tr>
+<tr>
+	<td align=center>39</td>
+	<td align=center>8EFD0</td>
+	<td align=center>6FDCEFD0</td>
+	<td align=center>8EF78</td>
+	<td align=center>6FDCEF78</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>40</td>
+	<td align=center>90ED0</td>
+	<td align=center>6FDD0ED0</td>
+	<td align=center>90E78</td>
+	<td align=center>6FDD0E78</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>41</td>
+	<td align=center>91240</td>
+	<td align=center>6FDD1240</td>
+	<td align=center>911E8</td>
+	<td align=center>6FDD11E8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>42</td>
+	<td align=center>91340</td>
+	<td align=center>6FDD1340</td>
+	<td align=center>912E8</td>
+	<td align=center>6FDD12E8</td>
+</tr>
+<tr>
+	<td align=center>43</td>
+	<td align=center>91520</td>
+	<td align=center>6FDD1520</td>
+	<td align=center>914C8</td>
+	<td align=center>6FDD14C8</td>
+</tr>
+<tr>
+	<td align=center>44</td>
+	<td align=center>91640</td>
+	<td align=center>6FDD1640</td>
+	<td align=center>915E8</td>
+	<td align=center>6FDD15E8</td>
+</tr>
+<tr>
+	<td align=center>45</td>
+	<td align=center>91730</td>
+	<td align=center>6FDD1730</td>
+	<td align=center>916D8</td>
+	<td align=center>6FDD16D8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>46</td>
+	<td align=center>91970</td>
+	<td align=center>6FDD1970</td>
+	<td align=center>91918</td>
+	<td align=center>6FDD1918</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>47</td>
+	<td align=center>91B90</td>
+	<td align=center>6FDD1B90</td>
+	<td align=center>91B38</td>
+	<td align=center>6FDD1B38</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>48</td>
+	<td align=center>91C90</td>
+	<td align=center>6FDD1C90</td>
+	<td align=center>91C38</td>
+	<td align=center>6FDD1C38</td>
+</tr>
+<tr>
+	<td align=center>49</td>
+	<td align=center>91D20</td>
+	<td align=center>6FDD1D20</td>
+	<td align=center>91CC8</td>
+	<td align=center>6FDD1CC8</td>
+</tr>
+<tr>
+	<td align=center>50</td>
+	<td align=center>91E10</td>
+	<td align=center>6FDD1E10</td>
+	<td align=center>91DB8</td>
+	<td align=center>6FDD1DB8</td>
+</tr>
+<tr>
+	<td align=center>51</td>
+	<td align=center>91F20</td>
+	<td align=center>6FDD1F20</td>
+	<td align=center>91EC8</td>
+	<td align=center>6FDD1EC8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>52</td>
+	<td align=center>92040</td>
+	<td align=center>6FDD2040</td>
+	<td align=center>91FE8</td>
+	<td align=center>6FDD1FE8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>53</td>
+	<td align=center>92160</td>
+	<td align=center>6FDD2160</td>
+	<td align=center>92108</td>
+	<td align=center>6FDD2108</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>54</td>
+	<td align=center>92250</td>
+	<td align=center>6FDD2250</td>
+	<td align=center>921F8</td>
+	<td align=center>6FDD21F8</td>
+</tr>
+<tr>
+	<td align=center>55</td>
+	<td align=center>923D0</td>
+	<td align=center>6FDD23D0</td>
+	<td align=center>92378</td>
+	<td align=center>6FDD2378</td>
+</tr>
+<tr>
+	<td align=center>56</td>
+	<td align=center>92540</td>
+	<td align=center>6FDD2540</td>
+	<td align=center>924E8</td>
+	<td align=center>6FDD24E8</td>
+</tr>
+<tr>
+	<td align=center>57</td>
+	<td align=center>92650</td>
+	<td align=center>6FDD2650</td>
+	<td align=center>925F8</td>
+	<td align=center>6FDD25F8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>58</td>
+	<td align=center>92770</td>
+	<td align=center>6FDD2770</td>
+	<td align=center>92718</td>
+	<td align=center>6FDD2718</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>59</td>
+	<td align=center>92840</td>
+	<td align=center>6FDD2840</td>
+	<td align=center>927E8</td>
+	<td align=center>6FDD27E8</td>
+</tr>
+</table>
+
+<p>The Offset column contains the offset to be used when doing the changes with a hex-editor; the memory address column contains the memory address, to be used when doing the changes with a debugger/disassembler while the game is running. In here you have the offsets for patch 1.09<b>b</b> and 1.09<b>d</b>, it is very important that you pick the offset for the D2 version you are using, otherwise you will crash the game badly!!</b>
+
+<p>Continuing with our example, and using a hex-editor (I'll use 1.09<b>b</b> here, pick the correct offsets for 1.09<b>d</b> in the table above if you are using this D2 version instead): sequence number 13 is in offset <b>8F860</b> (that's hexadecimal). Open d2common.dll with the hex-editor and go to this offset. You will see 12 very important bytes in there:</p>
+
+<table border bgcolor = 191970>
+<td>
+	<font color=yellow>20 F7 DC 6F</font color>
+	<font color=red> 14 00 00 00</font color>
+	<font color=white> 14 00 00 00</font color>
+</td>
+</table>
+
+<ul>
+  <li>The <font color=yellow>yellow</font color> bytes are actually a pointer to the table that contains the information on each and every frame of the animation sequence, I'll cover that in a bit. The bytes of the address are stored backwards, so in this example the address it points to is <b>6FDCF720</b>. Don't worry about the yellow bytes, you won't need to change those <i>unless</i> you need to add new frames to an animation sequence; but, as I said, this will be covered later;</li>
+  <li>The <font color=red>red</font color> bytes contain the number of frames the animation sequence has (in hexadecimal). In this example, we can see the animation has 14h frames (that's 20 frames in decimal numbers). Remember to store the bytes backwards in here, so <b>12F</b> frames would be stored here as <b>2F 01 00 00</b> for example;</li>
+  <li>The white bytes are always the same as the <font color=red>red</font color> bytes.</li>
+</ul>
+
+<p>The following is a table that contains the memory addresses and the offsets to the table that has information on the frames of the animation sequences (the memory addresses you will find here are nothing more than the pointers given by the yellow bytes I mentioned before):</p>
+
+<p><b><u><i>Table 2: Animation sequences - frames information locations</i></u></b></p>
+
+<table border>
+	<td align=center><u><b>Sequence Number</b></u></td>
+	<td align=center><u><b>File Offset - 1.09b</b></u></td>
+	<td align=center><u><b>Memory Address - 1.09b</b></u></td>
+	<td align=center><u><b>File Offset - 1.09d</b></u></td>
+	<td align=center><u><b>Memory Address - 1.09d</b></u></td>
+<tr>
+	<td align=center>01</td>
+	<td align=center>8E990</td>
+	<td align=center>6FDCE990</td>
+	<td align=center>8E938</td>
+	<td align=center>6FDCE938</td>
+</tr>
+<tr>
+	<td align=center>02</td>
+	<td align=center>8EA80</td>
+	<td align=center>6FDCEA80</td>
+	<td align=center>8EA28</td>
+	<td align=center>6FDCEA28</td>
+</tr>
+<tr>
+	<td align=center>03</td>
+	<td align=center>8EC00</td>
+	<td align=center>6FDCEC00</td>
+	<td align=center>8EBA8</td>
+	<td align=center>6FDCEBA8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>04</td>
+	<td align=center>8ECB0</td>
+	<td align=center>6FDCECB0</td>
+	<td align=center>8EC58</td>
+	<td align=center>6FDCEC58</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>05</td>
+	<td align=center>8ED90</td>
+	<td align=center>6FDCED90</td>
+	<td align=center>8ED38</td>
+	<td align=center>6FDCED38</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>06</td>
+	<td align=center>8F080</td>
+	<td align=center>6FDCF080</td>
+	<td align=center>8F028</td>
+	<td align=center>6FDCF028</td>
+</tr>
+<tr>
+	<td align=center>07</td>
+	<td align=center>8F150</td>
+	<td align=center>6FDCF150</td>
+	<td align=center>8F0F8</td>
+	<td align=center>6FDCF0F8</td>
+</tr>
+<tr>
+	<td align=center>08</td>
+	<td align=center>8F240</td>
+	<td align=center>6FDCF240</td>
+	<td align=center>8F1E8</td>
+	<td align=center>6FDCF1E8</td>
+</tr>
+<tr>
+	<td align=center>09</td>
+	<td align=center>8F360</td>
+	<td align=center>6FDCF360</td>
+	<td align=center>8F308</td>
+	<td align=center>6FDCF308</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>10</td>
+	<td align=center>8F430</td>
+	<td align=center>6FDCF430</td>
+	<td align=center>8F3D8</td>
+	<td align=center>6FDCF3D8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>11</td>
+	<td align=center>8F500</td>
+	<td align=center>6FDCF500</td>
+	<td align=center>8F4A8</td>
+	<td align=center>6FDCF4A8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>12</td>
+	<td align=center>8F5F0</td>
+	<td align=center>6FDCF5F0</td>
+	<td align=center>8F598</td>
+	<td align=center>6FDCF598</td>
+</tr>
+<tr>
+	<td align=center>13</td>
+	<td align=center>8F720</td>
+	<td align=center>6FDCF720</td>
+	<td align=center>8F6C8</td>
+	<td align=center>6FDCF6C8</td>
+</tr>
+<tr>
+	<td align=center>14</td>
+	<td align=center>8F870</td>
+	<td align=center>6FDCF870</td>
+	<td align=center>8F818</td>
+	<td align=center>6FDCF818</td>
+</tr>
+<tr>
+	<td align=center>15</td>
+	<td align=center>8F900</td>
+	<td align=center>6FDCF900</td>
+	<td align=center>8F8A8</td>
+	<td align=center>6FDCF8A8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>16</td>
+	<td align=center>8FB00</td>
+	<td align=center>6FDCFB00</td>
+	<td align=center>8FAA8</td>
+	<td align=center>6FDCFAA8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>17</td>
+	<td align=center>8FC50</td>
+	<td align=center>6FDCFC50</td>
+	<td align=center>8FBF8</td>
+	<td align=center>6FDCFBF8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>18</td>
+	<td align=center>8FCD0</td>
+	<td align=center>6FDCFCD0</td>
+	<td align=center>8FC78</td>
+	<td align=center>6FDCFC78</td>
+</tr>
+<tr>
+	<td align=center>19</td>
+	<td align=center>8FEF0</td>
+	<td align=center>6FDCFEF0</td>
+	<td align=center>8FE98</td>
+	<td align=center>6FDCFE98</td>
+</tr>
+<tr>
+	<td align=center>20</td>
+	<td align=center>8FFD0</td>
+	<td align=center>6FDCFFD0</td>
+	<td align=center>8FF78</td>
+	<td align=center>6FDCFF78</td>
+</tr>
+<tr>
+	<td align=center>21</td>
+	<td align=center>90130</td>
+	<td align=center>6FDD0130</td>
+	<td align=center>900D8</td>
+	<td align=center>6FDD00D8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>22</td>
+	<td align=center>90170</td>
+	<td align=center>6FDD0170</td>
+	<td align=center>90118</td>
+	<td align=center>6FDD0118</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>23</td>
+	<td align=center>902E0</td>
+	<td align=center>6FDD02E0</td>
+	<td align=center>90288</td>
+	<td align=center>6FDD0288</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>24</td>
+	<td align=center>90410</td>
+	<td align=center>6FDD0410</td>
+	<td align=center>903B8</td>
+	<td align=center>6FDD03B8</td>
+</tr>
+<tr>
+	<td align=center>25</td>
+	<td align=center>8EB70</td>
+	<td align=center>6FDCEB70</td>
+	<td align=center>8EB18</td>
+	<td align=center>6FDCEB18</td>
+</tr>
+<tr>
+	<td align=center>26</td>
+	<td align=center>8FD30</td>
+	<td align=center>6FDCFD30</td>
+	<td align=center>8FCD8</td>
+	<td align=center>6FDCFCD8</td>
+</tr>
+<tr>
+	<td align=center>27</td>
+	<td align=center>8FDD0</td>
+	<td align=center>6FDCFDD0</td>
+	<td align=center>8FD78</td>
+	<td align=center>6FDCFD78</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>28</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>29</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+	<td align=center>UNUSED</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>30</td>
+	<td align=center>90530</td>
+	<td align=center>6FDD0530</td>
+	<td align=center>904D8</td>
+	<td align=center>6FDD04D8</td>
+</tr>
+<tr>
+	<td align=center>31</td>
+	<td align=center>90620</td>
+	<td align=center>6FDD0620</td>
+	<td align=center>905C8</td>
+	<td align=center>6FDD05C8</td>
+</tr>
+<tr>
+	<td align=center>32</td>
+	<td align=center>8F010</td>
+	<td align=center>6FDCF010</td>
+	<td align=center>8EFB8</td>
+	<td align=center>6FDCEFB8</td>
+</tr>
+<tr>
+	<td align=center>33</td>
+	<td align=center>8ED90</td>
+	<td align=center>6FDCED90</td>
+	<td align=center>8ED38</td>
+	<td align=center>6FDCED38</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>34</td>
+	<td align=center>90770</td>
+	<td align=center>6FDD0770</td>
+	<td align=center>90718</td>
+	<td align=center>6FDD0718</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>35</td>
+	<td align=center>90920</td>
+	<td align=center>6FDD0920</td>
+	<td align=center>908C8</td>
+	<td align=center>6FDD08C8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>36</td>
+	<td align=center>90A40</td>
+	<td align=center>6FDD0A40</td>
+	<td align=center>909E8</td>
+	<td align=center>6FDD09E8</td>
+</tr>
+<tr>
+	<td align=center>37</td>
+	<td align=center>90C40</td>
+	<td align=center>6FDD0C40</td>
+	<td align=center>90BE8</td>
+	<td align=center>6FDD0BE8</td>
+</tr>
+<tr>
+	<td align=center>38</td>
+	<td align=center>90D20</td>
+	<td align=center>6FDD0D20</td>
+	<td align=center>90CC8</td>
+	<td align=center>6FDD0CC8</td>
+</tr>
+<tr>
+	<td align=center>39</td>
+	<td align=center>8EEC0</td>
+	<td align=center>6FDCEEC0</td>
+	<td align=center>8EE68</td>
+	<td align=center>6FDCEE68</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>40</td>
+	<td align=center>90DD0</td>
+	<td align=center>6FDD0DD0</td>
+	<td align=center>90D78</td>
+	<td align=center>6FDD0D78</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>41</td>
+	<td align=center>90EE0</td>
+	<td align=center>6FDD0EE0</td>
+	<td align=center>90E88</td>
+	<td align=center>6FDD0E88</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>42</td>
+	<td align=center>91250</td>
+	<td align=center>6FDD1250</td>
+	<td align=center>911F8</td>
+	<td align=center>6FDD11F8</td>
+</tr>
+<tr>
+	<td align=center>43</td>
+	<td align=center>91350</td>
+	<td align=center>6FDD1350</td>
+	<td align=center>912F8</td>
+	<td align=center>6FDD12F8</td>
+</tr>
+<tr>
+	<td align=center>44</td>
+	<td align=center>91530</td>
+	<td align=center>6FDD1530</td>
+	<td align=center>914D8</td>
+	<td align=center>6FDD14D8</td>
+</tr>
+<tr>
+	<td align=center>45</td>
+	<td align=center>91650</td>
+	<td align=center>6FDD1650</td>
+	<td align=center>915F8</td>
+	<td align=center>6FDD15F8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>46</td>
+	<td align=center>91740</td>
+	<td align=center>6FDD1740</td>
+	<td align=center>916E8</td>
+	<td align=center>6FDD16E8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>47</td>
+	<td align=center>91980</td>
+	<td align=center>6FDD1980</td>
+	<td align=center>91928</td>
+	<td align=center>6FDD1928</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>48</td>
+	<td align=center>91BA0</td>
+	<td align=center>6FDD1BA0</td>
+	<td align=center>91B48</td>
+	<td align=center>6FDD1B48</td>
+</tr>
+<tr>
+	<td align=center>49</td>
+	<td align=center>91CA0</td>
+	<td align=center>6FDD1CA0</td>
+	<td align=center>91C48</td>
+	<td align=center>6FDD1C48</td>
+</tr>
+<tr>
+	<td align=center>50</td>
+	<td align=center>91D30</td>
+	<td align=center>6FDD1D30</td>
+	<td align=center>91CD8</td>
+	<td align=center>6FDD1CD8</td>
+</tr>
+<tr>
+	<td align=center>51</td>
+	<td align=center>91E20</td>
+	<td align=center>6FDD1E20</td>
+	<td align=center>91DC8</td>
+	<td align=center>6FDD1DC8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>52</td>
+	<td align=center>91F30</td>
+	<td align=center>6FDD1F30</td>
+	<td align=center>91ED8</td>
+	<td align=center>6FDD1ED8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>53</td>
+	<td align=center>92050</td>
+	<td align=center>6FDD2050</td>
+	<td align=center>91FF8</td>
+	<td align=center>6FDD1FF8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>54</td>
+	<td align=center>92170</td>
+	<td align=center>6FDD2170</td>
+	<td align=center>92118</td>
+	<td align=center>6FDD2118</td>
+</tr>
+<tr>
+	<td align=center>55</td>
+	<td align=center>92260</td>
+	<td align=center>6FDD2260</td>
+	<td align=center>92208</td>
+	<td align=center>6FDD2208</td>
+</tr>
+<tr>
+	<td align=center>56</td>
+	<td align=center>923E0</td>
+	<td align=center>6FDD23E0</td>
+	<td align=center>92388</td>
+	<td align=center>6FDD2388</td>
+</tr>
+<tr>
+	<td align=center>57</td>
+	<td align=center>92550</td>
+	<td align=center>6FDD2550</td>
+	<td align=center>924F8</td>
+	<td align=center>6FDD24F8</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>58</td>
+	<td align=center>92660</td>
+	<td align=center>6FDD2660</td>
+	<td align=center>92608</td>
+	<td align=center>6FDD2608</td>
+</tr>
+<tr bgcolor=c0c0c0>
+	<td align=center>59</td>
+	<td align=center>92780</td>
+	<td align=center>6FDD2780</td>
+	<td align=center>92728</td>
+	<td align=center>6FDD2728</td>
+</tr>
+</table>
+
+<p>When you go to one of these addresses, you will find a series of 16 bytes; there will be 16 bytes for every frame in the animation sequence. To illustrate this, let's take a look at the 13th animation sequence, in offset <b>8F720</b> (1.09<b>b</b>), according to our table above:</p>
+
+<table border>
+<tr><td align=center><b><u>Bytes</u></b></td><td align=center><b><u>Frame Number</u></b></td></tr>
+<tr><td>04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>01</td></tr>
+<tr><td>04 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>02</td></tr>
+<tr><td>04 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>03</td></tr>
+<tr><td>04 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>04</td></tr>
+<tr><td>04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>05</td></tr>
+<tr><td>04 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>06</td></tr>
+<tr><td>04 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>07</td></tr>
+<tr><td bgcolor = 191970><font color=cyan>04 00 00 00 </font color><font color=orange>07 00 00 00 </font color><font color=lightgreen>00 00 00 00</font color><font color=violet> 02 00 00 00</font color></td><td align=center>08</td></tr>
+<tr><td>04 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>09</td></tr>
+<tr><td>04 00 00 00 09 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>10</td></tr>
+<tr><td>04 00 00 00 0A 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>11</td></tr>
+<tr><td>04 00 00 00 0B 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>12</td></tr>
+<tr><td>04 00 00 00 0C 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>13</td></tr>
+<tr><td>04 00 00 00 0D 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>14</td></tr>
+<tr><td>04 00 00 00 0E 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>15</td></tr>
+<tr><td>04 00 00 00 0F 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>16</td></tr>
+<tr><td>04 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>17</td></tr>
+<tr><td>04 00 00 00 11 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>18</td></tr>
+<tr><td>04 00 00 00 12 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>19</td></tr>
+<tr><td>04 00 00 00 13 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>20</td></tr>
+</table>
+
+<p>I will explain the meaning of all this with the bytes of Frame number 8, the one highlighted in the table above. As you can see, the 16 bytes for each frame are actually 4 sets of 4 bytes each. I marked them with different colors as usual, and here's what they do:</p>
+
+<ul>
+	<li>The <font color=cyan>blue</font color> bytes tell the game the <b>animation mode</b> from where this frame is going 	   	 to come from; in the case of frame 8, the bytes are 04 00 00 00. That means frame number 8 will come from the 	<b>Attack1</b> animation mode. To know what number goes with which animation mode, check the list below:</li>
+<p></p>
+<table border>
+<tr>
+<td><b><u>Animation Mode</u></b></td><td><b><u>Number</u></b></td>
+</tr>
+<tr>
+	<td align=center>Death</td><td align=center>00</td>
+</tr>
+<tr>
+	<td align=center>Neutral</td><td align=center>01</td>
+</tr>
+<tr>
+	<td align=center>Walk</td><td align=center>02</td>
+</tr>
+<tr>
+	<td align=center>GetHit</td><td align=center>03</td>
+</tr>
+<tr>
+	<td align=center>Attack1</td><td align=center>04</td>
+</tr>
+<tr>
+	<td align=center>Attack2</td><td align=center>05</td>
+</tr>
+<tr>
+	<td align=center>Block</td><td align=center>06</td>
+</tr>
+<tr>
+	<td align=center>Cast</td><td align=center>07</td>
+</tr>
+<tr>
+	<td align=center>Skill1</td><td align=center>08</td>
+</tr>
+<tr>
+	<td align=center>Skill2</td><td align=center>09</td>
+</tr>
+<tr>
+	<td align=center>Skill3</td><td align=center>0A</td>
+</tr>
+<tr>
+	<td align=center>Skill4</td><td align=center>0B</td>
+</tr>
+<tr>
+	<td align=center>Corpse</td><td align=center>0C</td>
+</tr>
+<tr>
+	<td align=center>Knockback</td><td align=center>0D</td>
+</tr>
+<tr>
+	<td align=center>Sequence</td><td align=center>0E</td>
+</tr>
+<tr>
+	<td align=center>Run</td><td align=center>0F</td>
+</tr>
+
+</table>
+<p></p>
+	<li>The <font color=limegreen>green</font color> bytes tell the game the <b>direction</b> of the animation mode (defined by the <font color=cyan>blue</font color> bytes), from which the frame is to be taken. If you find <font color=limegreen>00 00 00 00</font color> here, that means the direction to be defined is the one that is being currently displayed on screen. For example, if a Sand Leaper is facing <i>down</i> in the game screen while you're playing, and leaps at your character, the frame number 8 of the leap animation sequence is going to be taken from the <b>down</b> direction (the current direction) of the attack1 animation mode.</li>
+	<li>The <font color=orange>orange</font color> bytes tell the game what frame is to be taken from the animation mode defined by the <font color=cyan>blue</font color> bytes, and from the direction defined by the <font color=limegreen>green</font color> bytes, and used as the frame for the animation sequence. In our example we have <font color=orange>07 00 00 00</font color> here, that means the frame number 8 of the leap animation sequence is the frame number <b>08</b> of the current direction displayed, of the attack1 animation mode (and YES, that is frame number <b>08</b> and not 07; frames are internally counted starting from <b>00</b> by the game, so the first frame is actually 00 and NOT 01. Don't forget this! ); </li>
+	<li>The <font color=violet>violet</font color> bytes contain <b>event</b> information. They tell the game is an event is to take place in this frame. <font color=violet>02 00 00 00</font color> is the <i>missile</i> event; this way, the game knows it has to display on screen a certain missile (defined elsewhere) when frame 8 is displayed. The possible events are:
+<p></p>
+<table border>
+<tr><td><b><u>Number</u></b></td><td><b><u>Event</u></b></td></tr>
+<tr>
+	<td>00</td><td>No Event</td>
+</tr>
+<tr>
+	<td>01</td><td>Attack</td>
+</tr>
+<tr>
+	<td>02</td><td>Missile</td>
+</tr>
+<tr>
+	<td>03</td><td>Sound</td>
+</tr>
+<tr>
+	<td>04</td><td>Skill</td>
+</tr>
+
+</table>
+
+</ul>
+
+<p>That is pretty much it! Now, to 2 practical examples showing how to edit correctly an animation sequence:</p>
+
+<p><b><u>Example 1</u></b>: sequence number 13. It uses 20 frames of the sand leaper's <i>attack1</i> animation, as we saw before. The original attack1 animation of the SL token has 160 frames; but, let's say your new attack1 animation for this token has <b>120</b> frames, what to do?</p>
+
+<p>120 frames is 15 frames per direction, which means the leap animation sequence will certainly crash when it tries to get frames 16, 17, 18, 19, and 20 of the attack1 animation's current directions, since there are no such frames anymore. To fix that, you will have to <i>disable</i> those frame entries. To do that, check the first table for the offset of the 13th animation sequence, an go to that offset using the hex-editor. You will see this:</p>
+
+<table border bgcolor = 191970>
+<td>
+	<font color=yellow>20 F7 DC 6F</font color>
+	<font color=red> 14 00 00 00</font color>
+	<font color=white> 14 00 00 00</font color>
+</td>
+</table>
+
+<p>We want to disable the last 5 frames, and let this be an animation sequence that uses only the 15 frames per direction of the attack1 animation. In this example that's easy, simply change the <font color=red>red</font color> and white bytes from 14 to <b>0F</b>, like this:</p>
+
+<table border bgcolor = 191970>
+<td>
+	<font color=yellow>20 F7 DC 6F</font color>
+	<font color=red> 0F 00 00 00</font color>
+	<font color=white> 0F 00 00 00</font color>
+</td>
+</table>
+
+<p> If you remember what I explained before on the red and white bytes in here, this will simply tell the game that this animation sequence has a total of 15 frames per direction, and as a consequence the game will ignore the information that is originally there on frames 16, 17, 18, 19, and 20. <b>NOTE:</b> Do NOT delete the information on those frames. If you delete them, you will screw up the structure of the pointers in d2common.dll, and the game will most likely crash on you.</p>
+
+<p><b><u>Example 2</u></b>: Same thing as before, only now our new attack1 animation for the sand leaper token has 200 frames. That's 25 frames per direction:</p>
+
+<p>In this case, the game will not crash, since all the frames the game may need are present. However, things may not look so nice during the animation sequence, since the game will be using only the first 20 of the 25 frames per direction of the attack1 animation to create the leap animation, and as such it may look 'incomplete'. Our next exercise will see how we can modify the information on the animation frames for the sequence, to make it look good.</p>
+
+<p>One Solution is NOT modify the number of frames for the sequence, but modify what frames are used by the sequence instead. Originally for this sequence we have:<p>
+<p></p>
+
+<table border>
+<tr><td align=center><b><u>Bytes</u></b></td><td align=center><b><u>Frame Number</u></b></td></tr>
+<tr><td>04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>01</td></tr>
+<tr><td>04 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>02</td></tr>
+<tr><td>04 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>03</td></tr>
+<tr><td>04 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>04</td></tr>
+<tr><td>04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>05</td></tr>
+<tr><td>04 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>06</td></tr>
+<tr><td>04 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>07</td></tr>
+<tr><td>04 00 00 00 07 00 00 00 00 00 00 00 02 00 00 00</td><td align=center>08</td></tr>
+<tr><td>04 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>09</td></tr>
+<tr><td>04 00 00 00 09 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>10</td></tr>
+<tr><td>04 00 00 00 0A 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>11</td></tr>
+<tr><td>04 00 00 00 0B 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>12</td></tr>
+<tr><td>04 00 00 00 0C 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>13</td></tr>
+<tr><td>04 00 00 00 0D 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>14</td></tr>
+<tr><td>04 00 00 00 0E 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>15</td></tr>
+<tr><td>04 00 00 00 0F 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>16</td></tr>
+<tr><td>04 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>17</td></tr>
+<tr><td>04 00 00 00 11 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>18</td></tr>
+<tr><td>04 00 00 00 12 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>19</td></tr>
+<tr><td>04 00 00 00 13 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>20</td></tr>
+</table>
+
+<p>So, a fast and easy fix would be change it like this (bytes that are marked <font color=red>red</font color> are the ones that have been modified):</p>
+<p></p>
+<table border>
+<tr><td align=center><b><u>Bytes</u></b></td><td align=center><b><u>Frame Number</u></b></td></tr>
+<tr><td>04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>01</td></tr>
+<tr><td>04 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>02</td></tr>
+<tr><td>04 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>03</td></tr>
+<tr><td>04 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>04</td></tr>
+<tr><td>04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>05</td></tr>
+<tr><td>04 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>06</td></tr>
+<tr><td>04 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>07</td></tr>
+<tr><td>04 00 00 00 07 00 00 00 00 00 00 00 02 00 00 00</td><td align=center>08</td></tr>
+<tr><td>04 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>09</td></tr>
+<tr><td>04 00 00 00 09 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>10</td></tr>
+<tr><td>04 00 00 00 0A 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>11</td></tr>
+<tr><td>04 00 00 00 0B 00 00 00 00 00 00 00 01 00 00 00</td><td align=center>12</td></tr>
+<tr><td>04 00 00 00 0C 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>13</td></tr>
+<tr><td>04 00 00 00 0D 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>14</td></tr>
+<tr><td>04 00 00 00 0E 00 00 00 00 00 00 00 00 00 00 00</td><td align=center>15</td></tr>
+<tr><td bgcolor = 191970><font color=white>04 00 00 00</font color> <font color=red>10</font color> <font color=white> 00 00 00 00 00 00 00 00 00 00 00</font color></td><td align=center>16</td></tr>
+<tr><td bgcolor = 191970><font color=white>04 00 00 00</font color> <font color=red>12</font color> <font color=white> 00 00 00 00 00 00 00 00 00 00 00</font color></td><td align=center>17</td></tr>
+<tr><td bgcolor = 191970><font color=white>04 00 00 00</font color> <font color=red>14</font color> <font color=white> 00 00 00 00 00 00 00 00 00 00 00</font color></td><td align=center>18</td></tr>
+<tr><td bgcolor = 191970><font color=white>04 00 00 00</font color> <font color=red>16</font color> <font color=white> 00 00 00 00 00 00 00 00 00 00 00</font color></td><td align=center>19</td></tr>
+<tr><td bgcolor = 191970><font color=white>04 00 00 00</font color> <font color=red>18</font color> <font color=white> 00 00 00 00 00 00 00 00 00 00 00</font color></td><td align=center>20</td></tr>
+</table>
+
+<p></p>
+<p>Another way of fixing this would be to ADD frames to the animation sequence. You can't do that in d2common.dll though, since there is no place in there for you to put more bytes with the information on the extra frames. You will have to use one of the dlls with enough unused space for this. In this example, I'll use the <b>d2extra.dll</b> created by Myhrginoc, which you can get by going <a href="http://dynamic2.gamespy.com/~phrozenkeep/site/filecenter/filecenter-4-plugins-3-0005.php">here</a>. The data section of d2extra.dll, suitable for this kind of modifications, starts at memory address <b>6F7B7000</b>, or offset <b>B7000</b>, if you're using a hex-editor. All you have to do is go there and add the frame information for your entire new sequence, like this:</p>
+
+<p></p>
+<table border>
+<tr>
+<td align=center>Offset</td><td align=center>Bytes</td><td align=center>Frame</td>
+</tr>
+<tr>
+	<td align=center>000B7000</td>
+	<td align=center>04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>01</td>
+</tr>
+<tr>
+	<td align=center>000B7010</td>
+	<td align=center>04 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00</td>
+	<td align=center>02</td>
+</tr>
+<tr>
+	<td align=center>000B7020</td>
+	<td align=center>04 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>03</td>
+</tr>
+<tr>
+	<td align=center>000B7030</td>
+	<td align=center>04 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>04</td>
+</tr>
+<tr>
+	<td align=center>000B7040</td>
+	<td align=center>04 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>05</td>
+</tr>
+<tr>
+	<td align=center>000B7050</td>
+	<td align=center>04 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>06</td>
+</tr>
+<tr>
+	<td align=center>000B7060</td>
+	<td align=center>04 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>07</td>
+</tr>
+<tr>
+	<td align=center>000B7070</td>
+	<td align=center>04 00 00 00 07 00 00 00 00 00 00 00 02 00 00 00</td>
+	<td align=center>08</td>
+</tr>
+<tr>
+	<td align=center>000B7080</td>
+	<td align=center>04 00 00 00 08 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>09</td>
+</tr>
+<tr>
+	<td align=center>000B7090</td>
+	<td align=center>04 00 00 00 09 00 00 00 00 00 00 00 01 00 00 00</td>
+	<td align=center>10</td>
+</tr>
+<tr>
+	<td align=center>000B70A0</td>
+	<td align=center>04 00 00 00 0A 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>11</td>
+</tr>
+<tr>
+	<td align=center>000B70B0</td>
+	<td align=center>04 00 00 00 0B 00 00 00 00 00 00 00 01 00 00 00</td>
+	<td align=center>12</td>
+</tr>
+<tr>
+	<td align=center>000B70C0</td>
+	<td align=center>04 00 00 00 0C 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>13</td>
+</tr>
+<tr>
+	<td align=center>000B70D0</td>
+	<td align=center>04 00 00 00 0D 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>14</td>
+</tr>
+<tr>
+	<td align=center>000B70E0</td>
+	<td align=center>04 00 00 00 0E 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>15</td>
+</tr>
+<tr>
+	<td align=center>000B70F0</td>
+	<td align=center>04 00 00 00 0F 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>16</td>
+</tr>
+<tr>
+	<td align=center>000B7100</td>
+	<td align=center>04 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>17</td>
+</tr>
+<tr>
+	<td align=center>000B7110</td>
+	<td align=center>04 00 00 00 11 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>18</td>
+</tr>
+<tr>
+	<td align=center>000B7120</td>
+	<td align=center>04 00 00 00 12 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>19</td>
+</tr>
+<tr>
+	<td align=center>000B7130</td>
+	<td align=center>04 00 00 00 13 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>20</td>
+</tr>
+<tr>
+	<td align=center>000B7140</td>
+	<td align=center>04 00 00 00 14 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>21</td>
+</tr>
+<tr>
+	<td align=center>000B7150</td>
+	<td align=center>04 00 00 00 15 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>22</td>
+</tr>
+<tr>
+	<td align=center>000B7160</td>
+	<td align=center>04 00 00 00 16 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>23</td>
+</tr>
+<tr>
+	<td align=center>000B7170</td>
+	<td align=center>04 00 00 00 17 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>24</td>
+</tr>
+<tr>
+	<td align=center>000B7180</td>
+	<td align=center>04 00 00 00 18 00 00 00 00 00 00 00 00 00 00 00</td>
+	<td align=center>25</td>
+</tr>
+</table>
+<p></p>
+
+<p>Now, you only have to link this information to the animation sequence table in d2common.dll. Originally in there we have:</p>
+
+<table border bgcolor = 191970>
+<td>
+	<font color=yellow>20 F7 DC 6F</font color>
+	<font color=red> 14 00 00 00</font color>
+	<font color=white> 14 00 00 00</font color>
+</td>
+</table>
+
+<p>To link the new animation sequence correctly, you need to update the yellow bytes, creating a pointer to the information just added in d2extra.dll. This is simple: just add <b>6F700000</b> to the offset where you put the information of the first frame of the sequence, revert the bytes and replace the yellow bytes with those; in our example, the offset where we put the changes is <b>B7000</b>, so B7000 + 6F700000 = <b>6F 7B 70 00</b>. We revert these bytes, and that gives us <font color=yellow>00 70 7B 6F</font color>. Put these bytes in the table, like this:</p>
+
+<table border bgcolor = 191970>
+<td>
+	<font color=yellow>00 70 7B 6F</font color>
+	<font color=red> 14 00 00 00</font color>
+	<font color=white> 14 00 00 00</font color>
+</td>
+</table>
+
+<p>and you're done!!</p>

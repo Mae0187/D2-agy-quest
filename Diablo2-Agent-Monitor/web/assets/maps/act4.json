@@ -1,0 +1,53 @@
+{
+  "image": "map/act4.png",
+  "size": {
+    "width": 2880,
+    "height": 1440
+  },
+  "originInImage": {
+    "x": 1728,
+    "y": 0
+  },
+  "originSource": "given explicitly as (1728, 0)",
+  "worldExtent": {
+    "width": 147.6,
+    "height": 221.5,
+    "source": "the left and right corners of the projected parallelogram"
+  },
+  "pixelsPerUnit": {
+    "horizontal": 7.8,
+    "vertical": 3.9,
+    "engineHorizontal": 26.0,
+    "engineVertical": 13.0,
+    "imageScale": 0.3,
+    "matchesEngineProjection": false,
+    "source": "halfTileW scaled by --image-scale; the engine's own value is 26 x 13"
+  },
+  "corners": {
+    "top": [
+      1728,
+      0
+    ],
+    "left": [
+      0,
+      0
+    ],
+    "right": [
+      2879,
+      0
+    ],
+    "bottom": [
+      1439,
+      1439
+    ]
+  },
+  "landmarkWorld": {
+    "x": 69.9359,
+    "y": 70.0641
+  },
+  "landmarkImage": {
+    "x": 1727,
+    "y": 546
+  },
+  "landmarkNote": "chosen in the preview picker"
+}

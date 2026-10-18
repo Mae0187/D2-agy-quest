@@ -1,0 +1,179 @@
+{
+  "id": "zakarumheal",
+  "name": "ZakarumHeal",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 10 monster row(s), 0 of them bosses"
+    ],
+    "kind": "monster",
+    "usedBy": {
+      "bosses": [],
+      "monsters": [
+        {
+          "id": "cantor1",
+          "name": "Sexton",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "cantor2",
+          "name": "Cantor",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "cantor3",
+          "name": "Heirophant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "cantor4",
+          "name": "Heirophant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "councilmember1",
+          "name": "Council Member",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "HighPriest",
+          "slot": "Skill2"
+        },
+        {
+          "id": "councilmember2",
+          "name": "Council Member",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "HighPriest",
+          "slot": "Skill2"
+        },
+        {
+          "id": "councilmember3",
+          "name": "Council Member",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "HighPriest",
+          "slot": "Skill2"
+        },
+        {
+          "id": "baalhighpriest",
+          "name": "Council Member",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "HighPriest",
+          "slot": "Skill2"
+        },
+        {
+          "id": "cantor5",
+          "name": "Heirophant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "cantor6",
+          "name": "Heirophant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "ZakarumPriest",
+          "slot": "Skill1"
+        }
+      ],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    }
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 96,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "15",
+        "description": "?",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "30",
+        "description": "?",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "5",
+        "description": "?",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 4,
+        "value": "0",
+        "description": "?",
+        "source": "Skills.txt Param4",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  }
+}

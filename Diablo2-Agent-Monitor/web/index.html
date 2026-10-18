@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diablo II - Character Selection</title>
+    <link rel="stylesheet" href="css/style.css?v=1.9.7">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 乾淨無假字/無鬼影的暗黑哥德營火夜晚背景 -->
+        <div id="background"></div>
+        
+        <!-- 中央即時動態營火 (逐幀播放 fire.dc6) -->
+        <div id="campfire">
+            <div id="campfire-flame"></div>
+            <div id="campfire-glow"></div>
+        </div>
+
+        <!-- 七大英雄環繞營火容器 -->
+        <div id="character-container">
+            <!-- 亞馬遜 -->
+            <div class="char-slot" id="slot-amazon" data-hero="amazon">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+            </div>
+            <!-- 刺客 -->
+            <div class="char-slot" id="slot-assassin" data-hero="assassin">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+            </div>
+            <!-- 死靈法師 -->
+            <div class="char-slot" id="slot-necromancer" data-hero="necromancer">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+                <div class="char-fx fx-curse"></div>
+            </div>
+            <!-- 野蠻人 -->
+            <div class="char-slot" id="slot-barbarian" data-hero="barbarian">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+                <div class="char-fx fx-warcry"></div>
+            </div>
+            <!-- 聖騎士 -->
+            <div class="char-slot" id="slot-paladin" data-hero="paladin">
+                <div class="char-shadow"></div>
+                <div class="char-fx fx-aura" id="paladin-aura"></div>
+                <div class="char-sprite"></div>
+            </div>
+            <!-- 魔法使 -->
+            <div class="char-slot" id="slot-sorceress" data-hero="sorceress">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+                <div class="char-fx fx-lightning" id="sorceress-lightning"></div>
+            </div>
+            <!-- 德魯伊 -->
+            <div class="char-slot" id="slot-druid" data-hero="druid">
+                <div class="char-shadow"></div>
+                <div class="char-sprite"></div>
+                <div class="char-fx fx-druid"></div>
+            </div>
+        </div>
+
+        <!-- 頂部即時文字面板 (配合用戶要求隱藏說明文字，還原營火純粹沉浸體驗) -->
+        <div id="header-ui" style="display: none;">
+            <h1 id="screen-title" style="display: none;">SELECT HERO CLASS</h1>
+            <div id="hero-info" style="display: none;">
+                <h2 id="hero-class-name"></h2>
+                <p id="hero-description" style="display: none;"></p>
+            </div>
+        </div>
+        
+        <!-- 底部角色命名與經典操作按鈕 -->
+        <div id="footer-ui">
+            <div id="name-input-box">
+                <span class="input-label">CHARACTER NAME:</span>
+                <div class="name-box">
+                    <span id="name-text">HERO</span><span class="blinking-cursor">_</span>
+                </div>
+            </div>
+            <div class="button-bar">
+                <button class="d2-btn" id="btn-exit">EXIT</button>
+                <button class="d2-btn" id="btn-create">CREATE NEW</button>
+                <button class="d2-btn active-btn" id="btn-play">PLAY (進入地牢)</button>
+            </div>
+        </div>
+
+        <!-- 頂部右上角快速切換至 2.5D 地牢沙盒按鈕 -->
+        <div id="quick-toggle-bar">
+            <button id="btn-mute-global" class="d2-btn">🔊 音效 [M]</button>
+            <button id="btn-toggle-sandbox" class="d2-btn active-btn">⚔️ 進入 2.5D 地牢戰鬥沙盒 [D]</button>
+        </div>
+
+        <!-- 2.5D 等距地牢動作沙盒視圖 (第 2 階段核心) -->
+        <div id="dungeon-container" style="display: none;">
+            <canvas id="dungeon-canvas" width="1024" height="768"></canvas>
+
+            <!-- 實時狀態 HUD 監控儀表 -->
+            <div id="dungeon-hud">
+                <div class="hud-panel hud-left">
+                    <div class="hud-title">DIABLO II ACTION CONTROLLER</div>
+                    <div class="hud-row">
+                        <span class="hud-label">出征英雄 (HERO):</span>
+                        <span id="hud-hero" class="hud-highlight" style="color: #fbbf24; font-weight: bold;">聖騎士 (PALADIN) [H]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">狀態 (STATE):</span>
+                        <span id="hud-state" class="state-badge badge-idle">IDLE</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">生命值 (HP):</span>
+                        <span id="hud-hp" class="hud-highlight" style="color: #ef4444; font-weight: bold;">100 / 100</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">時鐘累加器:</span>
+                        <span id="hud-tick" class="hud-val">25.0 Hz (40ms)</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">渲染刷新率:</span>
+                        <span id="hud-fps" class="hud-val">60 FPS</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">角色座標:</span>
+                        <span id="hud-pos" class="hud-val">X: 512.0, Y: 400.0</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">全域音效:</span>
+                        <span id="hud-mute" class="hud-highlight" style="color: #55ff55;">🔊 音效已開啟 [M]</span>
+                    </div>
+                </div>
+
+                <div class="hud-panel hud-center">
+                    <div class="hud-title">16-DIRECTION HYSTERESIS COMPASS</div>
+                    <div class="hud-row">
+                        <span class="hud-label">朝向索引:</span>
+                        <span id="hud-dir" class="hud-highlight">0 (South 正南)</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">目標角度:</span>
+                        <span id="hud-deg" class="hud-highlight">90.0° (±5.5° 死區防抖)</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">走跑模式:</span>
+                        <span id="hud-mode" class="hud-highlight">RUN 奔跑 [Shift]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">常駐靈氣:</span>
+                        <span id="hud-aura" class="hud-highlight">狂熱靈氣 [Q]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">裝甲形態:</span>
+                        <span id="hud-armor" class="hud-highlight" style="color: #38bdf8;">輕裝 (LIGHT) [T]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">技能體系:</span>
+                        <span id="hud-build" class="hud-highlight" style="color: #fbbf24;">全能體系 [V]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">右鍵招式:</span>
+                        <span id="hud-cast-skill" class="hud-highlight" style="color: #a78bfa; font-weight: bold;">【招式】 [E]</span>
+                    </div>
+                    <div class="hud-row">
+                        <span class="hud-label">當前場景:</span>
+                        <span id="hud-scene" class="hud-highlight" style="color: #60a5fa;">【第 1 幕】蘿格營地 [C]</span>
+                    </div>
+                </div>
+
+                <div class="hud-panel hud-right">
+                    <button id="btn-toggle-mute" class="d2-btn">🔊 音效 [M]</button>
+                    <button id="btn-back-campfire" class="d2-btn active-btn">🔥 回到營火休整大廳 [ESC]</button>
+                </div>
+            </div>
+
+            <!-- 底部動作快捷按鈕與提示列 -->
+            <div id="dungeon-controls">
+                <div class="action-btn-group">
+                    <button class="d2-action-btn" id="act-btn-cycle-hero" style="color: #fbbf24;">[H] 切換出征職業</button>
+                    <button class="d2-action-btn" id="act-btn-cycle-build" style="color: #f59e0b;">[V] 切換技能體系</button>
+                    <button class="d2-action-btn" id="act-btn-cycle-cast-skill" style="color: #a78bfa;">[E] 切換右鍵招式</button>
+                    <button class="d2-action-btn" id="act-btn-cycle-attack-skill" style="color: #34d399;">[Z] 切換左鍵打擊</button>
+                    <button class="d2-action-btn" id="act-btn-cycle-armor" style="color: #38bdf8;">[T] 切換裝甲 (輕/中/重)</button>
+                    <button class="d2-action-btn" id="act-btn-idle">[1] 待命</button>
+                    <button class="d2-action-btn" id="act-btn-walk">[2] 行走</button>
+                    <button class="d2-action-btn" id="act-btn-run">[3] 奔跑</button>
+                    <button class="d2-action-btn" id="act-btn-attack">[4] 揮砍</button>
+                    <button class="d2-action-btn" id="act-btn-cast">[5] 施法</button>
+                    <button class="d2-action-btn" id="act-btn-spawn-mob" style="color: #4ade80;">[G] 召喚怪群</button>
+                    <button class="d2-action-btn" id="act-btn-spawn-boss" style="color: #f87171;">[B] 召喚章節首領</button>
+                    <button class="d2-action-btn" id="act-btn-cycle-scene" style="color: #60a5fa;">[C] 切換章節場景</button>
+                </div>
+                <div class="control-hints">
+                    <span>【操作說明】</span>
+                    <span>WASD: 8方向移動</span>
+                    <span>|</span>
+                    <span>[H]: 切換七大職業</span>
+                    <span>|</span>
+                    <span>[V]: 切換技能體系</span>
+                    <span>|</span>
+                    <span>[E]: 輪轉切換右鍵招式</span>
+                    <span>|</span>
+                    <span>[T]: 輕/中/重裝切換</span>
+                    <span>|</span>
+                    <span>[C]: 切換章節場景 (第 1~5 幕)</span>
+                    <span>|</span>
+                    <span>[G]: 召喚小怪</span>
+                    <span>|</span>
+                    <span>[B]: 召喚首領</span>
+                    <span>|</span>
+                    <span>Shift / R: 走跑切換</span>
+                    <span>|</span>
+                    <span>滑鼠左鍵: 移動 / 揮砍</span>
+                    <span>|</span>
+                    <span>滑鼠右鍵: 專屬技能</span>
+                    <span>|</span>
+                    <span>[Q]: 切換靈氣</span>
+                    <span>|</span>
+                    <span>[X]: 切換魔像 (限死靈)</span>
+                    <span>|</span>
+                    <span>[M]: 靜音</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 全面停用音效 (依使用者指令強制靜音) -->
+    <script>window.__D2_DISABLE_AUDIO__ = true;</script>
+    <script src="js/audio_manager.js?v=1.9.8"></script>
+    <script src="assets/characters/amazon/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/amazon/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/amazon/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/amazon/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/assassin/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/assassin/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/assassin/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/assassin/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/barbarian/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/barbarian/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/barbarian/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/barbarian/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/druid/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/druid/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/druid/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/druid/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/necromancer/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/necromancer/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/necromancer/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/necromancer/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/heavy_tower/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/light_holyshield/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/medium_holyshield/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/paladin/heavy_holyshield/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/sorceress/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/sorceress/light/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/sorceress/medium/manifest.js?v=1.9.8"></script>
+    <script src="assets/characters/sorceress/heavy/manifest.js?v=1.9.8"></script>
+    <script src="assets/companions/companions_manifest.js?v=1.9.8"></script>
+    <script src="assets/fx/fx_manifest.js?v=1.9.8"></script>
+    <script src="js/skills_manifest.js?v=2.1.0"></script>
+    <script src="assets/monsters/monsters_manifest.js?v=1.9.8"></script>
+    <script src="js/fixed_timestep_accumulator.js?v=1.9.7"></script>
+    <script src="js/direction_controller.js?v=1.9.7"></script>
+    <script src="js/missile_system.js?v=2.7.0"></script>
+    <script src="js/cast_sockets.js?v=2.7.0"></script>
+    <script src="js/missile_landmarks.js?v=2.7.0"></script>
+    <script src="js/character_controller.js?v=2.7.0"></script>
+    <script src="v2_shared_engine/runtime/v2_demo.bundle.js?v=3.0"></script>
+    <script src="js/combat_director.js?v=2.7.1"></script>
+    <script src="js/combat_skills_ext.js?v=2.7.1"></script>
+    <script src="js/dungeon_sandbox.js?v=1.9.7"></script>
+    <script src="js/agent_event_receiver.js?v=1.9.7"></script>
+    <script src="js/app.js?v=1.9.7"></script>
+</body>
+</html>
+

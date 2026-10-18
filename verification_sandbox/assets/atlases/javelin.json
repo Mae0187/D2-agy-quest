@@ -1,0 +1,520 @@
+{
+  "atlas": "javelin.png",
+  "size": {
+    "width": 89,
+    "height": 1696
+  },
+  "animations": {
+    "javelin": {
+      "cof": null,
+      "source": "C:/Users/DUCK/Desktop/D2AgentQUESDT/\u820a\u5c08\u6848/Diablo2-Agent-Monitor/web/assets/skills/amazon/javelin.png",
+      "sourceNote": "\u820a\u5c08\u6848 Diablo2-Agent-Monitor \u7684\u89e3\u78bc\u5716\u96c6",
+      "directions": 32,
+      "frames": 1,
+      "fps": 25.0,
+      "loop": true,
+      "anchor": "ball centre; draw at (screenX - ballX, screenY - ballY)",
+      "selection": "measured drawn angle (spec section 35.1)",
+      "cellWidth": 89,
+      "cellHeight": 53,
+      "pivot": {
+        "x": 44,
+        "y": 57
+      },
+      "bodyHalfWidth": 44.5,
+      "bodyHalfHeight": 26.5,
+      "bodySource": "half the cell; skill art has no body",
+      "spawnFrame": null,
+      "releaseFrame": null,
+      "castSockets": null,
+      "castSocketsMeasured": null,
+      "castSocketYOverride": null,
+      "castClearance": null,
+      "castSocketPad": 1.0,
+      "directionAngles": [
+        69.56,
+        290.35,
+        69.5,
+        290.48,
+        359.83,
+        270.15,
+        0.62,
+        89.9,
+        48.07,
+        81.36,
+        278.8,
+        311.66,
+        48.09,
+        81.24,
+        278.64,
+        311.6,
+        28.35,
+        60.95,
+        76.1,
+        85.8,
+        274.26,
+        283.85,
+        298.99,
+        331.92,
+        28.33,
+        60.79,
+        75.97,
+        85.77,
+        274.18,
+        283.89,
+        299.12,
+        332.01
+      ],
+      "framesData": [
+        [
+          {
+            "x": 0,
+            "y": 0,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 23,
+            "tailX": 72,
+            "tailY": 12,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 53,
+            "width": 89,
+            "height": 53,
+            "ballX": 47,
+            "ballY": 23,
+            "tailX": 76,
+            "tailY": 35,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 106,
+            "width": 89,
+            "height": 53,
+            "ballX": 41,
+            "ballY": 25,
+            "tailX": 70,
+            "tailY": 14,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 159,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 23,
+            "tailX": 13,
+            "tailY": 12,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 212,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 33,
+            "tailX": 41,
+            "tailY": 16,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 265,
+            "width": 89,
+            "height": 53,
+            "ballX": 50,
+            "ballY": 2,
+            "tailX": 5,
+            "tailY": 2,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 318,
+            "width": 89,
+            "height": 53,
+            "ballX": 45,
+            "ballY": 34,
+            "tailX": 44,
+            "tailY": 51,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 371,
+            "width": 89,
+            "height": 53,
+            "ballX": 37,
+            "ballY": 3,
+            "tailX": 81,
+            "tailY": 3,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 424,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 29,
+            "tailX": 59,
+            "tailY": 14,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 477,
+            "width": 89,
+            "height": 53,
+            "ballX": 45,
+            "ballY": 13,
+            "tailX": 7,
+            "tailY": 19,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 530,
+            "width": 89,
+            "height": 53,
+            "ballX": 48,
+            "ballY": 13,
+            "tailX": 10,
+            "tailY": 7,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 583,
+            "width": 89,
+            "height": 53,
+            "ballX": 46,
+            "ballY": 31,
+            "tailX": 63,
+            "tailY": 46,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 636,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 30,
+            "tailX": 26,
+            "tailY": 45,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 689,
+            "width": 89,
+            "height": 53,
+            "ballX": 40,
+            "ballY": 14,
+            "tailX": 78,
+            "tailY": 8,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 742,
+            "width": 89,
+            "height": 53,
+            "ballX": 41,
+            "ballY": 13,
+            "tailX": 79,
+            "tailY": 18,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 795,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 30,
+            "tailX": 26,
+            "tailY": 15,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 848,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 31,
+            "tailX": 51,
+            "tailY": 15,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 901,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 26,
+            "tailX": 66,
+            "tailY": 13,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 954,
+            "width": 89,
+            "height": 53,
+            "ballX": 44,
+            "ballY": 17,
+            "tailX": 78,
+            "tailY": 8,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1007,
+            "width": 89,
+            "height": 53,
+            "ballX": 46,
+            "ballY": 7,
+            "tailX": 5,
+            "tailY": 10,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1060,
+            "width": 89,
+            "height": 53,
+            "ballX": 47,
+            "ballY": 7,
+            "tailX": 7,
+            "tailY": 4,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1113,
+            "width": 89,
+            "height": 53,
+            "ballX": 47,
+            "ballY": 19,
+            "tailX": 81,
+            "tailY": 28,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1166,
+            "width": 89,
+            "height": 53,
+            "ballX": 46,
+            "ballY": 27,
+            "tailX": 70,
+            "tailY": 41,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1219,
+            "width": 89,
+            "height": 53,
+            "ballX": 45,
+            "ballY": 32,
+            "tailX": 54,
+            "tailY": 48,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1272,
+            "width": 89,
+            "height": 53,
+            "ballX": 44,
+            "ballY": 32,
+            "tailX": 35,
+            "tailY": 48,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1325,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 29,
+            "tailX": 19,
+            "tailY": 42,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1378,
+            "width": 89,
+            "height": 53,
+            "ballX": 40,
+            "ballY": 20,
+            "tailX": 75,
+            "tailY": 11,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1431,
+            "width": 89,
+            "height": 53,
+            "ballX": 40,
+            "ballY": 8,
+            "tailX": 80,
+            "tailY": 5,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1484,
+            "width": 89,
+            "height": 53,
+            "ballX": 41,
+            "ballY": 8,
+            "tailX": 81,
+            "tailY": 11,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1537,
+            "width": 89,
+            "height": 53,
+            "ballX": 42,
+            "ballY": 18,
+            "tailX": 8,
+            "tailY": 9,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1590,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 27,
+            "tailX": 19,
+            "tailY": 14,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ],
+        [
+          {
+            "x": 0,
+            "y": 1643,
+            "width": 89,
+            "height": 53,
+            "ballX": 43,
+            "ballY": 32,
+            "tailX": 34,
+            "tailY": 15,
+            "offsetX": 44,
+            "offsetY": 57
+          }
+        ]
+      ]
+    }
+  }
+}

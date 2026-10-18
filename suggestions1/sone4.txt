@@ -1,0 +1,959 @@
+第 3 輪交付:投射物執行期(行為原語、物件池、25Hz 主迴圈、渲染與除錯層)
+我沒有在這個環境實際執行這份程式碼。型別與數值我逐項手算過,但這輪的程式碼量遠大於前兩輪,請先跑 npm run typecheck && npm test,有失敗請貼完整輸出給我。
+
+與你的規格有出入或需要先知道的設計決策
+項目	做法	原因
+位置座標	行為層存地面空間位置 (gx, gy),速度為地面像素/tick。投影到螢幕只在 screenPosition() 做一次:sx = gx、sy = gy·0.5	行為層完全不碰 2:1,公式只出現在一處
+朝向角	一律用 round 1 的 screenToPhi(dx, dy·0.5) 由地面向量求 φ	不出現被禁用的 atan2(dy, dx)
+tsconfig 沒有 DOM,也沒有 Node 型別	繪製端用結構型別 Ctx2D(真正的 CanvasRenderingContext2D 可直接傳入)。performance、requestAnimationFrame、console 都經注入或轉型取得	不需要改 tsconfig。若你日後加上 "DOM",這些程式碼不會衝突
+BlendMode	改成字串聯集型別,不再用 enum	可直接放進 JSON Manifest,除錯標籤也不必反查名稱
+快照 prev	由 manager.stepTick() 內部完成,主迴圈只需呼叫一個 step	避免呼叫端漏掉快照而造成插值錯誤
+在回呼中終止其他投射物	只能用 manager.kill(handle)(延遲到迴圈處理)。回呼內可以 spawn,不可直接釋放	迭代中途 swap-remove 會讓某個實體在同一 tick 被處理兩次
+碰撞	使用掃掠測試(上一 tick 位置到本 tick 位置的線段對目標圓),不是只測終點	高速投射物不會穿過小目標(有測試)
+逐 tick 零配置	由結構保證(預分配物件、整數 free-list、無閉包無暫時物件),測試以 Missile.created 計數器與物件身分驗證。沒有用堆積量測當斷言	堆積量測在 CI 上不穩定。基準測試只會印出堆積變化供你參考
+檔案清單
+檔案	職責
+rng.ts	mulberry32,可序列化狀態,另提供無配置的 mix32
+blend.ts	BlendMode 與到 Canvas 合成參數的映射
+missile-types.ts	SkillBehaviorBase、F01/F02/F04 參數、MissileDef、定義驗證
+targets.ts	目標來源介面與 ArrayTargets
+pool.ts	Missile、MissileObjectPool(預分配、free-list、稠密活躍表、世代 handle)
+behaviors.ts	行為原語介面、F01/F02/F04、註冊表
+manager.ts	生成、每 tick 推進、碰撞、爆裂子彈、預算、事件
+loop.ts	25Hz 固定步長、MAX_CATCHUP_TICKS、FrameDriver
+render.ts	Ctx2D、投影、方向選取、MissileRenderer
+debug.ts	除錯覆蓋層
+test-utils.ts	測試用假 Canvas、假圖集、定義工廠
+src/rng.ts
+TypeScript
+
+/** mulberry32。狀態為單一 uint32,可存讀,可在投射物內部做無配置推進。 */
+
+export const MULBERRY_INC = 0x6d2b79f5;
+
+/** 對「已加上 MULBERRY_INC 的狀態」做混合,回傳 uint32。 */
+export function mix32(state: number): number {
+  let t = state;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return (t ^ (t >>> 14)) >>> 0;
+}
+
+export class Rng {
+  private state: number;
+
+  constructor(seed: number) {
+    this.state = seed >>> 0;
+  }
+
+  nextU32(): number {
+    this.state = (this.state + MULBERRY_INC) >>> 0;
+    return mix32(this.state);
+  }
+
+  /** [0, 1) */
+  next(): number {
+    return this.nextU32() / 4294967296;
+  }
+
+  getState(): number {
+    return this.state;
+  }
+
+  setState(state: number): void {
+    this.state = state >>> 0;
+  }
+}
+src/blend.ts
+TypeScript
+
+/**
+ * 混色與調色盤偏移是兩個獨立維度;此處只處理混色。
+ * Luminance 與 Shadow 在 Canvas2D 沒有直接等價物:
+ *  - Luminance:請在圖集離線打包時把 alpha 烘焙好,執行期以 source-over 繪製。
+ *  - Shadow:需要專用壓扁變換,此處先以半透明 source-over 代替。
+ * 這些映射與原廠 Overlay.txt 的 Trans 欄的對照,請用你本機的表驗證。
+ */
+export const BLEND_MODES = [
+  'normal',
+  'alpha25',
+  'alpha50',
+  'alpha75',
+  'additive',
+  'screen',
+  'luminance',
+  'multiply',
+  'shadow',
+] as const;
+
+export type BlendMode = (typeof BLEND_MODES)[number];
+
+export interface BlendSetting {
+  /** Canvas globalCompositeOperation 字串。 */
+  readonly op: string;
+  readonly alpha: number;
+}
+
+export const BLEND_SETTINGS: Readonly<Record<BlendMode, BlendSetting>> = {
+  normal: { op: 'source-over', alpha: 1 },
+  alpha25: { op: 'source-over', alpha: 0.25 },
+  alpha50: { op: 'source-over', alpha: 0.5 },
+  alpha75: { op: 'source-over', alpha: 0.75 },
+  additive: { op: 'lighter', alpha: 1 },
+  screen: { op: 'screen', alpha: 1 },
+  luminance: { op: 'source-over', alpha: 1 },
+  multiply: { op: 'multiply', alpha: 1 },
+  shadow: { op: 'source-over', alpha: 0.4 },
+};
+src/missile-types.ts
+TypeScript
+
+import type { BlendMode } from './blend.js';
+import { validateCalibration, type DirectionCalibration } from './direction.js';
+
+export type FamilyId =
+  | 'F01' | 'F02' | 'F03' | 'F04' | 'F05' | 'F06' | 'F07' | 'F08' | 'F09' | 'F10'
+  | 'F11' | 'F12' | 'F13' | 'F14' | 'F15' | 'F16' | 'F17' | 'F18' | 'F19' | 'F20';
+
+/** 第 1 輪規劃的共通基底。 */
+export interface SkillBehaviorBase {
+  readonly skillId: string;
+  readonly family: FamilyId;
+  readonly tier: 'A' | 'B' | 'C';
+  readonly hero: {
+    readonly anim: string;
+    readonly actionFrame: 'fromAnimData' | number;
+    readonly castAnchor: 'hand' | 'weaponTip' | 'chest' | 'feet' | 'sky';
+  };
+  readonly refs: {
+    readonly missiles?: readonly string[];
+    readonly overlays?: ReadonlyArray<{ readonly id: string; readonly layer: 'pre' | 'post' }>;
+    readonly sounds?: { readonly cast?: string; readonly travel?: string; readonly hit?: string };
+  };
+  readonly render: {
+    readonly blend: BlendMode;
+    /** 目前執行期尚未使用,保留給調色盤偏移。 */
+    readonly paletteShift?: string;
+    readonly lod: 0 | 1 | 2;
+  };
+  readonly budget: {
+    /** 同一個 MissileDef 同時存在的上限,超過則拒絕生成。 */
+    readonly maxConcurrent: number;
+    /** 生存 tick 上限,與 rangeTicks 取較小者。 */
+    readonly maxLifeTicks: number;
+  };
+}
+
+/** 所有投射物共用的運動參數。距離為地面未壓縮像素,時間為 tick(1 tick = 40ms)。 */
+export interface MotionParams {
+  /** 初速(地面 px/tick),≥ 0。 */
+  readonly vel: number;
+  /** accel ≠ 0 時的速度上限(accel > 0)或下限(accel < 0)。 */
+  readonly maxVel: number;
+  readonly accel: number;
+  readonly rangeTicks: number;
+  /** 地面空間碰撞半徑,0 表示不做碰撞。 */
+  readonly collisionRadius: number;
+  /** 可穿透的目標數。0 = 首次命中即銷毀,-1 = 無限穿透。 */
+  readonly pierce: number;
+  /** 以 'range' 或 'hit' 結束時,在原地生成的 MissileDef id。 */
+  readonly explodeMissile?: string;
+}
+
+export type F01Params = MotionParams;
+
+export interface F02Params extends MotionParams {
+  readonly turnRateDegPerTick: number;
+  readonly acquireRadius: number;
+  /** true:每 tick 重新選最近目標。false:鎖定後持續追蹤,目標消失才重選。 */
+  readonly reacquire: boolean;
+  /** 找不到目標時:直行或直接結束。 */
+  readonly fallback: 'straight' | 'expire';
+  /** 生成後多少 tick 才開始轉向。 */
+  readonly homingDelayTicks: number;
+}
+
+export interface F04Params extends MotionParams {
+  /** 每次重新取向時的最大角度擾動(±)。 */
+  readonly stepJitterDeg: number;
+  readonly retargetEveryTicks: number;
+  /** 與初始朝向的最大偏離(0~180)。 */
+  readonly maxDeviationDeg: number;
+  readonly boltCount: number;
+  /** 多發時的扇形總角度。 */
+  readonly spreadDeg: number;
+}
+
+export interface F01Behavior extends SkillBehaviorBase {
+  readonly family: 'F01';
+  readonly params: F01Params;
+}
+export interface F02Behavior extends SkillBehaviorBase {
+  readonly family: 'F02';
+  readonly params: F02Params;
+}
+export interface F04Behavior extends SkillBehaviorBase {
+  readonly family: 'F04';
+  readonly params: F04Params;
+}
+
+/** 新增家族時在此加入成員;下方 validateMissileDef 的 switch 會因窮舉檢查而編譯失敗,提醒你補驗證。 */
+export type MissileBehavior = F01Behavior | F02Behavior | F04Behavior;
+
+export interface MissileAnim {
+  readonly frameCount: number;
+  /** 256 = 每 tick 前進 1 幀(25fps)。取自 AnimData.D2,不要手寫。 */
+  readonly speed: number;
+  /** false:播完最後一幀即結束(爆炸類)。飛行中的投射物請用 true。 */
+  readonly loop: boolean;
+}
+
+export interface MissileDef {
+  readonly id: string;
+  readonly behavior: MissileBehavior;
+  readonly calibration: DirectionCalibration;
+  readonly anim: MissileAnim;
+}
+
+function checkMotion(p: MotionParams, err: (msg: string) => void): void {
+  const fin = Number.isFinite;
+  if (!(fin(p.vel) && p.vel >= 0)) err('vel must be a finite number >= 0');
+  if (!(fin(p.maxVel) && p.maxVel >= 0)) err('maxVel must be a finite number >= 0');
+  if (!fin(p.accel)) err('accel must be finite');
+  if (p.accel > 0 && p.maxVel < p.vel) err('accel > 0 requires maxVel >= vel');
+  if (p.accel < 0 && p.maxVel > p.vel) err('accel < 0 requires maxVel <= vel');
+  if (!(Number.isInteger(p.rangeTicks) && p.rangeTicks >= 1)) err('rangeTicks must be an integer >= 1');
+  if (!(fin(p.collisionRadius) && p.collisionRadius >= 0)) err('collisionRadius must be >= 0');
+  if (!(Number.isInteger(p.pierce) && p.pierce >= -1)) err('pierce must be an integer >= -1');
+}
+
+/** 註冊時呼叫;不合法就丟 RangeError(一次列出所有問題)。 */
+export function validateMissileDef(def: MissileDef): void {
+  const errors: string[] = [];
+  const err = (m: string): void => {
+    errors.push(m);
+  };
+
+  if (typeof def.id !== 'string' || def.id.length === 0) err('id must be a non-empty string');
+
+  const a = def.anim;
+  if (!(Number.isInteger(a.frameCount) && a.frameCount >= 1)) err('anim.frameCount must be an integer >= 1');
+  if (!(Number.isFinite(a.speed) && a.speed >= 0)) err('anim.speed must be a finite number >= 0');
+
+  const cal = validateCalibration(def.calibration);
+  if (!cal.ok) err(`calibration invalid: ${cal.errors.join(', ')}`);
+
+  const b = def.behavior;
+  if (!(Number.isInteger(b.budget.maxConcurrent) && b.budget.maxConcurrent >= 1))
+    err('budget.maxConcurrent must be an integer >= 1');
+  if (!(Number.isInteger(b.budget.maxLifeTicks) && b.budget.maxLifeTicks >= 1))
+    err('budget.maxLifeTicks must be an integer >= 1');
+
+  checkMotion(b.params, err);
+  switch (b.family) {
+    case 'F01':
+      break;
+    case 'F02': {
+      const p = b.params;
+      if (!(Number.isFinite(p.turnRateDegPerTick) && p.turnRateDegPerTick > 0)) err('turnRateDegPerTick must be > 0');
+      if (!(Number.isFinite(p.acquireRadius) && p.acquireRadius > 0)) err('acquireRadius must be > 0');
+      if (!(Number.isInteger(p.homingDelayTicks) && p.homingDelayTicks >= 0)) err('homingDelayTicks must be an integer >= 0');
+      if (p.fallback !== 'straight' && p.fallback !== 'expire') err("fallback must be 'straight' or 'expire'");
+      break;
+    }
+    case 'F04': {
+      const p = b.params;
+      if (!(Number.isFinite(p.stepJitterDeg) && p.stepJitterDeg >= 0)) err('stepJitterDeg must be >= 0');
+      if (!(Number.isInteger(p.retargetEveryTicks) && p.retargetEveryTicks >= 1)) err('retargetEveryTicks must be an integer >= 1');
+      if (!(Number.isFinite(p.maxDeviationDeg) && p.maxDeviationDeg >= 0 && p.maxDeviationDeg <= 180)) err('maxDeviationDeg must be in [0, 180]');
+      if (!(Number.isInteger(p.boltCount) && p.boltCount >= 1 && p.boltCount <= 32)) err('boltCount must be an integer in [1, 32]');
+      if (!(Number.isFinite(p.spreadDeg) && p.spreadDeg >= 0 && p.spreadDeg <= 360)) err('spreadDeg must be in [0, 360]');
+      break;
+    }
+    default: {
+      const exhaustive: never = b;
+      err(`unsupported family ${String((exhaustive as SkillBehaviorBase).family)}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new RangeError(`invalid MissileDef '${String(def.id)}': ${errors.join('; ')}`);
+  }
+}
+src/targets.ts
+TypeScript
+
+/** 目標來源。座標為地面空間。id 必須是 ≥ 0 的整數(-1 保留為「無目標」)。 */
+export interface TargetSource {
+  readonly count: number;
+  idAt(i: number): number;
+  gxAt(i: number): number;
+  gyAt(i: number): number;
+  radiusAt(i: number): number;
+}
+
+export const EMPTY_TARGETS: TargetSource = {
+  count: 0,
+  idAt: () => -1,
+  gxAt: () => 0,
+  gyAt: () => 0,
+  radiusAt: () => 0,
+};
+
+/** 固定容量的目標列表(typed array),供看板的怪物層與測試使用。 */
+export class ArrayTargets implements TargetSource {
+  count = 0;
+  readonly capacity: number;
+  private readonly ids: Int32Array;
+  private readonly xs: Float64Array;
+  private readonly ys: Float64Array;
+  private readonly rs: Float64Array;
+
+  constructor(capacity: number) {
+    if (!Number.isInteger(capacity) || capacity < 1) throw new RangeError('capacity must be an integer >= 1');
+    this.capacity = capacity;
+    this.ids = new Int32Array(capacity);
+    this.xs = new Float64Array(capacity);
+    this.ys = new Float64Array(capacity);
+    this.rs = new Float64Array(capacity);
+  }
+
+  clear(): void {
+    this.count = 0;
+  }
+
+  push(id: number, gx: number, gy: number, radius: number): void {
+    if (!Number.isInteger(id) || id < 0) throw new RangeError(`target id must be an integer >= 0, got ${id}`);
+    if (this.count >= this.capacity) throw new RangeError('ArrayTargets is full');
+    const i = this.count++;
+    this.ids[i] = id;
+    this.xs[i] = gx;
+    this.ys[i] = gy;
+    this.rs[i] = radius;
+  }
+
+  setPosition(i: number, gx: number, gy: number): void {
+    this.xs[i] = gx;
+    this.ys[i] = gy;
+  }
+
+  idAt(i: number): number {
+    return this.ids[i]!;
+  }
+  gxAt(i: number): number {
+    return this.xs[i]!;
+  }
+  gyAt(i: number): number {
+    return this.ys[i]!;
+  }
+  radiusAt(i: number): number {
+    return this.rs[i]!;
+  }
+}
+src/pool.ts
+TypeScript
+
+import type { BehaviorPrimitive } from './behaviors.js';
+import { DEG2RAD, normalizeDeg } from './geometry.js';
+import type { MissileDef } from './missile-types.js';
+import { MULBERRY_INC, mix32 } from './rng.js';
+
+export const HIT_MEMORY = 8;
+export const NO_TARGET = -1;
+export const INVALID_HANDLE = -1;
+export const HANDLE_STRIDE = 65536;
+export const MAX_POOL_CAPACITY = HANDLE_STRIDE;
+
+export type ExpireReason = 'range' | 'hit' | 'animEnd' | 'noTarget' | 'manual' | 'cleared';
+
+/** 註冊後的 MissileDef,附帶執行期計數與已解析的行為原語。 */
+export interface DefSlot {
+  readonly def: MissileDef;
+  readonly primitive: BehaviorPrimitive;
+  readonly index: number;
+  live: number;
+}
+
+/**
+ * 預分配的投射物實體。所有欄位都是純數字或預分配的 typed array,
+ * 因此熱路徑上不會產生任何配置。
+ */
+export class Missile {
+  /** 除錯與測試用:總共建構過幾個 Missile。穩態下必須等於池容量。 */
+  static created = 0;
+
+  readonly index: number;
+  /** 每次釋放 +1,用來讓舊 handle 失效。 */
+  gen = 0;
+  active = false;
+  nextFree = -1;
+  activePos = -1;
+
+  slot: DefSlot | null = null;
+  depth = 0;
+
+  // 地面空間位置(未壓縮像素)
+  gx = 0;
+  gy = 0;
+  prevGx = 0;
+  prevGy = 0;
+  /** 為 true 時,渲染端不對這個實體插值(剛生成、被傳送)。 */
+  teleported = false;
+
+  /** 朝向 φ(度,[0, 360)),與 cos/sin 快取。請用 setHeading 修改。 */
+  phi = 0;
+  cosPhi = 1;
+  sinPhi = 0;
+  speed = 0;
+
+  age = 0;
+  lifeTicks = 0;
+
+  animAcc = 0;
+  frame = 0;
+  animDone = false;
+
+  /** 每個投射物自己的 PRNG 狀態:行為結果與迭代順序無關。 */
+  rng = 0;
+
+  // 行為專用狀態(F02 / F04;新家族可在此加欄位並在 reset 清除)
+  lockedId = NO_TARGET;
+  timer = 0;
+  baseHeading = 0;
+  deviation = 0;
+
+  hits = 0;
+  hitMemPos = 0;
+  readonly hitMem = new Int32Array(HIT_MEMORY);
+
+  pendingExpire: ExpireReason | null = null;
+
+  constructor(index: number) {
+    this.index = index;
+    this.hitMem.fill(NO_TARGET);
+    Missile.created++;
+  }
+
+  get handle(): number {
+    return this.gen * HANDLE_STRIDE + this.index;
+  }
+
+  reset(): void {
+    this.slot = null;
+    this.depth = 0;
+    this.gx = this.gy = this.prevGx = this.prevGy = 0;
+    this.teleported = false;
+    this.phi = 0;
+    this.cosPhi = 1;
+    this.sinPhi = 0;
+    this.speed = 0;
+    this.age = 0;
+    this.lifeTicks = 0;
+    this.animAcc = 0;
+    this.frame = 0;
+    this.animDone = false;
+    this.rng = 0;
+    this.lockedId = NO_TARGET;
+    this.timer = 0;
+    this.baseHeading = 0;
+    this.deviation = 0;
+    this.hits = 0;
+    this.hitMemPos = 0;
+    this.hitMem.fill(NO_TARGET);
+    this.pendingExpire = null;
+  }
+
+  setHeading(phiDeg: number): void {
+    const p = normalizeDeg(phiDeg);
+    this.phi = p;
+    const r = p * DEG2RAD;
+    this.cosPhi = Math.cos(r);
+    this.sinPhi = Math.sin(r);
+  }
+
+  /** [0, 1),推進本實體自己的 PRNG。 */
+  nextRandom(): number {
+    this.rng = (this.rng + MULBERRY_INC) >>> 0;
+    return mix32(this.rng) / 4294967296;
+  }
+
+  hasHit(id: number): boolean {
+    for (let i = 0; i < HIT_MEMORY; i++) if (this.hitMem[i] === id) return true;
+    return false;
+  }
+
+  /** 環形記憶最近 HIT_MEMORY 個命中的目標;無限穿透且超過 8 個目標時,最舊的可能再次命中。 */
+  rememberHit(id: number): void {
+    this.hitMem[this.hitMemPos] = id;
+    this.hitMemPos = (this.hitMemPos + 1) % HIT_MEMORY;
+  }
+}
+
+export class MissileObjectPool {
+  readonly capacity: number;
+  acquiredTotal = 0;
+  releasedTotal = 0;
+  rejectedTotal = 0;
+  peakActive = 0;
+
+  private readonly slots: Missile[];
+  /** 稠密活躍表:dense[0..count) 為活躍實體的 slot index。 */
+  private readonly dense: Int32Array;
+  private count = 0;
+  private freeHead = 0;
+  private freeCount: number;
+
+  constructor(capacity: number) {
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_POOL_CAPACITY) {
+      throw new RangeError(`capacity must be an integer in [1, ${MAX_POOL_CAPACITY}], got ${capacity}`);
+    }
+    this.capacity = capacity;
+    this.slots = Array.from({ length: capacity }, (_, i) => new Missile(i));
+    this.dense = new Int32Array(capacity);
+    for (let i = 0; i < capacity; i++) this.slots[i]!.nextFree = i + 1 < capacity ? i + 1 : -1;
+    this.freeCount = capacity;
+  }
+
+  get activeCount(): number {
+    return this.count;
+  }
+
+  get freeSize(): number {
+    return this.freeCount;
+  }
+
+  /** 容量用盡時回傳 null 並累計 rejectedTotal(最大容量保護)。 */
+  acquire(): Missile | null {
+    if (this.freeHead < 0) {
+      this.rejectedTotal++;
+      return null;
+    }
+    const m = this.slots[this.freeHead]!;
+    this.freeHead = m.nextFree;
+    m.nextFree = -1;
+    this.freeCount--;
+    m.reset();
+    m.active = true;
+    m.activePos = this.count;
+    this.dense[this.count++] = m.index;
+    this.acquiredTotal++;
+    if (this.count > this.peakActive) this.peakActive = this.count;
+    return m;
+  }
+
+  release(m: Missile): void {
+    if (this.slots[m.index] !== m) throw new Error('release: missile does not belong to this pool');
+    if (!m.active) throw new Error(`release: double release of missile slot ${m.index}`);
+    const pos = m.activePos;
+    const lastPos = this.count - 1;
+    const lastIdx = this.dense[lastPos]!;
+    this.dense[pos] = lastIdx;
+    this.slots[lastIdx]!.activePos = pos;
+    this.count--;
+
+    m.active = false;
+    m.activePos = -1;
+    m.slot = null;
+    m.pendingExpire = null;
+    m.gen++;
+    m.nextFree = this.freeHead;
+    this.freeHead = m.index;
+    this.freeCount++;
+    this.releasedTotal++;
+  }
+
+  activeAt(k: number): Missile {
+    return this.slots[this.dense[k]!]!;
+  }
+
+  slotAt(index: number): Missile {
+    return this.slots[index]!;
+  }
+
+  /** 以 handle 取回實體;已釋放或世代不符則回傳 null。 */
+  get(handle: number): Missile | null {
+    if (!Number.isInteger(handle) || handle < 0) return null;
+    const index = handle % HANDLE_STRIDE;
+    if (index >= this.capacity) return null;
+    const gen = (handle - index) / HANDLE_STRIDE;
+    const m = this.slots[index]!;
+    return m.active && m.gen === gen ? m : null;
+  }
+
+  /** 結構完整性檢查(會配置記憶體,只給測試與診斷用)。 */
+  checkIntegrity(): void {
+    const seen = new Uint8Array(this.capacity);
+    let free = 0;
+    for (let i = this.freeHead; i >= 0; i = this.slots[i]!.nextFree) {
+      if (seen[i] === 1) throw new Error(`free-list cycle at slot ${i}`);
+      seen[i] = 1;
+      free++;
+      if (this.slots[i]!.active) throw new Error(`active slot ${i} is in the free list`);
+    }
+    if (free !== this.freeCount) throw new Error(`free count mismatch: walked ${free}, tracked ${this.freeCount}`);
+    for (let k = 0; k < this.count; k++) {
+      const idx = this.dense[k]!;
+      const m = this.slots[idx]!;
+      if (!m.active || m.activePos !== k) throw new Error(`dense list corrupt at ${k}`);
+      if (seen[idx] === 1) throw new Error(`slot ${idx} is both active and free`);
+      seen[idx] = 1;
+    }
+    if (free + this.count !== this.capacity) throw new Error('slots leaked: free + active != capacity');
+  }
+}
+src/behaviors.ts
+TypeScript
+
+import { ISO_Y_SCALE, normalizeDeg, screenToPhi } from './geometry.js';
+import type {
+  F01Behavior,
+  F02Behavior,
+  F04Behavior,
+  FamilyId,
+  SkillBehaviorBase,
+} from './missile-types.js';
+import { NO_TARGET, type Missile } from './pool.js';
+import type { TargetSource } from './targets.js';
+
+export interface SimContext {
+  targets: TargetSource;
+  tick: number;
+}
+
+/**
+ * 行為原語:只負責「轉向、改速度、請求結束」。
+ * 位置積分、加速度、動畫、碰撞、射程、爆裂子彈都由 MissileManager 統一處理。
+ * 用方法簽名宣告,使 BehaviorPrimitive<F01Behavior> 可賦值給 BehaviorPrimitive(方法參數雙變)。
+ */
+export interface BehaviorPrimitive<B extends SkillBehaviorBase = SkillBehaviorBase> {
+  readonly family: FamilyId;
+  /** 生成後呼叫一次(朝向、速度、壽命已設好)。 */
+  init(m: Missile, behavior: B, sim: SimContext): void;
+  /** 每 tick 在位置積分之前呼叫。不得配置物件。 */
+  step(m: Missile, behavior: B, sim: SimContext): void;
+}
+
+/** F01:直線。速度與加速度由 manager 處理,故無額外邏輯。穿透與爆裂也是 manager 的通用能力。 */
+export const F01_STRAIGHT: BehaviorPrimitive<F01Behavior> = {
+  family: 'F01',
+  init() {},
+  step() {},
+};
+
+/**
+ * F02:追蹤。
+ *  - 以最大轉向率逼近目標方向,因此軌跡自然是弧線。
+ *  - 鎖定目標後(reacquire=false)持續追;目標消失則重新選最近的。
+ *  - 距離相同時,索引較大者勝出(確定性)。
+ */
+export const F02_HOMING: BehaviorPrimitive<F02Behavior> = {
+  family: 'F02',
+  init(m) {
+    m.lockedId = NO_TARGET;
+  },
+  step(m, b, sim) {
+    const p = b.params;
+    if (m.age < p.homingDelayTicks) return;
+
+    const t = sim.targets;
+    const n = t.count;
+    let found = -1;
+
+    if (m.lockedId !== NO_TARGET && !p.reacquire) {
+      for (let i = 0; i < n; i++) {
+        if (t.idAt(i) === m.lockedId) {
+          found = i;
+          break;
+        }
+      }
+    }
+    if (found < 0) {
+      let best = p.acquireRadius * p.acquireRadius;
+      let bestId = NO_TARGET;
+      for (let i = 0; i < n; i++) {
+        const dx = t.gxAt(i) - m.gx;
+        const dy = t.gyAt(i) - m.gy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= best) {
+          best = d2;
+          found = i;
+          bestId = t.idAt(i);
+        }
+      }
+      m.lockedId = bestId;
+    }
+
+    if (found < 0) {
+      if (p.fallback === 'expire') m.pendingExpire = 'noTarget';
+      return;
+    }
+
+    const dx = t.gxAt(found) - m.gx;
+    const dy = t.gyAt(found) - m.gy;
+    if (dx * dx + dy * dy < 1e-9) return; // 與目標重合,沒有方向可言
+
+    // 地面向量 → φ:screenToPhi 會把 Y 乘 2,所以先把地面 dy 換成螢幕 dy
+    const desired = screenToPhi(dx, dy * ISO_Y_SCALE);
+    let d = normalizeDeg(desired - m.phi);
+    if (d > 180) d -= 360;
+    const lim = p.turnRateDegPerTick;
+    if (d > lim) d = lim;
+    else if (d < -lim) d = -lim;
+    m.setHeading(m.phi + d);
+  },
+};
+
+/**
+ * F04:隨機折線。每 retargetEveryTicks 個 tick,在「與初始朝向的偏離角」上加一個 ±stepJitterDeg 的均勻隨機量,
+ * 並夾在 ±maxDeviationDeg 內。隨機數取自投射物自己的 PRNG,結果與迭代順序無關。
+ */
+export const F04_RANDOM_WALK: BehaviorPrimitive<F04Behavior> = {
+  family: 'F04',
+  init(m, b) {
+    m.timer = b.params.retargetEveryTicks;
+    m.baseHeading = m.phi;
+    m.deviation = 0;
+  },
+  step(m, b) {
+    const p = b.params;
+    if (--m.timer > 0) return;
+    m.timer = p.retargetEveryTicks;
+    let dev = m.deviation + (m.nextRandom() * 2 - 1) * p.stepJitterDeg;
+    const lim = p.maxDeviationDeg;
+    if (dev > lim) dev = lim;
+    else if (dev < -lim) dev = -lim;
+    m.deviation = dev;
+    m.setHeading(m.baseHeading + dev);
+  },
+};
+
+export class BehaviorRegistry {
+  private readonly map = new Map<FamilyId, BehaviorPrimitive>();
+
+  register(p: BehaviorPrimitive): this {
+    if (this.map.has(p.family)) throw new Error(`behavior for family ${p.family} already registered`);
+    this.map.set(p.family, p);
+    return this;
+  }
+
+  get(family: FamilyId): BehaviorPrimitive | undefined {
+    return this.map.get(family);
+  }
+}
+
+export function createDefaultRegistry(): BehaviorRegistry {
+  return new BehaviorRegistry().register(F01_STRAIGHT).register(F02_HOMING).register(F04_RANDOM_WALK);
+}
+src/manager.ts
+TypeScript
+
+import { BehaviorRegistry, createDefaultRegistry, type SimContext } from './behaviors.js';
+import { ISO_Y_SCALE, screenToPhi } from './geometry.js';
+import {
+  validateMissileDef,
+  type MissileAnim,
+  type MissileDef,
+  type MotionParams,
+} from './missile-types.js';
+import {
+  INVALID_HANDLE,
+  Missile,
+  MissileObjectPool,
+  type DefSlot,
+  type ExpireReason,
+} from './pool.js';
+import { Rng } from './rng.js';
+import { EMPTY_TARGETS, type TargetSource } from './targets.js';
+
+/**
+ * 事件回呼。規則:
+ *  - 回呼內可以 spawn,但不可直接釋放或終止其他投射物(請用 manager.kill,它會延遲處理)。
+ *  - 參數 m 只在回呼期間有效,不要保存;需要長期引用請保存 m.handle。
+ */
+export interface MissileEvents {
+  onSpawn?(m: Missile): void;
+  onHit?(m: Missile, targetIndex: number, targetId: number): void;
+  onExpire?(m: Missile, reason: ExpireReason): void;
+}
+
+export interface MissileManagerOptions {
+  capacity: number;
+  /** 主 PRNG 種子。每個投射物生成時從這裡取得自己的種子,故生成順序一致則結果一致。 */
+  seed: number;
+  targets?: TargetSource;
+  events?: MissileEvents;
+  behaviors?: BehaviorRegistry;
+  /** 爆裂子彈鏈的最大深度,防止 A 爆裂成 A 的無限遞迴。預設 4。 */
+  maxExplosionDepth?: number;
+}
+
+export interface ManagerStats {
+  readonly tick: number;
+  readonly active: number;
+  readonly free: number;
+  readonly peakActive: number;
+  readonly acquired: number;
+  readonly released: number;
+  readonly rejectedPool: number;
+  readonly rejectedBudget: number;
+}
+
+export class MissileManager {
+  readonly pool: MissileObjectPool;
+  rejectedBudget = 0;
+
+  private readonly rng: Rng;
+  private readonly behaviors: BehaviorRegistry;
+  private readonly byId = new Map<string, DefSlot>();
+  private readonly sim: SimContext;
+  private readonly events: MissileEvents;
+  private readonly maxDepth: number;
+  private targets: TargetSource;
+  private tickCount = 0;
+
+  constructor(o: MissileManagerOptions) {
+    this.pool = new MissileObjectPool(o.capacity);
+    this.rng = new Rng(o.seed);
+    this.behaviors = o.behaviors ?? createDefaultRegistry();
+    this.events = o.events ?? {};
+    this.maxDepth = o.maxExplosionDepth ?? 4;
+    this.targets = o.targets ?? EMPTY_TARGETS;
+    this.sim = { targets: this.targets, tick: 0 };
+  }
+
+  get tick(): number {
+    return this.tickCount;
+  }
+
+  get stats(): ManagerStats {
+    const p = this.pool;
+    return {
+      tick: this.tickCount,
+      active: p.activeCount,
+      free: p.freeSize,
+      peakActive: p.peakActive,
+      acquired: p.acquiredTotal,
+      released: p.releasedTotal,
+      rejectedPool: p.rejectedTotal,
+      rejectedBudget: this.rejectedBudget,
+    };
+  }
+
+  setTargets(t: TargetSource): void {
+    this.targets = t;
+    this.sim.targets = t;
+  }
+
+  // ───────────── 註冊 ─────────────
+
+  registerDef(def: MissileDef): void {
+    validateMissileDef(def);
+    if (this.byId.has(def.id)) throw new Error(`duplicate missile def: ${def.id}`);
+    const primitive = this.behaviors.get(def.behavior.family);
+    if (primitive === undefined) {
+      throw new Error(`no behavior primitive registered for family ${def.behavior.family} (def ${def.id})`);
+    }
+    this.byId.set(def.id, { def, primitive, index: this.byId.size, live: 0 });
+  }
+
+  /** 全部註冊完成後呼叫:確認所有 explodeMissile 都指向已註冊的定義。 */
+  validateReferences(): void {
+    const missing: string[] = [];
+    for (const slot of this.byId.values()) {
+      const ref = slot.def.behavior.params.explodeMissile;
+      if (ref !== undefined && !this.byId.has(ref)) missing.push(`${slot.def.id} -> ${ref}`);
+    }
+    if (missing.length > 0) throw new Error(`unresolved explodeMissile references: ${missing.join(', ')}`);
+  }
+
+  liveCount(defId: string): number {
+    const slot = this.byId.get(defId);
+    if (slot === undefined) throw new Error(`unknown missile def: ${defId}`);
+    return slot.live;
+  }
+
+  // ───────────── 生成與控制 ─────────────
+
+  /**
+   * 在地面座標 (gx, gy) 以朝向 phiDeg 生成。回傳第一個實體的 handle;
+   * 被預算或池容量拒絕時回傳 INVALID_HANDLE(-1)。F04 會依 boltCount 生成多發(扇形均分)。
+   */
+  spawn(defId: string, gx: number, gy: number, phiDeg: number): number {
+    const slot = this.byId.get(defId);
+    if (slot === undefined) throw new Error(`unknown missile def: ${defId}`);
+    if (!Number.isFinite(gx) || !Number.isFinite(gy) || !Number.isFinite(phiDeg)) {
+      throw new RangeError(`spawn: non-finite argument (${gx}, ${gy}, ${phiDeg})`);
+    }
+    return this.spawnSlot(slot, gx, gy, phiDeg, 0);
+  }
+
+  /** 朝目標點生成(兩點皆為地面座標)。兩點重合時朝向為 0。 */
+  spawnToward(defId: string, fromGx: number, fromGy: number, toGx: number, toGy: number): number {
+    const phi = screenToPhi(toGx - fromGx, (toGy - fromGy) * ISO_Y_SCALE);
+    return this.spawn(defId, fromGx, fromGy, phi);
+  }
+
+  /** 延遲終止:下一次輪到該實體時以 'manual' 結束(不會觸發爆裂子彈)。 */
+  kill(handle: number): boolean {
+    const m = this.pool.get(handle);
+    if (m === null) return false;
+    m.pendingExpire = 'manual';
+    return true;
+  }
+
+  /** 瞬移:同時改寫 prev 與 cur,並設 teleported,讓渲染端這一幀不插值。 */
+  teleport(handle: number, gx: number, gy: number): boolean {
+    const m = this.pool.get(handle);
+    if (m === null) return false;
+    m.gx = m.prevGx = gx;
+    m.gy = m.prevGy = gy;
+    m.teleported = true;
+    return true;
+  }
+
+  /** 清空所有投射物('cleared',不產生爆裂)。不可在 stepTick 的回呼中呼叫。 */
+  clear(): void {
+    while (this.pool.activeCount > 0) {
+      this.expire(this.pool.activeAt(this.pool.activeCount - 1), 'cleared');
+    }
+  }
+
+  // ───────────── 每 tick 推進 ─────────────
+
+  stepTick(): void {
+    this.tickCount++;
+    this.sim.tick = this.tickCount;
+    // 由後往前走:swap-remove 與回呼內新生成的實體(附加在尾端)都不會造成重複處理或遺漏。
+    for (let k = this.pool.activeCount - 1; k >= 0; k--) {
+      this.stepMissile(this.pool.activeAt(k));
+    }
+  }
+
+  private stepMissile(m: Missile): void {
+    const slot = m.slot!;
+    const def = slot.def;
+    const b = def.behavior;
+    const p = b.params;
+
+    if (m.pendingExpire !== null) {
+      this.expire(m, m.pendingExpire);
+      return;
+    }
+
+    // 快照 prev(渲染插值的起點)
+    m.prevGx = m.gx;
+    m.prevGy = m.gy;
+    m.teleported = false;
+
+    slot.primitive.step(m, b, this.sim);
+    if (m.pendingExpire !== null) {
+      this.expire(m, m.pendingExpire);
+      return;
+    }
+
+    // 地面空間位置積分(螢幕 Y×0.5 只在渲染投影時發生)
+    m.gx += m.cosPhi * m.speed;
+    m.gy += m.sinPhi * m.speed;
+
+    if (p.accel !== 0) {
+      let s = m.speed + p.accel;

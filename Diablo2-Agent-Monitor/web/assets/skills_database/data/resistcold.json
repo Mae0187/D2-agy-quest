@@ -1,0 +1,139 @@
+{
+  "id": "resistcold",
+  "name": "Resist Cold",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "pal",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 6,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "resist cold",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is pal"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "paladin",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 2,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 3,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 18,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "skillname105",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    },
+    "name": {
+      "value": "Resist Cold",
+      "source": "string.tbl skillname105 (key from SkillDesc.txt str name)"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 0,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 8,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": null,
+    "sequence": null
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 65,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "16",
+        "description": "radius",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "2",
+        "description": "additional radius per level",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "35",
+        "description": "min % resist",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 4,
+        "value": "150",
+        "description": "max % resist",
+        "source": "Skills.txt Param4",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 5,
+        "value": "0",
+        "description": "?",
+        "source": "Skills.txt Param5",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 6,
+        "value": "0",
+        "description": "?",
+        "source": "Skills.txt Param6",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  }
+}

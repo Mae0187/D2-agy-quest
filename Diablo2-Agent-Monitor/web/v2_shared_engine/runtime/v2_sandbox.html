@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <base href="../../">
+  <title>Diablo II 投射物引擎實機動態播放沙盒 (Missile Engine Sandbox - V2 Shared Engine)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: #060709;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .header { margin-bottom: 12px; text-align: center; }
+    .header h1 {
+      font-size: 22px; color: #F59E0B;
+      text-shadow: 0 0 10px rgba(245,158,11,0.4);
+      margin-bottom: 4px; letter-spacing: 1px;
+    }
+    .header p { font-size: 13px; color: #94A3B8; }
+    .control-deck {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 1000px; margin-bottom: 8px; gap: 12px;
+    }
+    .element-tabs {
+      display: flex; gap: 6px;
+      background: #111827; padding: 6px 10px;
+      border-radius: 8px; border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+    }
+    .tab-btn {
+      background: #1E293B; color: #94A3B8;
+      border: 1px solid #334155; padding: 7px 14px;
+      border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 700; transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab-btn .tab-key {
+      font-size: 11px; background: rgba(0,0,0,0.3);
+      padding: 1px 5px; border-radius: 3px; color: #64748B;
+    }
+    .tab-btn:hover { color: #F1F5F9; background: #334155; }
+    .tab-btn.active.fire {
+      background: linear-gradient(180deg, #78350F 0%, #451A03 100%);
+      color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+    }
+    .tab-btn.active.fire .tab-key { color: #FCD34D; }
+    .tab-btn.active.cold {
+      background: linear-gradient(180deg, #075985 0%, #082F49 100%);
+      color: #E0F2FE; border-color: #38BDF8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+    }
+    .tab-btn.active.cold .tab-key { color: #BAE6FD; }
+    .tab-btn.active.lightning {
+      background: linear-gradient(180deg, #854D0E 0%, #422006 100%);
+      color: #FEF9C3; border-color: #FACC15;
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.45);
+    }
+    .tab-btn.active.lightning .tab-key { color: #FDE047; }
+
+    .utility-controls { display: flex; gap: 8px; }
+    .util-btn {
+      background: #1F2937; color: #94A3B8;
+      border: 1px solid #374151; padding: 7px 12px;
+      border-radius: 6px; font-size: 12px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .util-btn:hover { color: #FFF; background: #374151; }
+    .util-btn.active { background: #1E3A5F; border-color: #3B82F6; color: #DBEAFE; }
+
+    .skills-deck {
+      display: flex; gap: 8px; width: 1000px; margin-bottom: 12px;
+      background: #111827; padding: 8px 12px;
+      border-radius: 8px; border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      flex-wrap: wrap; align-items: center; min-height: 52px;
+    }
+    .skill-card-btn {
+      background: #1F2937; color: #D1D5DB;
+      border: 1px solid #4B5563; padding: 8px 14px;
+      border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .skill-card-btn:hover:not(:disabled) {
+      background: #374151; color: #FFF; border-color: #9CA3AF;
+    }
+    .skill-card-btn:disabled {
+      opacity: 0.45; cursor: not-allowed; border-style: dashed;
+    }
+    .skill-card-btn.active.fire {
+      background: #B45309; color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245,158,11,0.5);
+    }
+    .skill-card-btn.active.cold {
+      background: #0284C7; color: #F0F9FF; border-color: #38BDF8;
+      box-shadow: 0 0 12px rgba(56,189,248,0.5);
+    }
+    .skill-card-btn.active.lightning {
+      background: #CA8A04; color: #FEF9C3; border-color: #FACC15;
+      box-shadow: 0 0 12px rgba(250,204,21,0.5);
+    }
+
+    /* ── 主體佈局：畫布 + 右側面板並排 ── */
+    .main-area {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .canvas-container {
+      position: relative;
+      border: 2px solid #374151; border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
+      overflow: hidden; background: #0B0D11;
+    }
+    canvas { display: block; cursor: crosshair; }
+
+    .main-area {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+
+    .footer {
+      margin-top: 12px;
+      display: flex; gap: 20px; font-size: 12px; color: #64748B;
+      background: #0F172A; padding: 6px 16px;
+      border-radius: 6px; border: 1px solid #1E293B;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .key-badge {
+      background: #334155; color: #F1F5F9;
+      padding: 2px 6px; border-radius: 4px;
+      font-family: monospace; font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔥 / ❄️ / ⚡ 魔法使【三系技能】原廠 MPQ 實機驗證沙盒 (V2 通用標準引擎驅動)</h1>
+    <p>25Hz 固定邏輯步長 | 原廠 DCC 聯集盒無損圖集 | 100% 暴雪原版判定 | 三系標籤獨立切換</p>
+  </div>
+
+  <!-- 頂部控制台：分頁切換 + 功能開關 (已移除立即召喚海蛇，精簡版面) -->
+  <div class="control-deck">
+    <!-- 三系標籤欄 -->
+    <div class="element-tabs">
+      <button class="tab-btn active fire" data-tab="fire" id="tab-fire">
+        <span>🔥 火焰系</span> <span class="tab-key">[Q]</span>
+      </button>
+      <button class="tab-btn cold" data-tab="cold" id="tab-cold">
+        <span>❄️ 冰霜系</span> <span class="tab-key">[W]</span>
+      </button>
+      <button class="tab-btn lightning" data-tab="lightning" id="tab-lightning">
+        <span>⚡ 閃電系</span> <span class="tab-key">[E]</span>
+      </button>
+    </div>
+
+    <!-- 輔助開關 -->
+    <div class="utility-controls">
+      <button id="btn-inspect-16dir" class="util-btn">🔄 [R] 16向自轉巡檢: 關閉</button>
+      <button id="btn-cycle-armor" class="util-btn">🛡️ [T] 裝甲: 輕裝</button>
+      <div style="display: flex; align-items: center; gap: 4px; background: #1F2937; border: 1px solid #374151; padding: 4px 8px; border-radius: 6px;">
+        <span style="font-size: 11px; color: #94A3B8;">方向:</span>
+        <button id="btn-dir-prev" class="util-btn" style="padding: 2px 6px; font-size: 11px;">◀</button>
+        <span id="hud-dir-display" style="color: #FCD34D; font-weight: bold; font-size: 12px; min-width: 80px; text-align: center;">0 正南</span>
+        <button id="btn-dir-next" class="util-btn" style="padding: 2px 6px; font-size: 11px;">▶</button>
+      </div>
+      <button id="btn-spawn-dummies" class="util-btn">👾 [G] 召喚小怪</button>
+      <button id="btn-toggle-debug" class="util-btn active">🛠️ [D] 除錯錨點</button>
+    </div>
+  </div>
+
+  <!-- 當前系別技能動作列 -->
+  <div class="skills-deck" id="skills-deck"></div>
+
+  <div class="main-area">
+    <div class="canvas-container">
+      <canvas id="demo-canvas" width="1000" height="600"></canvas>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>🖱️ <span class="key-badge">滑鼠點擊畫布</span> 朝目標施展當前技能 (地獄火長按連續噴流)</div>
+    <div>🔄 <span class="key-badge">R</span> 開關 16 方向原地自動自轉施法巡檢</div>
+    <div>🛡️ <span class="key-badge">T</span> 切換法師輕/中/重裝甲外觀</div>
+    <div>🧭 <span class="key-badge">[ / ]</span> 手動切換 16 個方向</div>
+    <div>⌨️ <span class="key-badge">Q / W / E</span> 切換三大系別【🔥 火焰 / ❄️ 冰霜 / ⚡ 閃電】</div>
+    <div>⌨️ <span class="key-badge">數字鍵 1 ~ 6</span> 切換當前系別技能</div>
+    <div>🔍 <span class="key-badge">D</span> 開關除錯碰撞錨點</div>
+  </div>
+
+  <!-- 全面停用音效 (依使用者指令強制靜音) -->
+  <script>window.__D2_DISABLE_AUDIO__ = true;</script>
+
+  <!-- 引入真實角色控制器與魔法使 16 方向動作圖集配置 -->
+  <script src="js/direction_controller.js"></script>
+  <script src="js/cast_sockets.js"></script>
+  <script src="assets/characters/sorceress/manifest.js"></script>
+  <script src="assets/characters/sorceress/light/manifest.js"></script>
+  <script src="assets/characters/sorceress/medium/manifest.js"></script>
+  <script src="assets/characters/sorceress/heavy/manifest.js"></script>
+  <script src="js/character_controller.js"></script>
+  <script src="v2_shared_engine/runtime/v2_demo.bundle.js"></script>
+  <script>
+    // 預設海蛇靜態配置 (當主動施放海蛇技能時直接套用)
+    window.__hydraConfig__ = {
+      heads: [
+        { ox: -22, oy: -8 },
+        { ox:   0, oy:  6 },
+        { ox:  22, oy: -8 },
+      ],
+      fires: [
+        { fox: -11, foy: -6 },
+        { fox: -10, foy: -6 },
+        { fox:  -8, foy: -6 },
+      ],
+    };
+
+
+    // ── 魔法使三大系別技能資料與分組 (依據全角色技能清單與實裝選擇表完整掛載) ──
+    const ELEMENT_SKILLS = {
+      fire: [
+        { id: '36', key: '1', icon: '🔥', name: '火彈 (Fire Bolt)' },
+        { id: '47', key: '2', icon: '💥', name: '火球 (Fire Ball)' },
+        { id: '41', key: '3', icon: '♨️', name: '地獄火 (Inferno)' },
+        { id: '51', key: '4', icon: '🧱', name: '火牆 (Fire Wall)' },
+        { id: '56', key: '5', icon: '☄️', name: '隕石天降 (Meteor)' },
+        { id: '62', key: '6', icon: '🐉', name: '九頭海蛇 (Hydra)' }
+      ],
+      cold: [
+        { id: '39', key: '1', icon: '🧊', name: '冰彈 (Ice Bolt)' },
+        { id: '45', key: '2', icon: '❄️', name: '冰風暴 (Ice Blast)' },
+        { id: '44', key: '3', icon: '💍', name: '冰霜新星 (Frost Nova)' },
+        { id: '55', key: '4', icon: '🗡️', name: '冰川之刺 (Glacial Spike)' },
+        { id: '59', key: '5', icon: '🌨️', name: '暴風雪 (Blizzard)' },
+        { id: '64', key: '6', icon: '🔮', name: '冰封球 (Frozen Orb)' }
+      ],
+      lightning: [
+        { id: '38', key: '1', icon: '⚡', name: '充能彈 (Charged Bolt)' },
+        { id: '48', key: '2', icon: '✨', name: '新星 (Nova)' },
+        { id: '53', key: '3', icon: '🌩️', name: '連鎖閃電 (Chain Lightning)' },
+        { id: '57', key: '4', icon: '⛈️', name: '雷暴 (Thunder Storm)' }
+      ]
+    };
+
+    let currentElement = 'fire';
+    let currentSelectedSkill = '47'; // 預設火球
+    const lastSelectedSkill = {
+      fire: '47',
+      cold: '39',
+      lightning: '38'
+    };
+
+    const skillsDeck = document.getElementById('skills-deck');
+
+    function selectSkill(skillId) {
+      currentSelectedSkill = skillId;
+      lastSelectedSkill[currentElement] = skillId;
+      if (window.setV2Skill) window.setV2Skill(skillId);
+
+      document.querySelectorAll('.skill-card-btn').forEach(btn => {
+        if (btn.id === `btn-skill-${skillId}`) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+    }
+
+    function renderSkillsDeck() {
+      skillsDeck.innerHTML = '';
+      const skills = ELEMENT_SKILLS[currentElement] || [];
+      skills.forEach((sk) => {
+        const btn = document.createElement('button');
+        btn.className = `skill-card-btn ${currentElement}`;
+        btn.id = `btn-skill-${sk.id}`;
+        if (sk.disabled) {
+          btn.disabled = true;
+          btn.title = '原廠 MPQ 資源封裝排程中';
+        }
+        if (sk.id === currentSelectedSkill) {
+          btn.classList.add('active');
+        }
+        btn.innerHTML = `<span>${sk.icon}</span> <span>[${sk.key}] ${sk.name}</span>`;
+        btn.addEventListener('click', () => {
+          if (!sk.disabled) {
+            selectSkill(sk.id);
+            if (sk.id === '62' && window.castV2Skill) {
+              window.castV2Skill('62', 500, 320);
+            } else if (sk.id === '57' && window.castV2Skill) {
+              window.castV2Skill('57', 500, 340);
+            } else if ((sk.id === '44' || sk.id === '48') && window.castV2Skill) {
+              window.castV2Skill(sk.id, 500, 340);
+            }
+          }
+        });
+        skillsDeck.appendChild(btn);
+      });
+    }
+
+    function setElementTab(elem) {
+      if (!ELEMENT_SKILLS[elem]) return;
+      currentElement = elem;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.dataset.tab === elem) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      renderSkillsDeck();
+
+      const targetId = lastSelectedSkill[elem];
+      const found = ELEMENT_SKILLS[elem].find(s => s.id === targetId && !s.disabled);
+      if (found) {
+        selectSkill(found.id);
+      } else {
+        const firstAvail = ELEMENT_SKILLS[elem].find(s => !s.disabled);
+        if (firstAvail) selectSkill(firstAvail.id);
+      }
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setElementTab(btn.dataset.tab);
+      });
+    });
+
+    const DIR_NAMES_ZH = [
+      "0 正南 (South)", "1 南南西 (SSW)", "2 西南 (SW)", "3 西南西 (WSW)",
+      "4 正西 (West)", "5 西北西 (WNW)", "6 西北 (NW)", "7 北北西 (NNW)",
+      "8 正北 (North)", "9 北北東 (NNE)", "10 東北 (NE)", "11 東北東 (ENE)",
+      "12 正東 (East)", "13 東南東 (ESE)", "14 東南 (SE)", "15 南南東 (SSE)"
+    ];
+
+    const hudDirDisplay = document.getElementById('hud-dir-display');
+    window.updateDirDisplay = function(dir) {
+      if (hudDirDisplay) {
+        hudDirDisplay.textContent = DIR_NAMES_ZH[dir % 16] || `${dir}`;
+      }
+    };
+
+    const btnInspect16 = document.getElementById('btn-inspect-16dir');
+    if (btnInspect16) {
+      btnInspect16.addEventListener('click', () => {
+        if (window.toggle16DirInspection) {
+          const active = window.toggle16DirInspection();
+          btnInspect16.classList.toggle('active', active);
+          btnInspect16.textContent = active ? '🔄 [R] 16向自轉巡檢: 啟動中' : '🔄 [R] 16向自轉巡檢: 關閉';
+        }
+      });
+    }
+
+    const btnCycleArmor = document.getElementById('btn-cycle-armor');
+    if (btnCycleArmor) {
+      btnCycleArmor.addEventListener('click', async () => {
+        if (window.__sandboxCharacter && window.__sandboxCharacter.cycleArmorTier) {
+          const newTier = await window.__sandboxCharacter.cycleArmorTier();
+          const tierNames = { light: '輕裝', medium: '中裝', heavy: '重裝' };
+          btnCycleArmor.textContent = `🛡️ [T] 裝甲: ${tierNames[newTier] || newTier}`;
+        }
+      });
+    }
+
+    const btnDirPrev = document.getElementById('btn-dir-prev');
+    if (btnDirPrev) {
+      btnDirPrev.addEventListener('click', () => {
+        if (window.__sandboxCharacter) {
+          const nextDir = (window.__sandboxCharacter.currentDir - 1 + 16) % 16;
+          window.setInspectDirection(nextDir);
+        }
+      });
+    }
+
+    const btnDirNext = document.getElementById('btn-dir-next');
+    if (btnDirNext) {
+      btnDirNext.addEventListener('click', () => {
+        if (window.__sandboxCharacter) {
+          const nextDir = (window.__sandboxCharacter.currentDir + 1) % 16;
+          window.setInspectDirection(nextDir);
+        }
+      });
+    }
+
+    const btnDebug = document.getElementById('btn-toggle-debug');
+    if (btnDebug) {
+      btnDebug.addEventListener('click', () => {
+        btnDebug.classList.toggle('active');
+        if (window.toggleV2Debug) window.toggleV2Debug();
+      });
+    }
+
+    function spawnDummies() {
+      if (window.__v2Player) {
+        for (let i = 0; i < 3; i++) {
+          window.__v2Player.dummies.push({
+            id: Date.now() + Math.random(),
+            x: 500 + (Math.random() - 0.5) * 360,
+            y: 280 + (Math.random() - 0.5) * 140,
+            hp: 200,
+            maxHp: 200,
+            isDead: false,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 1,
+            hitTime: 0
+          });
+        }
+        if (window.__v2Player.addDamageText) {
+          window.__v2Player.addDamageText(500, 200, '【召喚木人】+3', '#4ADE80');
+        }
+      }
+    }
+
+    const btnSpawn = document.getElementById('btn-spawn-dummies');
+    if (btnSpawn) btnSpawn.addEventListener('click', spawnDummies);
+
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      if (key === 'q') {
+        setElementTab('fire');
+      } else if (key === 'w') {
+        setElementTab('cold');
+      } else if (key === 'e') {
+        setElementTab('lightning');
+      } else if (key === 'd') {
+        if (btnDebug) btnDebug.click();
+      } else if (key === 'r') {
+        if (btnInspect16) btnInspect16.click();
+      } else if (key === 't') {
+        if (btnCycleArmor) btnCycleArmor.click();
+      } else if (key === '[' || e.code === 'BracketLeft') {
+        if (btnDirPrev) btnDirPrev.click();
+      } else if (key === ']' || e.code === 'BracketRight') {
+        if (btnDirNext) btnDirNext.click();
+      } else if (key === 'g' || e.code === 'KeyG') {
+        spawnDummies();
+      } else {
+        const num = parseInt(e.key, 10);
+        if (!isNaN(num) && num >= 1 && num <= 9) {
+          const skills = ELEMENT_SKILLS[currentElement];
+          if (skills && skills[num - 1] && !skills[num - 1].disabled) {
+            const sk = skills[num - 1];
+            selectSkill(sk.id);
+            if (sk.id === '62' && window.castV2Skill) {
+              window.castV2Skill('62', 500, 320);
+            } else if (sk.id === '57' && window.castV2Skill) {
+              window.castV2Skill('57', 500, 340);
+            } else if ((sk.id === '44' || sk.id === '48') && window.castV2Skill) {
+              window.castV2Skill(sk.id, 500, 340);
+            }
+          }
+        }
+      }
+    });
+
+    // 初始化渲染火系
+    renderSkillsDeck();
+  </script>
+</body>
+</html>

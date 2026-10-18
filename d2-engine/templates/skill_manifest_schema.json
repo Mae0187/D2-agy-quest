@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "D2SkillEngineManifest",
+  "description": "Diablo II Universal Skill Animation and Projectile Standard Data Specification",
+  "type": "object",
+  "required": ["skillId", "name", "category", "template", "timing", "layers"],
+  "properties": {
+    "skillId": { "type": "string", "description": "Official skill identifier or numerical ID" },
+    "name": { "type": "string", "description": "Official localized or English skill name" },
+    "category": { "type": "string", "enum": ["fire", "cold", "lightning", "magic", "poison", "physical"] },
+    "template": {
+      "type": "string",
+      "enum": ["linear_missile", "continuous_stream", "ground_hazard", "timed_multistage", "composite_minion"]
+    },
+    "timing": {
+      "type": "object",
+      "required": ["stepHz", "tickMs"],
+      "properties": {
+        "stepHz": { "type": "integer", "default": 25, "description": "Fixed physics tick rate at 25Hz" },
+        "tickMs": { "type": "integer", "default": 40, "description": "Step interval duration in milliseconds (40ms)" },
+        "durationTicks": { "type": "integer", "description": "Total lifetime in ticks" },
+        "releaseFrame": { "type": "integer", "description": "Casting release frame (AnimData.D2)" }
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "velocity": { "type": "number", "description": "Initial projectile velocity (Missiles.txt Vel)" },
+        "range": { "type": "number", "description": "Maximum range or lifetime (Missiles.txt Range)" },
+        "aoeRadius": { "type": "number", "description": "Area-of-effect explosion radius in pixels" },
+        "hitboxRadius": { "type": "number", "default": 26, "description": "Collision detection hitbox radius in pixels" },
+        "subMissileId": { "type": "string", "description": "Sub-missile or explosion animation ID" }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer", "enum": [1, 4, 8, 16, 32] },
+        "preset": { "type": "string", "enum": ["standard_16", "standard_8", "fixed_1"] }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layerId", "atlasFile", "cellW", "cellH", "pivotX", "pivotY", "frames", "dirs"],
+        "properties": {
+          "layerId": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": [
+              "projectile", "indicator", "falling_body", "falling_tail",
+              "impact_burst", "ground_fire", "minion_body", "minion_attack",
+              "predraw_glow", "predraw_flame"
+            ]
+          },
+          "atlasFile": { "type": "string" },
+          "cellW": { "type": "integer" },
+          "cellH": { "type": "integer" },
+          "pivotX": { "type": "integer" },
+          "pivotY": { "type": "integer" },
+          "frames": { "type": "integer" },
+          "dirs": { "type": "integer" },
+          "blendMode": { "type": "string", "enum": ["normal", "lighter"], "default": "lighter" },
+          "alpha": { "type": "number", "default": 1.0 },
+          "preDraw": { "type": "integer", "enum": [0, 1], "description": "0: Foreground overlay, 1: Background underlay (Overlay.txt)" },
+          "offset": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number", "default": 0 },
+              "y": { "type": "number", "default": 0 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

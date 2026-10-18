@@ -1,0 +1,67 @@
+{
+  "image": "assets/maps/scene_act5.png",
+  "size": {
+    "width": 2560,
+    "height": 1440
+  },
+  "originInImage": {
+    "x": 2418,
+    "y": -598
+  },
+  "originSource": "carried from act5.json, shifted by the crop at (1016, 598)",
+  "worldExtent": {
+    "width": 74.9,
+    "height": 132.1,
+    "source": "the left and right corners of the projected parallelogram"
+  },
+  "pixelsPerUnit": {
+    "horizontal": 26.0,
+    "vertical": 13.0,
+    "matchesEngineProjection": false,
+    "source": "halfTileW from the top vertex to the right corner"
+  },
+  "corners": {
+    "top": [
+      3434,
+      0
+    ],
+    "left": [
+      0,
+      1453
+    ],
+    "right": [
+      5382,
+      1109
+    ],
+    "bottom": [
+      3019,
+      2682
+    ]
+  },
+  "landmarkWorld": {
+    "x": 28.8077,
+    "y": 72.5769
+  },
+  "landmarkImage": {
+    "x": 1280,
+    "y": 720
+  },
+  "landmarkNote": "chosen in the preview picker",
+  "landmarkSource": "the --centre pixel converted through the projection",
+  "landmarkImageSource": "rebased from act5.json by the crop origin (1016, 598)",
+  "croppedFrom": {
+    "image": "map/act5.png",
+    "cropOrigin": {
+      "x": 1016,
+      "y": 598
+    },
+    "size": {
+      "width": 2560,
+      "height": 1440
+    },
+    "centreRequested": {
+      "x": 2296,
+      "y": 1318
+    }
+  }
+}

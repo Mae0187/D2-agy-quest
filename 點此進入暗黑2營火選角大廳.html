@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>進入暗黑2營火選角大廳</title>
+    <style>
+        body {
+            background: #0b0d11;
+            color: #d4a359;
+            font-family: 'Palatino Linotype', 'Georgia', serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+        .container {
+            border: 2px solid #5a3d1c;
+            padding: 40px 60px;
+            background: rgba(10, 10, 14, 0.95);
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            text-align: center;
+            max-width: 500px;
+        }
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            color: #f3d483;
+        }
+        p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #ccc;
+            margin-bottom: 25px;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(180deg, #4a1c12 0%, #200804 100%);
+            border: 2px solid #997843;
+            color: #e5c378;
+            padding: 12px 28px;
+            font-size: 16px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: linear-gradient(180deg, #66271a 0%, #300c06 100%);
+            border-color: #ffd700;
+            color: #fff;
+        }
+        .note {
+            font-size: 13px;
+            color: #888;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔥 暗黑破壞神 II 營火大廳 🔥</h2>
+        <p id="status-text">正在連接標準本地伺服器 (http://127.0.0.1:8765/)...</p>
+        <div>
+            <a id="entry-btn" href="http://127.0.0.1:8765/" class="btn">立即進入大廳</a>
+        </div>
+        <div class="note" id="note-text">
+            建議入口：先雙擊根目錄【啟動暗黑2監控看板.bat】或執行 run_app.py
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://127.0.0.1:8765/';
+        const FALLBACK_URL = 'Diablo2-Agent-Monitor/web/index.html?v=1.9.6';
+        
+        // 嘗試探測本地 HTTP 伺服器
+        fetch('http://127.0.0.1:8765/api/health', { method: 'GET', mode: 'cors' })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('status-text').textContent = '已連接至本地伺服器，正在進入...';
+                window.location.href = SERVER_URL;
+            })
+            .catch(err => {
+                document.getElementById('status-text').textContent = '本地伺服器未在背景運行，正在以直讀模式載入...';
+                setTimeout(() => {
+                    window.location.href = FALLBACK_URL;
+                }, 1200);
+            });
+    </script>
+</body>
+</html>

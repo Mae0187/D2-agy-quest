@@ -1,0 +1,35 @@
+{
+  "id": "corpseexplosion",
+  "name": "Corpse Explosion",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "CorpseExplodeGuts",
+    "celFile": "CorpseExplodeGuts",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 2,
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 15
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/CorpseExplodeGuts.png",
+    "numbers": "assets/skills/data/corpseexplosion.json（Skills.txt / Missiles.txt）"
+  }
+}

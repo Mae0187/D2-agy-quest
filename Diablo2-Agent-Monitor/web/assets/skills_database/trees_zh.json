@@ -1,0 +1,60 @@
+{
+  "_about": "Chinese skill names per class and tree, transcribed verbatim from the 21 skill-tree pages at wiki.d.163.com. Kept separate from assets/skills/data/ on purpose: there is no established way to link a Chinese name to an individual English skill, because the wiki orders its tree by page heading while SkillDesc.txt orders the tree by a SkillColumn/SkillRow grid, and the two orders differ. Attaching names by position would put them on the wrong skills.",
+  "_provenance": "wiki.d.163.com skill-tree category pages, 21 of 21 retrieved, 10 names per tree, 210 total. Fetched by a subagent that refused to translate, normalise or fill in from prior knowledge; every page was cross-checked against a second independent fetch method.",
+  "_verified": [
+    "Set size: 7 classes x 3 trees x 10 = 210, matching Skills.txt's 30 skills per class.",
+    "Amazon bow and crossbow: all ten Chinese names map one-to-one onto the ten skills SkillDesc.txt puts on SkillPage 1 for the amazon, checked by hand.",
+    "Tree identity: the members of each page are self-evident from their names (page 1 of the sorceress holds only fire skills, page 2 only lightning, page 3 only cold), so the page numbers did not have to be named from outside."
+  ],
+  "_notVerified": [
+    "Name-to-name equivalence for the other 20 trees. The sets agree in size and the trees agree in subject, but a per-skill pairing has not been established and is not implied by this file.",
+    "The wiki's ordering within a tree is its heading order (its own TOC 1.1-1.10), not level order. Two known spots: barbarian combat_masteries lists a level-24 before a level-18, and warcries lists a level-18 before a level-12."
+  ],
+  "_spellingQuirksPreserved": [
+    "assassin martial_arts 5: the heading is 眼镜蛇攻击 (眼镜), while that page's own image filenames write 眼睛蛇攻击.",
+    "necromancer summoning 3: 粘土石魔 uses 粘, not 黏.",
+    "druid summoning 4: the heading is 召唤幽灵狼, while that skill's own body text says 召唤鬼狼.",
+    "sorceress fire 4: the heading is 炙烈之径, while the extra-info prose says 烈焰之径.",
+    "barbarian warcries 8: 残酷喝阻 (喝), while the prose says 残酷呵阻.",
+    "assassin shadow_disciplines 2: the heading is 心灵之锤, while a prerequisite line inside another section writes 心灵战锤."
+  ],
+  "_warning": "加速 appears in two different classes (amazon passive_and_magic and assassin shadow_disciplines). They are different skills and must not be collapsed.",
+
+  "classes": {
+    "amazon": {
+      "bow_and_crossbow": ["魔法箭", "火焰箭", "冰箭", "多重箭", "爆裂箭", "急冻箭", "导引箭", "牺牲之箭", "炮轰", "冻结之箭"],
+      "javelin_and_spear": ["戳刺", "威力一击", "毒枪", "刺爆", "闪电球", "充能一击", "瘟疫标枪", "击退", "闪电攻击", "雷霆之怒"],
+      "passive_and_magic": ["内视", "致命攻击", "闪避", "慢速箭", "躲避", "刺入", "诱饵", "回避", "女武神", "穿刺"]
+    },
+    "sorceress": {
+      "cold": ["冰弹", "冰封装甲", "霜之新星", "冰风暴", "碎冰甲", "冰尖柱", "暴风雪", "寒冰装甲", "冰封球", "冰冷支配"],
+      "lightning": ["充能弹", "心灵传动", "静态力场", "闪电", "新星", "连锁闪电", "传送", "雷云风暴", "能量护盾", "闪电支配"],
+      "fire": ["火弹", "暖气", "地狱之火", "炙烈之径", "火球", "火墙", "强化", "陨石", "支配之焰", "九头海蛇"]
+    },
+    "necromancer": {
+      "summoning": ["复生骷髅", "支配骷髅", "粘土石魔", "支配石魔", "复生骷髅法师", "鲜血石魔", "召唤反抗", "钢铁石魔", "火焰石魔", "重生"],
+      "poison_and_bone": ["牙", "白骨装甲", "淬毒匕首", "尸爆", "骨墙", "毒爆", "骨矛", "骨牢", "剧毒新星", "白骨之魂"],
+      "curses": ["伤害加深", "微暗灵视", "削弱", "钢铁处女", "恐惧", "迷惑", "偷取生命", "吸引", "衰老", "降低抵抗"]
+    },
+    "paladin": {
+      "offensive_auras": ["力量", "圣火", "荆棘", "祝福瞄准", "专注", "神圣冰冻", "神圣冲击", "庇护所", "狂热", "信念"],
+      "defensive_auras": ["祈祷", "抗火", "抗冰冷", "抵抗闪电", "反抗", "净化", "精力", "冥思", "救赎", "救助"],
+      "combat": ["牺牲", "盾击", "圣光弹", "白热", "冲锋", "复仇", "祝福之锤", "转换", "神圣之盾", "天堂之拳"]
+    },
+    "barbarian": {
+      "warcries": ["狂嗥", "寻找药剂", "大叫", "嘲弄", "战嗥", "寻找物品", "战斗体制", "残酷喝阻", "战争狂嗥", "战斗指挥"],
+      "combat_masteries": ["剑精通", "斧头精通", "钉头锤精通", "长柄武器精通", "投掷精通", "长矛精通", "增加耐力", "加速", "钢铁皮肤", "自然抵抗"],
+      "combat": ["重击", "双手挥击", "跳跃", "双手投掷", "击昏", "跳跃攻击", "专心", "狂乱", "旋风", "狂战士"]
+    },
+    "druid": {
+      "summoning": ["乌鸦", "猛毒花藤", "橡木智者", "召唤幽灵狼", "食尸藤", "狼獾之心", "召唤狂狼", "太阳藤", "棘灵", "召唤灰熊"],
+      "shape_shifting": ["狼人变化", "变形术", "熊人变化", "撞槌", "野性狂暴", "焰爪", "狂犬病", "震波", "饥饿", "狂怒"],
+      "elemental": ["火风暴", "熔浆巨岩", "极地风暴", "火山爆", "飓风装甲", "小旋风", "火山", "龙卷风", "暴风", "毁天灭地"]
+    },
+    "assassin": {
+      "martial_arts": ["虎击", "龙爪", "双龙爪", "焰拳", "眼镜蛇攻击", "神龙摆尾", "雷电爪", "寒冰刃", "飞龙在天", "凤凰攻击"],
+      "traps": ["火焰爆震", "雷电网", "刃之守卫", "电能守卫", "火焰复生", "刃之怒", "雷光守卫", "复生狱火", "亡者守卫", "刀刃之盾"],
+      "shadow_disciplines": ["利爪精通", "心灵之锤", "加速", "魔影斗篷", "武器格挡", "能量消解", "影子战士", "心灵爆震", "毒牙", "暗影精通"]
+    }
+  }
+}

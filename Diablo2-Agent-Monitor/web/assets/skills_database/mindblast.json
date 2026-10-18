@@ -1,0 +1,35 @@
+{
+  "id": "mindblast",
+  "name": "Mind Blast",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "mindblast",
+    "celFile": "mindblast",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 2,
+    "type": "stun"
+  },
+  "cost": {
+    "mana": 15
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/mindblast.png",
+    "numbers": "assets/skills/data/mindblast.json（Skills.txt / Missiles.txt）"
+  }
+}

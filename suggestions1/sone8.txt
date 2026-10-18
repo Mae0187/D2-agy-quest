@@ -1,0 +1,394 @@
+# 第二輪：深水區追問解答
+
+先勘誤上一輪兩處設計缺陷，它們會直接影響第 1、2 題。
+
+## 0. 上輪勘誤
+
+**勘誤 A：`resolveHit` 對持續型傷害會永久封鎖。**
+我把「Volley 齊射限流」與「Lock 冷卻」寫進同一條路徑，同時又讓持續彈與射線共用 `vid = rootSerial`。結果是同一個 `vid` 的第一次命中讓 `volleyHits` 達到 `cap=1`，之後即使 ICD 過了，`volleyId[i] === vid` 仍會回傳 0，射線只會打一下。修正是拆成兩種模式：
+
+```ts
+const enum HitMode { Volley, Lock }
+
+function resolveHit(u: number, p: HitPolicy, vid: number, now: number): number {
+  const i = u * HIT_GROUPS + p.group;
+  if (p.mode === HitMode.Volley) {            // 散彈：看 vid，齊射內計數
+    if (volleyId[i] === vid) {
+      const n = volleyHits[i];
+      if (n >= p.cap) return 0;
+      volleyHits[i] = n + 1;
+      return p.falloff[n];
+    }
+    if (now < lockUntil[i]) return 0;         // 跨齊射 ICD
+    volleyId[i] = vid; volleyHits[i] = 1; lockUntil[i] = now + p.icd;
+    return p.falloff[0];
+  }
+  if (now < lockUntil[i]) return 0;           // Lock：純冷卻，完全不看 vid
+  lockUntil[i] = now + p.icd;
+  return 1;
+}
+```
+
+兩個附帶防線：
+- 單位 slot 被重新分配時，必須清零該單位的 `HIT_GROUPS` 筆戳記，否則新怪會繼承舊怪的冷卻。
+- 若同屏有多個施法者（雙人、傭兵），`group` 要帶施法者槽位，否則 A 的射線會讓 B 的射線吃 ICD。單英雄看板可忽略。
+
+**勘誤 B：全域 `dmgScale` 補償過於粗暴。** 第 2 題會修訂。
+
+---
+
+## 1. ChannelBeam 掃射轉向與貫穿結算
+
+### 1.1 追蹤點用極座標，不用笛卡爾限速
+
+上輪「追蹤點每 Tick 最多移動 40px」有個缺陷：目標從身體左側換到右側時，追蹤點會走弦線**穿過施法者身體**。掃射應該是繞施法者的弧線，所以把追蹤點存成 `(θ, r)`，相對於平滑後的手掌錨點。
+
+另外，所有射線幾何都要在**地面等距還原空間**做，不要在螢幕空間做。2:1 菱形下螢幕空間的圓是橢圓，角速度與膠囊判定都會失真。入口處做一次 `dy *= 2`，渲染時再投影回去。請用沙盒把它和現有彈道命中結果對照校準。
+
+```ts
+// 常數起點：25Hz 下 W_MAX≈10°/tick(245°/s)，手感偏重；輕巧法杖可調到 14°
+const W_MAX = 0.17, ALPHA = 0.05, K = 0.4, VR = 24;
+
+function stepTracker(b: Beam, pivotX: number, pivotY: number, tx: number, ty: number) {
+  const dx = tx - pivotX, dy = (ty - pivotY) * 2;        // iso 還原
+  const wantTheta = Math.atan2(dy, dx);
+  const wantR = Math.hypot(dx, dy);
+
+  let d = wrapPi(wantTheta - b.theta);
+  // 目標在正後方時 d≈±π 會左右抖動：黏住上一 Tick 的掃射方向
+  if (Math.abs(d) > 0.9 * Math.PI) d = Math.abs(d) * (b.sweepSign || 1);
+
+  const wantW = clamp(d * K, -W_MAX, W_MAX);              // 比例項：接近目標自然減速
+  b.omega += clamp(wantW - b.omega, -ALPHA, ALPHA);       // 加速度上限：起停不突兀
+  if (Math.abs(b.omega) > Math.abs(d)) b.omega = d;       // 防過衝震盪
+  b.sweepSign = Math.sign(b.omega) || b.sweepSign;
+
+  b.thetaPrev = b.theta;  b.theta += b.omega;
+  b.rPrev = b.r;          b.r += clamp(wantR - b.r, -VR, VR);
+}
+```
+
+渲染用 `lerp(thetaPrev, theta, alpha)` 和 `lerp(rPrev, r, alpha)`，因為單 Tick 角度變化很小，不需要處理環繞。
+
+**身體朝向要加遲滯。** 紙娃娃朝向是離散的 D 個方向，若直接 `quantize(θ)`，射線角度在扇區邊界附近會讓身體每 Tick 來回翻轉。規則是只有當 θ 超出當前扇區 `0.6×扇區寬` 時才換方向。
+
+### 1.2 掃掠體的精確判定：極座標區間相交，不用子步進
+
+單 Tick 掃 10°，在 r=400px 時弧長約 70px，大於膠囊直徑 44px。只測最終姿態會**穿隧漏判**。與其切 N 個子步，不如直接做掃掠扇形的封閉解：
+
+```ts
+// 每個候選單位（等距還原空間，相對 pivot），O(1)
+const ex = ux - px, ey = (uy - py) * 2;
+const dist = Math.hypot(ex, ey), R = UNIT_R + BEAM_HALF;
+let hit = false, tAlong = 0;
+if (dist <= R) { hit = true; tAlong = 0; }
+else {
+  const phi = Math.atan2(ey, ex);
+  const w = Math.asin(R / dist);                 // 單位在角度域的半寬
+  const dTot = wrapPi(b.theta - b.thetaPrev);    // 掃掠量（帶號）
+  let dphi = wrapPi(phi - b.thetaPrev);
+  const lo = Math.min(0, dTot) - w, hi = Math.max(0, dTot) + w;
+  hit = dphi >= lo && dphi <= hi && (dist - R) <= (b.r + OVERSHOOT);
+  tAlong = dist;
+}
+```
+
+邏輯長度與視覺長度都等於 `r + OVERSHOOT`（約 40px）。這樣主目標必定被「穿過」，而不是剛好停在軀幹中心。非貫穿的 Sentry 則取最小 `tAlong` 並截斷視覺長度。
+
+### 1.3 候選收集：格子查詢 + 固定容量插入排序
+
+```ts
+const cand = new Int32Array(64);                       // 粗篩輸出
+const pierceU = new Int32Array(8);                     // 貫穿上限 8
+const pierceT = new Float32Array(8);
+
+// 1) AABB：{pivot, 舊端點, 新端點} 三點包圍盒，外擴 UNIT_R + 弧矢高 r·(1−cos(Δ/2))
+// 2) 單位只以中心登記進格子 → 外擴查詢即可，不需要去重 stamp
+// 3) 窄相判定通過者，以 tAlong 插入排序進 pierce 陣列（滿了則丟最遠的）
+```
+
+整條路徑零分配。貫穿上限 8 同時是效能安全閥，也避免割草場景一條射線結算上百次。
+
+### 1.4 與單位側戳記的結算：每 Tick 檢測，戳記管節奏
+
+這裡我更新上輪「每 4 Tick 結算一次」的設計：**每 Tick 都做掃掠檢測，傷害節奏完全交給 Lock 戳記**。
+
+```ts
+const BEAM_POLICY = { group: G_BEAM, mode: HitMode.Lock, icd: 4 /*160ms*/ };
+// 每 Tick，對 pierce 陣列內每個目標：
+const k = resolveHit(u, BEAM_POLICY, 0, now);
+if (k > 0) emitHit(u, dmg * k, ...);
+```
+
+好處有三：
+1. **掃過就打，不漏判。** 若維持每 4 Tick 才檢測，掃過的怪可能在兩次檢測之間被漏掉。
+2. **各怪的傷害數字天然錯開。** 每隻怪的 4 Tick 週期從被掃到那刻開始算，不會全場同一 Tick 彈字。
+3. **手感響應快。** 掃到瞬間就有回饋。
+
+命中特效只在 `k>0` 時發 HitEvent。「持續接觸火花」另走低頻節流（每目標每 2 Tick 一個 tier-0 粒子），不要每 Tick 都發。
+
+---
+
+## 2. 配額不足：延遲落地 vs 傷害放大
+
+**結論：你的直覺對，延遲分批應作為主策略；傷害放大降級為受限的末級手段。** 認知脫節的病根是「負載削減讓玩家看得見」，所以策略應該是讓削減幾乎看不見。
+
+先看量級。冰封球穩態約 0.5 顆/Tick/球，5 顆球才 2.5 顆/Tick，遠低於 24。真正撞到配額的是**單 Tick 爆發**，如 FoH 扇出、雷霆標槍多目標、多重箭疊加。這兩類成因應採不同策略：
+
+| 發射類型 | 例子 | 超額策略 |
+|---|---|---|
+| 一次性爆發（有承諾成本，已扣魔） | FoH、Fury、Teeth、Multishot | **延遲隊列**，最多延 2 Tick |
+| 連續發射器 | 冰封球噴冰彈 | **直接略過這次發射**，不補償，不記債 |
+
+連續發射器不該補償，因為下個 `emitInterval` 馬上又來，補償只會製造疊加尖峰。上輪的 `debt` 機制對它是過度設計，這裡撤回。DPS 損失在極端負載下也只是個位數百分比。
+
+### 延遲隊列設計
+
+```ts
+// DeferRing：固定 256 槽 SoA，FIFO
+dueTick: Uint32Array; rootSerial: Uint32Array; defId: Uint16Array;
+x, y, z, angle: Float32Array;   // 「發射當下」的快照，不引用施法者
+dmgPacket: ...;                  // 傷害快照（沿用 1.1 的複製策略）
+prio: Uint8Array;
+```
+
+**五個關鍵細節：**
+1. **每 Tick 先排空舊債，再處理新請求。** 嚴格 FIFO，舊的優先，避免餓死。同優先級下各 root 做輪詢，避免一次大爆發吃光配額，讓其他施法延遲。
+2. **回溯補位（backdating）。** 晚 k Tick 落地的子彈，位置沿方向推進 `k × speed`，`age = k`，並以「發射原點 → 當前位置」的線段做掃掠碰撞。這樣 2 Tick 延遲不會讓彈幕出現視覺拖尾，也不會讓近距離目標漏判。
+3. **不因施法者死亡丟棄。** 承諾已經兌現（魔已扣），延遲彈與已出膛的彈同權。這與「子彈不認父親」一致。只有同一個 `actionSerial` 在**承諾之前**被取消的才會作廢，見第 5 題。
+4. **最大延遲 2 Tick（80ms）。** 低於人類對「同時」的感知閾值（約 100ms），這是它「看不見」的根據。
+5. **深度隊列也有硬上限。** 超過 256 槽則進入末級降級。
+
+### 末級降級（延遲超過 2 Tick 仍未能落地）
+
+優先順序是**認知一致 > 傷害守恆**：
+- 允許 `dmgScale` 最多 **×1.5**，並將視覺放大同步耦合：`visScale = 1 + 0.35 × (dmgScale − 1)`，同時換用較亮的 sprite 變體。看到的彈變大，數字也變大，認知就一致。
+- 超出 ×1.5 的部分直接丟棄並計入 `rejectCount`。寧可承認少打，也不做「兩顆小彈秒殺」的失真。
+- 傷害數字顯示層對「同一目標、同一 Tick」本來就該合併成一個數字。這一步解決了大部分「亂跳數字」的觀感，與配額無關。
+
+遙測加兩項：`deferDepthPeak`、`deferMaxAgeTicks`。後者長期應該 ≤1，若經常到 2，要先調大配額，而不是調降級策略。
+
+---
+
+## 3. 紙娃娃：預烘焙 vs 前端動態組裝
+
+**結論：兩者都不選純粹形態。要預烘焙的是「單部件圖集」（線性成長），組裝則是前端惰性、以幀為粒度、固定格 LRU。**
+
+預烘焙整套組合會直接爆炸：16 部件 × 護甲類型 × 色變 × 武器類別，組合數不可控，所以不做整套預烘焙。
+
+### 記憶體帳（粗估，請依實際素材 bbox 代入）
+
+- 單幀 160×160×4B ≈ **100KB**。
+- 一套外觀完整烘焙：16 方向 × 約 12 幀 × 約 10 個動作 ≈ 1920 幀 ≈ **190MB**。顯然不可行。
+- 實際工作集：英雄當下只看某動作的某方向，約 12 幀 ≈ **1.2MB**。所以惰性烘焙加上限，比預烘焙省兩個數量級。
+
+### 四層結構
+
+**L1 部件圖集（離線，線性成長）。** 每 `(class, component, type, mode)` 一張 sprite sheet，附 `(dir, frame) → rect` 表。以 `createImageBitmap` 惰性解碼，按 mode 分檔，避免一次載入所有動作。
+
+**L2 外觀簽名去重（對抗「同屏多實體」的關鍵）。** 
+```ts
+// lookKey = hash(16 × {spriteId:u16, paletteShift:u8}, weaponClass)
+// → lookId:u12，帶 refCount
+```
+**記憶體隨「相異外觀數」成長，而不隨實體數成長。** 20 隻穿同款的傭兵／敵人共用同一組快取。當 `refCount → 0`，該外觀的 slot 降到 LRU 最前端，等待驅逐。
+
+**L3 烘焙快取：固定格 + 侵入式 LRU（零 GC）。**
+```ts
+// 頁面：2048² OffscreenCanvas，切成固定 CELL(如 160) 方格 → 每頁 144 格
+// 全域硬上限 4 頁 ≈ 64MB（行動端 Safari 的 canvas 總量上限很吃緊，務必設頂）
+key  = lookId(12) | mode(4) | dir(4) | frame(6)         // 26 bits，存 Uint32
+index: 開放定址雜湊表 Int32Array（key → slot）
+LRU:   prev/next Int32Array 雙向鏈（slot 為節點），命中即移到頭
+```
+固定格杜絕碎片化。若有少數大幀（大型攻擊動作）超過格子，可加第二種格級（如 256），不要為它放大全部格子。
+
+**L4 渲染路徑：慢路徑永遠合法，快取只是優化。**
+```
+draw(entity):
+  key = (look, mode, dir, frame) —— 從「單一快照」取（見第 5 題）
+  slot = lookup(key)
+  if slot: drawImage(page, cell)               // 1 次 drawImage
+  else:    逐層 drawImage（依 COF 層序表）       // 約 6~10 次非空層
+           enqueueBake(key)                     // 去重；每幀烘焙配額 ≤ 4 幀
+```
+慢路徑與快取路徑**必須像素一致**：同一層序表、同樣的整數像素偏移。沙盒要有像素 diff 測試，否則快取命中與未命中時，角色會「跳一下」。
+
+### 色變（調色盤偏移）：做在部件圖集上，不做在幀上
+
+原版靠調色盤映射做綠色套裝與暗金色變。Canvas 2D 沒有調色盤，用 `multiply`/`source-atop` 疊色只是近似。若要像素級還原，每個 `(部件圖集, shift)` 只做**一次** `getImageData → LUT 重映射 → putImageData`，作為載入期的惰性步驟，結果快取為新的部件圖集。**不要在每幀烘焙時做。**
+
+### 裝備變更流程
+
+```
+掉落穿上 → 計算新 lookKey → refCount 增減
+  → 若武器類別 (wclass) 不變：下個 Tick 邊界原子切換 lookId
+  → 若武器類別改變（動作幀數/COF 變了）：先記入 pendingLook，
+    等回到 Idle/Walk 或動作被取消時才套用（避免動作中途換幀表）
+  → 同時以閒置時間預熱：當前 mode ± 當前 dir 的相鄰方向，不預熱全 16 向
+```
+
+---
+
+## 4. 出膛錨點：只在「觸發幀」存兩張小表
+
+**核心降維：出膛只發生在一幀，也就是 COF 的動作觸發幀。** 所以不需要 `wclass × mode × dir × 全部幀`，只要觸發幀（弓若要拉滿點，可再加一個拉弓幀）。這是我認為維護成本最低的切入點。
+
+**請以你實際素材的方向數 D 為準。** 原版玩家動畫的方向數我沒有 100% 把握，所以表格全部以 `DIRS` 參數化，不要寫死 16。
+
+### 兩段式表，避免「每把武器每方向手寫一次」
+
+```ts
+// 表 1：身體手位（與具體武器無關，由角色動畫決定）
+//   以「基準武器」在觸發幀量測：手/杖尖相對腳底原點的偏移與朝向軸
+muzzle = new Int8Array(WCLASS * MODES * DIRS * 4)   // [x, y, axisX, axisY]，axis 以 1/100 為單位
+
+// 表 2：每個武器基底的「長度差」（單一標量）
+reachDelta: Int8Array   // 短魔杖 −8、法杖 +14、標槍 +10 ...（相對基準）
+
+function muzzlePoint(wc, mode, dir, base, out) {
+  const i = ((wc * MODES + mode) * DIRS + dir) * 4;
+  const d = reachDelta[base];
+  out.x = muzzle[i]     + muzzle[i + 2] * 0.01 * d;
+  out.y = muzzle[i + 1] + muzzle[i + 3] * 0.01 * d;
+}
+```
+
+規模：約 8 武器類別 × 3 動作 × D 方向 × 4 byte ≈ 數 KB，換新武器只需補一個 `reachDelta`。
+
+### 建表工具鏈：自動提案 + 人工覆寫 + CI 守門
+
+1. **離線自動提案**：對基準武器在觸發幀的武器層位圖，取「離身體原點最遠的不透明像素」作為杖尖／標槍尖候選。
+2. **弓是例外**：弓弦拉滿點不是最遠點，需人工標註，用 `overrides.json` 差分檔記錄。
+3. **鏡像注意**：只有當你的 sprite 本身由左右鏡像生成時才可鏡像錨點。若每個方向都是獨立繪製（持武器的手不對稱），鏡像會讓武器跑到另一隻手。
+4. **CI 檢查**：錨點必須落在武器層 bbox 外擴 6px 的範圍內，抓手誤。
+5. **目視驗收**：渲染 `wclass × mode × dir` 觸發幀並疊十字，輸出成一頁 contact sheet（約 400 格），人眼一次掃完。
+6. **缺表要大聲失敗**：缺錨點時退回「胸高預設偏移」，同時 `missingAnchorCount++` 並顯示在 HUD 上，不要靜默退化。
+
+### 邏輯起點與視覺起點分離
+
+```ts
+// 邏輯：從單位位置、muzzle 高度 z 發射 → 碰撞穩定，貼臉不會一出膛就穿進怪裡
+// 視覺：missile.visOff = muzzle 螢幕偏移，之後 5~6 Tick 線性衰減到 0
+```
+
+這個做法吸收了錨點的任何誤差（量測誤差、量化方向與連續瞄準角的落差）。真正的出膛感來自首 6 Tick 的位置，之後子彈已經融入彈道。
+
+另外兩個細節：
+- **觸發幀的方向取當下 sprite 顯示的量化方向**，用於查表；彈道角度則用「出膛點到目標」的連續角度，不需要量化。
+- 出膛時機以 COF 觸發幀為準，不是以施法指令為準。
+
+---
+
+## 5. 受創硬直與施法中斷
+
+### 5.1 核心原則：單一權威動作狀態機，其他一律衍生
+
+最常見的污染來源是「`CastState` 與動畫 mode 各維護一份」。兩者一旦分叉，就會出現動畫已進受擊但施法還在跑，或反過來的情況。解法是只保留一份 `ActionCtx`，紙娃娃動畫與施法進度都從它推導：
+
+```
+Idle/Walk → Windup(觸發幀前) ─[跨越觸發幀]→ Commit → Recovery → Idle
+      任何階段 ──受擊/格擋/死亡──▶ GH / BL / Death（經 cancelAction）
+```
+
+**承諾點（Commit）= COF 觸發幀。** 以下副作用只在 Commit 發生，且在同一個函式內完成：扣魔、設冷卻、寫 SpawnCmd、指派 `rootSerial`、佔用通道槽。
+
+**Windup 階段不寫任何外部狀態。** 這一條就是「原子級乾淨取消」的來源：中斷發生在 Commit 前，沒有任何東西需要回滾。我對 1.13c 的理解是，原版若在動作幀前被打斷，技能未發動也不扣魔。請以你的規格為準，但這個模型與該行為一致。
+
+### 5.2 取消的實作：序號失效，不做逐個清理
+
+```ts
+function cancelAction(u: number, reason: Cancel) {
+  if (phase[u] === Phase.Idle) return;               // 冪等
+
+  actSerial[u]++;                                    // ① 使所有掛靠物失效
+  if (chanSlot[u] >= 0) beamRelease(chanSlot[u]);    // ② 通道類進入 Release 淡出
+  resetActCtx(u);                                    // ③ 整塊歸零（單一 stride）
+  enterMode(u, reason === Cancel.Block ? BL : GH);   // ④ frame=0，animSerial++
+  if (pendingLook[u] >= 0) applyPendingLook(u);      // ⑤ 此刻是安全邊界
+}
+```
+
+① 是關鍵。所有「屬於這次動作」的東西都帶著 `actionSerial`：前搖蓄力特效、尚未 Commit 的延遲命令、輸入緩衝。它們在被消費時各自檢查 `x.actSerial !== actSerial[owner]`，不一致就自行淡出或丟棄。取消因此是 O(1)，也不需要追蹤誰擁有哪些資源。
+
+**Commit 後被打斷不是取消施法**，只是中斷 Recovery。已寫出的 SpawnCmd 與延遲隊列不受影響，這與第 2 題「承諾後與施法者解耦」一致。
+
+### 5.3 Tick 階段順序必須固定並文件化
+
+```
+1 輸入/AI 決策
+2 碰撞與傷害結算 → 只累加 dmgAccum[u] 與 hitFlags（不立刻中斷）
+3 中斷判定：每單位每 Tick 至多一次（含格擋骰點，用逐單位 PRNG 狀態以利重放）
+4 動作推進（可能 Commit）
+5 flush SpawnCmd
+6 HitEvent → FxSystem
+```
+
+兩個作用：
+- **同 Tick 受擊與觸發幀並發時，受擊勝**，規則是確定性的，由階段順序決定，不是競態。若你想給玩家 1 Tick 寬限，改成在第 3 步查「是否剛好跨觸發幀」即可，但要明確選一種。
+- **7 連發 Teeth 打在同一個單位上，只觸發一次 GH，** 因為第 2 步只累加，第 3 步才一次判定。這同時避免了硬直鎖死英雄。
+
+### 5.4 「啞火」防線：觸發幀用跨越判定，不用相等
+
+高 FCR 時每 Tick 前進超過 1 幀，若寫 `frame === trig` 會直接跳過而啞火。動畫速度要用整數定點，觸發幀用單調跨越：
+
+```ts
+// 速度：預先算好 LUT[mode][wclass][speedBracket] = 動作總 Tick 數 → rate256
+animAccum[u] += rate256[u];                       // 8.8 定點，確定性
+let f = frame[u];
+while (animAccum[u] >= 256) { animAccum[u] -= 256; f++; }
+
+if (!fired[u] && prevFrame < trig && f >= trig) {  // 跨越，不是相等
+  fired[u] = 1; commitCast(u);
+}
+frame[u] = f;
+```
+
+**速度快照：** 動作開始時鎖定 `rate256`，不受動作中途加速或失效的 buff 影響，否則觸發幀位置會漂移。
+
+### 5.5 Commit 時的目標驗證
+
+```ts
+function commitCast(u) {
+  // 目標在前搖期間可能已死亡或被回收
+  if (!handleValid(ctx.targetH)) {
+    if (skill.requiresTarget) return abortNoCost(u);      // 不扣魔、不發射
+    aim = ctx.aimSnapshot;                                // 投射物類：按快照方向發射
+  }
+  ...
+}
+```
+
+「子彈飛向原點 (0,0)」這類 Bug，來源就是目標失效後仍然讀取了舊 handle。
+
+### 5.6 武器部件閃爍：六個成因與防線
+
+| 成因 | 防線 |
+|---|---|
+| 身體與武器取自不同 `(mode, frame)`（兩個變數不同步） | 渲染前每實體取**一份快照** `(look, mode, dir, frame)`，16 層全部從這份快照取。層序表也用同一份 key |
+| 動作中途換外觀，幀數表變了 | `pendingLook`，在 Idle/Walk 或取消時才套用 |
+| 目標 mode（如 GH）的圖集尚未解碼，武器層缺失 | **全有全無**：任一層未就緒，就重繪 `lastGoodKey` 那一幀（保持上一個完整畫面），並排程載入。裝備完成前先預載 NU/WL/A1/SC/GH/BL |
+| 各層幀數不一致導致越界 | 載入期斷言同一動作所有層幀數相等，不等則記錄並夾到 min |
+| 快取命中與未命中像素不一致 | 沙盒像素 diff 測試（第 3 題） |
+| 對精靈幀做 Alpha 插值 | **只插值位置，不插值幀索引。** 渲染一律取當前 Tick 的幀 |
+
+### 5.7 狀態污染的結構性防線
+
+- **`ActionCtx` 必須是單一 stride 結構，** `resetActCtx` 一次整塊歸零。不要把欄位散落在十幾個陣列裡，否則總有一個漏清。
+- **輸入緩衝要有明確政策：** `queuedSkill` 在中斷時預設清空，要保留就設成明確的技能旗標，不要預設保留。
+- **模糊測試（必做）：** 對每個技能、每個階段、每個 Tick 偏移注入中斷，檢查四條不變式：
+  1. 魔力變化只可能是 0 或 `cost`，且等於 `cost` 若且唯若本次產生了 SpawnCmd。
+  2. N 個 Tick 後，沒有任何池內物件帶著過期的 `actionSerial`。
+  3. 各池 live 數回到基線。
+  4. 渲染快照從不混用兩個 mode。
+
+---
+
+## 實作順序建議
+
+1. 先做**第 0 節勘誤**與 `resolveHit` 雙模式，射線與持續彈都依賴它。
+2. 再做**第 5 節單一 `ActionCtx` + 序號失效**。它是承諾點、延遲隊列、錨點觸發的共同基礎。第 2 題的延遲隊列要靠 `actionSerial` 才能區分「承諾前作廢」與「承諾後照常出膛」。
+3. 第 4 題錨點與第 3 題紙娃娃可並行：前者只依賴 COF 觸發幀，後者只依賴渲染層。
+4. 最後做第 1 題射線掃掠，它依賴錨點（起點）與戳記（結算）。
+
+我的最終判斷是，這五題的共同模式是**把「承諾」收斂到單一時刻、單一函式**。Commit 之前零副作用，所以取消不需要回滾；Commit 之後與施法者解耦，所以死亡與中斷都不會污染彈道。這比任何事後清理都穩健。

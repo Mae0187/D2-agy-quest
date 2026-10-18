@@ -1,0 +1,179 @@
+{
+  "id": "firehit",
+  "name": "Fire Hit",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 10 monster row(s), 0 of them bosses"
+    ],
+    "kind": "monster",
+    "usedBy": {
+      "bosses": [],
+      "monsters": [
+        {
+          "id": "sandraider1",
+          "name": "SandRaider",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider2",
+          "name": "Marauder",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider3",
+          "name": "Invader",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider4",
+          "name": "Infidel",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider5",
+          "name": "Assailant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider6",
+          "name": "Marauder",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider7",
+          "name": "Infidel",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider8",
+          "name": "SandRaider",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider9",
+          "name": "Invader",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sandraider10",
+          "name": "Assailant",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SandRaider",
+          "slot": "Skill1"
+        }
+      ],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    }
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 83,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "1",
+        "description": "base damage",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "5",
+        "description": "extra per level",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 3,
+        "value": "50",
+        "description": "duration",
+        "source": "Skills.txt Param3",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 4,
+        "value": "50",
+        "description": "duration/level",
+        "source": "Skills.txt Param4",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  }
+}

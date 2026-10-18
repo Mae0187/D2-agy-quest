@@ -1,0 +1,12 @@
+{
+  "name": "frost_nova",
+  "atlas": "frost_nova.png",
+  "cellW": 100,
+  "cellH": 70,
+  "pivotX": 50,
+  "pivotY": 35,
+  "frames": 14,
+  "dirs": 16,
+  "totalW": 1400,
+  "totalH": 1120
+}

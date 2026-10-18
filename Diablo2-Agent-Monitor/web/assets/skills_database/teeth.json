@@ -1,0 +1,38 @@
+{
+  "id": "teeth",
+  "name": "Teeth",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "TeethMissile",
+    "celFile": "TeethMissile",
+    "speed": 16.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 6,
+    "max": 10,
+    "level": 1,
+    "formula": "4 + 2x7 + 2x8 + 3x4",
+    "maxFormula": "8 + 2x7 + 3x8 + 4x4",
+    "type": "mag"
+  },
+  "cost": {
+    "mana": 6
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/TeethMissile.png",
+    "numbers": "assets/skills/data/teeth.json（Skills.txt / Missiles.txt）"
+  }
+}

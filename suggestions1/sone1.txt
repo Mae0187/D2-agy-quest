@@ -1,0 +1,451 @@
+# 落地規劃：行為原語庫、里程碑 0 規格、模組二 Prompt
+
+## 先看這段：可信度標示
+
+- 家族的**行為特徵與代表技能**來自我對 D2 的記憶。主體應該可靠，但個別技能可能有誤，標 ※ 的尤其要驗證。
+- **我沒有列出 Missiles.txt 的 do/hit function 編號。** 我無法保證記對編號，寫錯會誤導分群。第 1.3 節提供自動分群腳本，用你本機的表產出真正的分組，再回頭核對下面的家族表。
+- 數值門檻（如防滑步閾值）都是**初始參數**，要用你的基準職業（刺客）實測統計來定。
+- D2 共 210 技能，其中約三分之一是被動，沒有獨立視覺行為。實際要寫行為的主動技能約 140 個上下。
+
+---
+
+## 一、行為原語庫
+
+### 1.1 共通基底資料結構
+
+所有家族共用以下欄位，各家族只擴充自己的專屬參數。
+
+```ts
+type FamilyId = 'F01'|'F02'|'F03'|'F04'|'F05'|'F06'|'F07'|'F08'|'F09'|'F10'
+              |'F11'|'F12'|'F13'|'F14'|'F15'|'F16'|'F17'|'F18'|'F19'|'F20';
+
+interface SkillBehaviorBase {
+  skillId: string;
+  family: FamilyId;
+  tier: 'A' | 'B' | 'C';
+  hero: {
+    anim: string;                       // 'A1'|'A2'|'SC'|'TH'|'SQ'... 取自 Skills.txt 的 anim 欄
+    actionFrame: 'fromAnimData' | number; // 預設從 AnimData/COF 讀，數字僅為手動覆寫
+    castAnchor: 'hand' | 'weaponTip' | 'chest' | 'feet' | 'sky';
+  };
+  refs: {
+    missiles?: string[];                // Missiles.txt 的 Missile 名稱
+    overlays?: { id: string; layer: 'pre' | 'post' }[];
+    sounds?: { cast?: string; travel?: string; hit?: string };
+  };
+  render: { blend: BlendMode; paletteShift?: string; lod: 0 | 1 | 2 };
+  budget: { maxConcurrent: number; maxLifeTicks: number };
+}
+```
+
+**單位約定**：所有速度、半徑都用**地面平面（未壓縮）像素 / tick**。只在渲染的最後一步把螢幕 Y 乘 0.5。這樣行為層完全不用管 2:1，也能避免公式在多處重複出錯。
+
+### 1.2 二十個行為家族
+
+| ID | 家族 | 原廠機制特徵（待本機驗證） | 專屬參數 | 代表技能 |
+|---|---|---|---|---|
+| F01 | 直線投射（可穿透／命中爆裂） | 單一 missile，固定或漸變速度，Range 耗盡或碰撞時銷毀；可帶 ExplosionMissile | `vel, maxVel, accel, rangeTicks, collisionSize, pierce, explodeMissile` | 火焰彈、骨矛（穿透）、火球（爆裂）、魔法箭、冰刺 |
+| F02 | 追蹤投射 | 每 tick 重新索敵並轉向，通常有最大轉向率和失效時間 | `turnRateDegPerTick, acquireRadius, reacquire, fallback: 'straight'\|'expire'` | 骨魂、導引箭、聖光彈※ |
+| F03 | 螺旋／環繞 | 位置由角速度加半徑函數決定，不是速度向量積分 | `angVel, radialSpeed, r0, rMax, handedness`（`radialSpeed=0` 即純環繞） | 祝福之槌、刀鋒之盾※ |
+| F04 | 隨機折線 | 方向每隔數 tick 受隨機擾動 | `stepJitterDeg, retargetEveryTicks, seed, boltCount, spreadDeg` | 充能彈、刺客的充能彈哨塔 |
+| F05 | 扇形／批次齊射 | 同一次施放生成 N 發，各自套 F01，帶角度偏移與錯開延遲 | `count, arcDeg, perShotDelayTicks, pattern: 'fan'\|'ring'\|'random'` | 多重箭、掃射※ |
+| F06 | 環形新星 | N 個放射狀 missile，或單一擴張環 overlay，可多環接續 | `segments, startRadius, expandSpeed, ringCount, ringGapTicks, mode: 'missiles'\|'overlay'` | 電光新星、冰霜新星、毒素新星、火環（迪亞布羅）、毒環（安達利爾） |
+| F07 | 母彈沿途／命中放射 | 母彈飛行時週期性生成子彈，或命中時射出子彈（子彈各自再套 F01） | `emitEveryTicks, emitPattern: 'rotating'\|'radial'\|'random', subMissile, onHitBurst, maxDepth` | 冰封球、雷光之怒（命中分裂） |
+| F08 | 持續光束／噴流 | 沿施法朝向連續生成短壽命粒子或線段，需要「施法持續」狀態 | `length, tickIntervalTicks, particleRate, widthTaper, aimFollow, durationTicks, jitterPx` | 冰風暴、末日閃電束（迪亞布羅）、噴火類 |
+| F09 | 連鎖／即時電弧 | 無飛行時間，瞬間在目標之間畫鋸齒弧，並在每一節觸發命中 | `maxJumps, jumpRadius, perJumpDelayTicks, segmentStyle, falloff` | 連鎖閃電、天堂之拳的落雷、墨菲斯托的閃電 |
+| F10 | 範圍天降（多落點） | 在區域內隨機取點，延遲後落下，持續一段時間 | `areaRadius, spawnRate, fallDelayTicks, telegraph, impactMissile, residue, centerOn: 'target'\|'caster'` | 暴風雪、末日降臨、烈焰風暴 |
+| F11 | 定點延遲打擊 | 先放地面預警標記，N tick 後落下一次，常留下殘留區 | `markerOverlay, delayTicks, impactMissile, residueRef` | 隕石術、天堂之拳（中心打擊） |
+| F12 | 地面持續區域 | 在位置上生成循環動畫圖層，按間隔做判定，有淡入／淡出 | `shape: 'circle'\|'line'\|'ring', durationTicks, tickIntervalTicks, loopOverlay, fadeInTicks, fadeOutTicks, layer` | 火牆、毒雲、燃燒殘留 |
+| F13 | 沿線依序爆發 | 沿方向每隔固定距離依序生成一個柱狀 missile，帶步進延遲 | `spacingPx, stepDelayTicks, count, curvature, pillarMissile` | 裂地、火山、火焰之路 |
+| F14 | 游走移動區域 | 物件緩慢移動，方向帶噪聲或朝目標偏置，持續一段時間 | `wanderSpeed, turnNoiseDeg, lifeTicks, radius, biasToTarget` | 龍捲風、旋風 |
+| F15 | 靈氣／附著圖層（前後雙層） | 以 overlay 掛在單位上，分 PreDraw 與 PostDraw 兩層，常伴隨調色盤偏移 | `preOverlay, postOverlay, loop, radius, anchor, paletteShiftState, pulse` | 能量護盾、聖冰（督瑞爾）、狂熱、霜甲、颶風護甲 |
+| F16 | 實體召喚 | 生成一個有 AI 的單位，帶生成特效，進入戰鬥導演三層站位 | `unitId, count, formation, lifetimeTicks, role: 'front'\|'mid'\|'back', spawnOverlay, leashRadius` | 黏土石魔、女武神、烏鴉、狼、灰熊、影子大師 |
+| F17 | 部署物／陷阱／哨塔 | 先放置物件，有武裝延遲，再按觸發或週期發射其他家族的 missile | `armDelayTicks, triggerRadius, cadenceTicks, lifeTicks, emits: { family, params }, objectCel` | 閃電守衛、烈焰之路、死亡守衛、骸骨之牆 |
+| F18 | 英雄位移 | 英雄本體位置被技能控制，沿路徑運動，並伴隨起止特效或殘影 | `path: 'line'\|'arc'\|'spin', distancePx, durationTicks, easing, trailAfterimage, startOverlay, endOverlay, hitTickEvery` | 旋風斬、跳躍、衝鋒、傳送 |
+| F19 | 多段近戰 | 播放連續攻擊動畫並在判定幀觸發多次打擊事件，近戰特效疊加 | `hitsPerCast, hitArcDeg, reachPx, strikeOverlay, hitStopTicks` | 熱誠、狂亂、龍爪、火焰之拳 |
+| F20 | 狀態標記／染色 | 對一批目標加上 overlay 與調色盤偏移，持續一段時間，常配合一次環形脈衝 | `targetSelector: 'area'\|'target', stateOverlay, paletteShift, durationTicks, castPulse: { family: 'F06', ... }` | 戰吼（F06 加 F20）、各類詛咒、嘲諷 |
+
+### 1.3 自動分群腳本
+
+用這段腳本取得你本機表的真實分組，再與上表對照修正。
+
+```python
+import csv, collections
+
+def load(path):
+    with open(path, encoding='utf-8', errors='ignore') as f:
+        return list(csv.DictReader(f, delimiter='\t'))
+
+missiles = load('tools/mpq_raw/missiles.txt')
+skills   = load('tools/mpq_raw/skills.txt')
+
+# 欄位名以本機表頭為準：常見為 pCltDoFunc / pCltHitFunc / pSrvDoFunc / pSrvHitFunc
+KEYS = ['pCltDoFunc', 'pCltHitFunc', 'pSrvDoFunc', 'pSrvHitFunc']
+by_sig = collections.defaultdict(list)
+for m in missiles:
+    sig = tuple(m.get(k, '') for k in KEYS)
+    by_sig[sig].append(m['Missile'])
+
+# 技能 -> 其引用的 missile
+sk_cols = ['srvmissile', 'srvmissilea', 'srvmissileb', 'srvmissilec',
+           'cltmissile', 'cltmissilea', 'cltmissileb', 'cltmissilec']
+m2sig = {n: sig for sig, names in by_sig.items() for n in names}
+group_skills = collections.defaultdict(set)
+for s in skills:
+    for c in sk_cols:
+        ref = s.get(c, '')
+        if ref in m2sig:
+            group_skills[m2sig[ref]].add(s['skill'])
+
+for sig, names in sorted(by_sig.items(), key=lambda x: -len(x[1])):
+    print(sig, len(names), 'missiles,', len(group_skills[sig]), 'skills')
+    print('   e.g.', names[:5])
+```
+
+這份輸出有兩個用途：
+
+1. 看每個 function 簽名實際對應哪些 missile，核對家族歸屬。
+2. 找出**簽名孤兒**，也就是只被一兩個技能使用的 function。這些就是需要「特例原語」的地方，數量會決定真正的工期。
+
+### 1.4 A 級核心招牌技能（25 個）
+
+| # | 技能 | 職業 | 家族 | 建議映射的 Agent 狀態與用意 |
+|---|---|---|---|---|
+| 1 | 火焰彈 | 魔法使 | F01 | THINKING：輕量低干擾，lod 0 |
+| 2 | 充能彈 | 魔法使 | F04 | THINKING：多路檢索、發散探索感 |
+| 3 | 連鎖閃電 | 魔法使 | F09 | TOOL_RUNNING：一次工具呼叫串起多個目標 |
+| 4 | 冰封球 | 魔法使 | F07 | TOOL_RUNNING：批次或平行工具 |
+| 5 | 暴風雪 | 魔法使 | F10 | MAJOR_TASK：大範圍重構 |
+| 6 | 隕石術 | 魔法使 | F11 | ERROR：預警標記加重擊，戲劇性強 |
+| 7 | 能量護盾 | 魔法使 | F15 | 週預算外層護盾，與 UI 頂球連動，耗盡時碎裂 |
+| 8 | 骨矛 | 死靈法師 | F01（穿透） | TOOL_RUNNING：直線貫穿，節奏明快 |
+| 9 | 骨魂 | 死靈法師 | F02 | RETRY：追蹤鎖定，象徵「再試一次」 |
+| 10 | 毒素新星 | 死靈法師 | F06 | TOKENS_BURNING 高峰：綠色擴散 |
+| 11 | 黏土石魔 | 死靈法師 | F16 | SUBAGENT_SPAWNED：開傳送門後登場（不需屍體） |
+| 12 | 祝福之槌 | 聖騎士 | F03 | TOOL_RUNNING：近身多目標清怪 |
+| 13 | 熱誠 | 聖騎士 | F19 | TOOL_RUNNING：連續近戰割草 |
+| 14 | 天堂之拳 | 聖騎士 | F11 加 F09 | MAJOR 高潮：天降雷擊加連鎖 |
+| 15 | 旋風斬 | 野蠻人 | F18 | TOOL_RUNNING：高速掃描大量檔案 |
+| 16 | 跳躍 | 野蠻人 | F18 | 進入新任務、Boss 登場的突入 |
+| 17 | 戰吼 | 野蠻人 | F06 加 F20 | ERROR 後的重整，或 Boss 階段切換 |
+| 18 | 多重箭 | 亞馬遜 | F05 | TOOL_RUNNING：平行呼叫 |
+| 19 | 導引箭 | 亞馬遜 | F02 | THINKING：鎖定檢索目標 |
+| 20 | 女武神 | 亞馬遜 | F16 | SUBAGENT_SPAWNED：高辨識度的子代理 |
+| 21 | 龍捲風 | 德魯伊 | F14 | THINKING／MAJOR：緩慢游走，氣氛感 |
+| 22 | 北極爆風 | 德魯伊 | F08 | TOOL_RUNNING：長時間串流型任務（如編譯、下載） |
+| 23 | 末日降臨 | 德魯伊 | F10 | MAJOR_TASK：長時間大事件 |
+| 24 | 閃電守衛 | 刺客 | F17 加 F04 | TOOL_RUNNING：部署後自主輸出，象徵背景工作 |
+| 25 | 烈焰之路 | 刺客 | F17 加 F12 | 長任務持續輸出，留下地面火焰 |
+
+**覆蓋檢查**：這 25 個覆蓋了 F01～F12 與 F14～F20。**F13（沿線爆發，如裂地）未覆蓋**，建議排在 B 級第一批，因為它與 F11 和 F12 可共用大量組件。
+
+**事件到技能的映射規則**（供里程碑 4 使用）：
+
+- 每個狀態維護一個**技能池**，隨機抽取並限制相鄰不重複，避免看板單調。
+- THINKING 只從 lod 0 且併發少的技能抽，保持低干擾。
+- TOKENS_BURNING 是**UI 層的跳字與音效**，不是技能。它與技能管線解耦，只吃 token 增量事件。
+- TASK_COMPLETED 不用技能，走寶箱流程。
+
+---
+
+## 二、里程碑 0：基礎設施與除錯工具
+
+### 2.1 時鐘與插值分離
+
+**邏輯層（25Hz 固定步長）**
+
+```ts
+const TICK_MS = 40;
+const MAX_CATCHUP_TICKS = 5;      // 防止切換分頁回來後的死亡螺旋
+let acc = 0, last = performance.now();
+
+function loop(now: number) {
+  acc += Math.min(now - last, TICK_MS * MAX_CATCHUP_TICKS);
+  last = now;
+  while (acc >= TICK_MS) {
+    world.snapshotPrev();         // 每個實體 prevX/prevY = x/y
+    world.stepTick();             // 邏輯推進一個 tick
+    acc -= TICK_MS;
+  }
+  render(world, acc / TICK_MS);   // alpha ∈ [0,1)
+  schedule(loop);
+}
+```
+
+**動畫幀推進**：不要按毫秒切幀，而是在邏輯 tick 內用整數累加器推進。
+
+```ts
+// speed 取自 AnimData.D2 的 AnimationSpeed（256 = 每 tick 前進 1 幀 = 25fps）
+anim.acc += anim.speed;
+while (anim.acc >= 256) { anim.acc -= 256; anim.frame = (anim.frame + 1) % anim.frameCount; }
+```
+
+好處是 6 幀、12 幀、19 幀的動作各按自己的原廠速度跑，且餘數不丟失，週期精確。
+
+**渲染層（插值）**：
+
+- 位置：`renderPos = lerp(prev, curr, alpha)`，最後 **Math.round** 到整數像素再繪製，否則 Canvas 的次像素會讓點陣圖發糊或閃爍。
+- 動畫幀：不插值，只取當前幀。
+- 瞬移（傳送、生成、換場景）：實體設 `teleported = true`，該 tick 的 prev 直接等於 curr，避免出現滑過全場的殘影。
+
+**降頻節能**：
+
+| 模式 | 觸發條件 | 渲染 | 邏輯 | 其他 |
+|---|---|---|---|---|
+| ACTIVE | 可見且有焦點 | rAF 全速（上限 60） | 25Hz | 全特效 |
+| AMBIENT | 可見但失焦（常駐懸浮的主要狀態） | 限制在約 20～30fps（用時間戳跳幀） | 25Hz | 粒子上限減半，lod 2 特效關閉 |
+| IDLE_DEEP | Agent 為 IDLE 超過 N 秒 | 約 8～12fps | 25Hz 或降到 10Hz | 只保留營火與呼吸動畫 |
+| HIDDEN | `document.hidden`、最小化 | 停止 rAF | **暫停模擬** | 只保留 Agent 事件歸約器，音效靜音 |
+
+恢復規則：
+
+1. 從 HIDDEN 回來時 `acc = 0`、`last = now`，不補跑。
+2. 依「目前 Agent 狀態」重建場景，並清空所有投射物。
+3. 如果是 Electron，確認 `backgroundThrottling` 的設定符合你的預期。
+
+N 與各模式的 fps 都是可調參數，請放進設定檔。
+
+### 2.2 方向校準頁
+
+**座標約定（務必寫進文件）**：定義 `φ`（地面平面螢幕角）。
+
+- `φ = atan2(dy * 2, dx)`，其中 dx、dy 是**螢幕像素位移**。
+- `φ = 0` 為螢幕右方，螢幕 Y 向下，所以 **φ 遞增 = 視覺上順時針**。
+- 這個 φ 與 D2 世界座標軸**不是同一個**（世界軸相對螢幕旋轉 45°），不要混用。校準資料一律存 φ。
+
+**測試向量**
+
+| 組別 | 內容 | 數量 |
+|---|---|---|
+| A. 數學往返 | φ 從 0°到 355°，每 5°。以 `dx = r·cosφ`、`dy = r·sinφ·0.5` 建構螢幕向量，再還原 `φ' = atan2(dy*2, dx)`，要求 `|φ'−φ| < 1e-9` | 72 |
+| B. 邊界探測 | 每個離散格邊界（半步角）的 ±0.5°，驗證四捨五入方向與 wrap-around | 依 dirCount 而定（16 方向為 32 個點） |
+| C. 對照組 | 同樣向量用錯誤公式 `atan2(dy, dx)`，並排顯示誤差曲線（最大約 19.5°），作為教學與回歸用 | 72 |
+| D. 視覺疊加 | 每個 missile 在 72 個角度各發射一發，畫出理論方向箭頭，與實際貼圖疊在一起 | 72 × missile 數 |
+
+**自動量測演算法**（只對細長形 missile 有效，如箭、矛、骨矛、冰刺）：
+
+1. 對每個方向行 `i`（0 到 N−1），取代表幀（中間幀）的 alpha 遮罩。
+2. 以 alpha 加權做 PCA，得到主軸角 `α_i` 與離心率 `λ1/λ2`。
+3. 把螢幕主軸還原成地面角：`φ_i = atan2(ay * 2, ax)`。
+4. 主軸有 180° 歧義。用沿主軸的像素分佈偏態（箭頭端較窄、尾端較散）判斷頭尾，不確定的標為「需人工確認」，在 UI 一次點選後存檔。
+5. 擬合 `φ_i = dir0 + s · i · (360/N)`，`s = ±1` 取殘差較小者，`dir0` 取圓形平均。
+6. 離心率低於約 1.3（如火球、球形）判定為**無方向性**，`rotationMode = 'none'`，不報錯。
+
+**產出資料結構**
+
+```ts
+interface DirectionCalibration {
+  missileId: string;             // Missiles.txt 的名稱
+  celFile: string;
+  dirCount: 1 | 8 | 16 | 32;     // 以 DCC 實際方向數為準，不由推測得出
+  dir0WorldAngle: number;        // 單位：度，採 φ 約定，範圍 [0, 360)
+  clockwise: boolean;            // 方向索引遞增時 φ 是否遞增
+  rotationMode: 'discrete' | 'none' | 'free';
+  measure: {
+    method: 'auto' | 'manual';
+    residualMaxDeg: number;      // 擬合最大殘差
+    eccentricity: number;
+    confidence: number;          // 0 到 1
+  };
+  status: 'auto-pass' | 'needs-review' | 'manual-confirmed';
+  notes?: string;
+}
+
+// 使用端
+function dirIndex(phiDeg: number, c: DirectionCalibration): number {
+  const step = 360 / c.dirCount;
+  const rel = c.clockwise ? phiDeg - c.dir0WorldAngle : c.dir0WorldAngle - phiDeg;
+  return ((Math.round(rel / step) % c.dirCount) + c.dirCount) % c.dirCount;
+}
+```
+
+**通過條件**：在所有測試角度下，`|貼圖實際方向 − 理論 φ| ≤ 0.5 × step`（8 方向 22.5°、16 方向 11.25°），報告以表格輸出每個 missile 的最大誤差與狀態。`rotationMode: 'free'` 只允許用於無方向性特效。
+
+### 2.3 圖層與動畫檢查器
+
+**A. COF 結構一致性**
+
+| 編號 | 檢查項 | 方法 | 判定 |
+|---|---|---|---|
+| A1 | 各圖層幀數一致 | 對每個動作、每個方向，列出所有啟用圖層的幀數，與 COF 的 FramesPerDirection 比對 | 任何不等即失敗 |
+| A2 | 方向數一致 | 各圖層 DCC 方向數、COF 方向數、AnimData 方向數三方比對 | 不一致即失敗 |
+| A3 | 圖層缺失 | 該動作與武器類別下應存在的圖層（頭、軀幹、腿、手臂、武器、盾等）是否都有資源 | 缺失即警告（對應「無頭」類問題） |
+| A4 | 優先序表完整 | COF 的圖層繪製優先序在每個方向、每一幀都有定義，且無重複或空洞 | 異常即警告 |
+| A5 | 武器類別一致 | 動作代號與武器類別組合是否在資源表中存在 | 缺失即失敗 |
+
+**B. 局部偏移連續性**
+
+| 編號 | 檢查項 | 方法 | 初始閾值（可調） |
+|---|---|---|---|
+| B1 | 合成包圍盒抖動 | 計算每幀合成圖的包圍盒中心與接地點，相鄰幀位移的 robust z-score | z > 3 標記 |
+| B2 | 單圖層錨點跳變 | 每個圖層的幀 offset 序列，對其二階差分取 MAD | 超出 k×MAD 標記 |
+| B3 | 循環接縫 | 最後一幀回到第一幀的位移，與平均相鄰位移比較 | 比值 > 2 標記（常見的「抽動」原因） |
+| B4 | 待命漂移 | 待命動作的接地點在整個循環內的總漂移 | 超出小數像素範圍標記（針對德魯伊站立抖動） |
+| B5 | 基準對照 | 以刺客為基準，計算各指標分佈，其他職業與基準的偏離度以排名顯示 | 輸出報表 |
+
+**C. 步頻與防滑步**
+
+| 編號 | 檢查項 | 方法 |
+|---|---|---|
+| C1 | 週期時長 | `cycleTicks = frameCount × 256 / animSpeed`，記錄每個走路、跑步週期的 tick 數與毫秒數 |
+| C2 | 每週期位移 | `strideWorld = moveSpeed × cycleTicks`（`moveSpeed` 來自你的移動設定，單位用地面像素 / tick） |
+| C3 | 腳部滑動率 | 偵測合成圖的最低點序列，在腳接觸地面階段，其螢幕速度應等於「負的位移速度」（經 2:1 轉換）。`slip = |v_foot_observed + v_move| / |v_move|` |
+| C4 | 速度建議 | 若 slip 長期偏高，給出建議的移動速度（使 slip 最小的值），而不是手動調到「看起來像」 |
+
+腳部偵測是啟發式（以最低 alpha 點為腳），遇到雙腳交替時精度有限。把它當成**排序工具**，找出最糟的動作優先修，不要當成絕對判定。
+
+每個檢查項最終輸出：
+
+```
+{职业, 裝甲, 動作, 方向, 檢查編號, 數值, 閾值, 嚴重度, 截圖路徑 }
+```
+
+並提供一個可篩選的 HTML 報告頁。
+
+### 2.4 混色模式列舉
+
+混色與調色盤偏移是**兩個獨立維度**，不要混在一個列舉裡。
+
+```ts
+enum BlendMode {
+  Normal,      // 普通 alpha，調色盤 index 0 透明
+  Alpha25,     // 原廠 25% 透明表
+  Alpha50,
+  Alpha75,
+  Additive,    // 亮化/加法 → Canvas 'lighter'
+  Screen,      // 濾色 → Canvas 'screen'
+  Luminance,   // 以亮度作 alpha（黑色變透明）
+  Multiply,    // 暗化，用於陰影、污漬 → Canvas 'multiply'
+  Shadow       // 單位陰影（壓扁的暗色剪影，專用變換）
+}
+
+interface DrawStyle {
+  blend: BlendMode;
+  alpha?: number;             // 0 到 1，覆蓋 Alpha25/50/75 之外的自訂值
+  paletteShift?: 'freeze' | 'poison' | 'lightning' | 'fire' | 'uniqueTint' | string;
+  tint?: [number, number, number];
+}
+```
+
+注意事項：
+
+1. **這些值與原廠 `Overlay.txt` 的 Trans 欄以及 `pal.pl2` 內的混色表之間的對照，請用你本機的表驗證**，不要憑記憶硬綁數字。Overlay.txt 表頭確定有 Trans 欄，Missiles 側是否有、叫什麼，以本機表頭為準。
+2. `Luminance` 和部分 `Screen` 在 Canvas 2D 裡沒有直接等價物，**在圖集離線打包階段把 alpha 烘焙好**，執行期只用 `source-over` 或 `lighter`。
+3. 黑框問題先檢查是否把該用 Additive 的特效用了 Normal，再檢查 premultiplied alpha 是否重複處理。
+4. 在 WebGL 路線下，以上列舉各自對應一組 blend function，並與調色盤查找紋理組合。
+
+---
+
+## 三、給下游 AI 的分段式 Prompt（模組二）
+
+建議**分三輪**送出，每輪驗收通過後再進下一輪。共通表頭每輪都要貼。
+
+````markdown
+# 【共通表頭】每一輪都附上
+
+## 角色
+你是熟悉《暗黑破壞神2：毀滅之王》DCC/COF/MPQ 資料格式與 TypeScript 遊戲開發的工程師。
+我在做一個「AI Agent 狀態監控看板」，只需視覺還原，不需要傷害、抗性、仇恨等數值模擬。
+
+## 硬性約束
+1. 時鐘：邏輯 25Hz 固定步長（1 tick = 40ms），渲染端對位置插值；動畫幀用整數累加器（`acc += speed; while(acc >= 256) frame++`），禁止固定 60fps tween。
+2. 幾何：等距 2:1。定義 φ = atan2(dy*2, dx)（dx、dy 為螢幕像素位移；φ=0 為螢幕右方，Y 向下，φ 遞增為視覺順時針）。
+   行為層一律使用「地面平面（未壓縮）像素/tick」，只在渲染的最後一步把螢幕 Y 速度乘 0.5。
+3. 方向：投射物為 DCC 預渲染離散方向。**禁止 CSS rotate，禁止自由旋轉有方向性的貼圖**。
+   以下為「待校準參數」，你**不得**自行假設具體值，必須作為資料欄位：
+   `dirCount, dir0WorldAngle, clockwise, rotationMode`。
+4. 混色：以 BlendMode 列舉處理，不要只寫 'lighter'；混色與調色盤偏移是獨立欄位。
+5. 效能：投射物使用物件池，穩態下每 tick 不得配置新物件。
+
+## 禁止事項
+- 憑記憶編造 D2 的具體數值（偏角、查表矩陣、幀數、速度）。不確定就改成參數並列入「待確認清單」。
+- 使用 Math.atan2(dy, dx) 計算投射物角度。
+- 把 Skills.txt 當成判定幀的來源（判定幀與動畫速度來自 AnimData.D2 / COF）。
+
+## 回答格式（每一輪都適用）
+1. 先列「假設清單」與「待我確認的問題」（最多 5 條），再給成果。
+2. 程式碼必須是可編譯的 TypeScript（strict 模式），核心數學不得依賴 DOM。
+3. 附單元測試（Vitest），並說明如何執行。
+4. 結尾列出「你不確定的 D2 細節」。
+
+## 我提供的真實資料
+- 技術棧：<<Canvas2D 或 WebGL / TS 版本 / 打包工具 / 是否 Electron>>
+- Missiles.txt 表頭加 5 列：<<火球、魔法箭、骨矛、冰封球、充能彈>>
+- Manifest 單筆範例（3 到 5 筆 JSON）：<<貼上>>
+- 現有動畫控制器介面（TypeScript）：<<貼上>>
+- 現有投射物生成與繪製函式：<<貼上>>
+
+---
+
+# 【第 1 輪】方向與座標核心（純數學，無渲染）
+
+## 任務
+實作 `geometry.ts` 與 `direction.ts`：
+1. `screenToPhi(dx, dy)`、`phiToScreenVelocity(phi, speed)`（含 Y×0.5）。
+2. `dirIndex(phi, calibration)` 與反向 `indexToPhi(index, calibration)`，支援 dirCount ∈ {1, 8, 16, 32}、clockwise ∈ {true, false}、任意 dir0WorldAngle。
+3. `DirectionCalibration` 型別與 JSON Schema（含校驗規則：dirCount 列舉、角度範圍 [0,360)、status 列舉）。
+
+## 驗收條件（全部必須通過）
+- 往返測試：φ 從 0° 到 355° 每 5° 共 72 個角度，`|screenToPhi(phiToScreenVelocity(φ)) − φ| < 1e-9`。
+- 邊界測試：對 dirCount ∈ {8, 16, 32} × clockwise ∈ {true, false} × dir0 ∈ {0, 45, 135, 160, 270}，對所有半步角 ±0.5° 檢查索引與預期一致（共至少 90 組向量，請以程式產生並同時列出 10 組表格於說明中）。
+- 速度保真：對任意 φ，`sy / sx = tanφ · 0.5`（sx ≠ 0 時）。
+- 對照測試：證明 `atan2(dy, dx)` 的最大誤差約 19.5°，並以測試固定下來。
+- wrap-around：index 結果必為 [0, dirCount) 的整數。
+
+---
+
+# 【第 2 輪】校準量測工具（輸入為圖像資料）
+
+## 前提
+第 1 輪的 API 已通過驗收，並貼入第 1 輪最終程式碼：<<貼上>>
+
+## 任務
+實作 `calibrate.ts`：輸入某 missile 的各方向行代表幀（`ImageData[]`），輸出 `DirectionCalibration`：
+1. alpha 加權 PCA 求主軸與離心率。
+2. 把螢幕主軸還原為 φ（Y×2）。
+3. 以偏態判斷頭尾，不確定時標記為 needs-review。
+4. 擬合 `φ_i = dir0 + s·i·(360/N)`，取殘差較小的 s，用圓形平均求 dir0。
+5. 離心率 < 1.3 時輸出 `rotationMode: 'none'`，不報錯。
+
+## 驗收條件
+- 以程式合成測試資料：用已知 (dirCount, dir0, clockwise) 畫出細長箭頭圖，量測結果的 dir0 誤差 < 2°，clockwise 判斷全對（至少 12 組組合）。
+- 加入高斯雜訊與裁切的情況，成功率不得低於 95%，失敗者必須標記為 needs-review，而不是輸出錯誤的結果。
+- 圓形測試圖必須輸出 `rotationMode: 'none'`。
+- 輸出批次報告（JSON 與 Markdown 表格），含每個 missile 的最大殘差與狀態。
+
+---
+
+# 【第 3 輪】投射物執行期（行為原語加物件池）
+
+## 前提
+貼入第 1、2 輪的最終程式碼與 `DirectionCalibration` 實際資料樣本：<<貼上>>
+
+## 任務
+1. 實作 F01（直線）、F02（追蹤）、F04（隨機折線）三個行為原語，使用共通基底型別：
+   <<貼入本文件 1.1 的 SkillBehaviorBase 與各家族專屬參數>>
+2. 投射物物件池（預分配、free-list，穩態零配置）。
+3. 25Hz 固定步長加渲染插值的主迴圈（包含 MAX_CATCHUP_TICKS 與「瞬移不插值」旗標）。
+4. 繪製：依 `dirIndex` 選取方向行，位置取整，BlendMode 到 Canvas 合成模式的映射。
+5. 除錯疊加層：顯示方向索引、理論方向箭頭、碰撞圓、當前幀與總幀、混色模式，可用開關切換。
+
+## 驗收條件
+- 同一個 tick 序列在兩次執行下，位置結果逐位元相同（含隨機折線，使用可注入的 seeded PRNG）。
+- 以 60Hz 與 144Hz 兩種渲染節奏跑相同的邏輯，邏輯狀態完全一致。
+- 物件池測試：連續 10,000 次發射與回收後，池容量與配置次數不再增長，且沒有重複回收。
+- 對 72 個發射角度，飛行軌跡的螢幕端點滿足 `Δy/Δx = tanφ · 0.5`，誤差 < 1px。
+- 在 200 個同時存在的投射物下，單 tick 的邏輯耗時需附基準量測結果與機器資訊（不設硬指標，只要求提供數據）。
+
+## 輸出
+- 檔案清單與每個檔案的職責。
+- 如何把行為原語擴充為新家族（以 F03 螺旋為例，只描述步驟，不要實作）。
+````
+
+---
+
+## 建議的執行順序
+
+1. 先跑 1.3 的分群腳本，用真實數據修訂家族表。
+2. 用 Prompt 第 1 輪建立座標與方向核心，這一輪最便宜，也最能擋住後續整類 bug。
+3. 同步開始做 2.3 的圖層檢查器。它與投射物工作互不依賴，可平行進行，並能用資料解釋德魯伊與聖騎士的問題。
+
+如果需要，我可以接著把 F03、F06、F08 這三個最容易做錯的家族寫成詳細的數學規格，或是把 2.3 的檢查器寫成可執行的腳本骨架。

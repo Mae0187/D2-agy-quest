@@ -1,0 +1,351 @@
+# D2 1.13c 技能／彈道還原：資料真理源、發射點與自動化萃取管線
+
+先講三個會改變你整個架構的結論，後面的細節都建立在它們上面。
+
+1. **原版 D2 沒有「手部掛載點」。** DCC 與 COF 裡都沒有 socket、bone 或 attachment 座標。投射物在伺服器端以施法者的世界座標生成，客戶端再套用 Missiles.txt／Overlay.txt 的繪製偏移。「從肚子噴出」其實是原版的真實行為，只是被繪製偏移與 `InitSteps` 掩蓋了。如果你要手部發射點，必須自己從圖層像素推導，那是增強功能，不是原廠資料。
+2. **幾何可以 100% 從 DCC 自動推導，語意不行。** 裁邊、錨點、頭尾線、包圍盒都能由像素與 DCC 自帶的 offset 推導。方向索引對應哪個世界角度、白骨之牙的扇形角，則寫在引擎的硬編碼函式裡，不在任何表格，必須校準或驗證。
+3. **「零失真」只在索引色層面成立。** DCC 是 8-bit 調色盤索引圖，沒有 alpha。Trans 混合是原版用 `Pal.pl2` 查表在索引緩衝上完成的，在 truecolor 的 WebGL 裡只能近似。要保真，就保留索引圖加調色盤 LUT。
+
+另外，下面所有欄位名都請在程式裡以實際表頭動態讀取，不要硬編碼。我對少數欄位的單位和列舉值不是 100% 確定，文中會標註「需驗證」。
+
+---
+
+## 1. 原廠真理源：各檔案管什麼
+
+所有表格在 `data\global\excel\*.txt`，是 TSV。以 patch_d2 > d2exp > d2data 的優先序讀取。
+
+### Skills.txt：技能怎麼施放、用哪個動作、生成什麼
+
+| 用途 | 欄位 |
+|---|---|
+| 玩家動作模式 | `anim`（A1/A2/S1–S4/SC/TH/KK/SQ 等）、`seqtrans`、`seqnum`、`seqinput`、`monanim`（怪物版） |
+| 射程與武器限制 | `range`、`weapsel`、`itypea1-3`、`etypea1-2` |
+| 伺服器生成的投射物 | `srvmissile`、`srvmissilea/b/c`、`srvdofunc`、`srvstfunc`、`srvprgfunc1-3` |
+| 客戶端視覺 | `cltmissile`、`cltmissilea-d`、`cltdofunc`、`cltstfunc`、`cltprgfunc1-3`、`cltcalc1-3` |
+| 施法／命中特效 | `castoverlay`、`cltoverlaya/b`、`srvoverlay`、`tgtoverlay`、`prgoverlay` |
+| 傷害與數量參數 | `calc1-4`、`param1-8` |
+
+- **`srvdofunc` 是整數代碼，對應引擎內硬編碼的函式。** 白骨之牙的數量與扇形角、多重箭的散布、導引箭的追蹤，都在這個層級，不在 Skills.txt 的任何數值欄位。
+- 發射時機由動畫事件幀觸發（見第 2 節），不是 Skills.txt。
+
+### Missiles.txt：投射物的物理與繪製
+
+| 用途 | 欄位 |
+|---|---|
+| 圖檔 | `CelFile`（對應 `data\global\missiles\<CelFile>.dcc`） |
+| 方向數 | `NumDirections`（需以 DCC header 的 direction 數為準交叉驗證） |
+| 動畫 | `AnimLen`、`AnimSpeed`、`animrate`、`LoopAnim`、`SubLoop`、`SubStart`、`SubStop`、`RandStart` |
+| 初速、加速度、射程 | `Vel`、`VelLev`、`MaxVel`、`Accel`、`Range`、`LevRange` |
+| 生成時預推進 | `InitSteps`（生成後立刻前進的步數，會造成起點偏離施法者） |
+| 命中判定 | `Size`（碰撞尺寸）、`CollideType`、`CollideKill`、`CollideFriend`、`Collision`、`ClientCol`、`Pierce`、`LastCollide` |
+| 繪製偏移 | `xoffset`、`yoffset`、`zoffset`（需驗證各自的單位與軸向） |
+| 混合與光照 | `Trans`（0 不透明／1 alpha／2 加亮，需驗證）、`Light`、`Flicker`、`Red`、`Green`、`Blue` |
+| 子投射物（拖尾、爆炸） | `SubMissile1-3`、`ClientSubMissile1-3`、`HitSubMissile1-4`、`ClientHitSubMissile1-4`、`ExplosionMissile` |
+| 行為函式 | `pCltDoFunc`、`pCltHitFunc`、`pSrvDoFunc`、`pSrvHitFunc`、`pSrvDmgFunc`，另有 `Param1-5`、`CltParam1-5`、`sHitPar1-3`、`cHitPar1-3` |
+
+- **骨矛的拖尾、火球的爆炸，都是子投射物（另一列 Missiles.txt 加另一個 DCC），不是同一張圖集的一部分。**
+- 單位換算（`Vel` 是 world 次單位每 tick，遊戲 25 tick/s）需用實測校準，見第 3 節。
+
+### Overlay.txt：施法特效與命中特效
+
+- 欄位有 `Filename`、`Frames`、`PreDraw`、`1ofN`、`Dir`、`Xoffset`、`Yoffset`、`Height1-4`、`AnimRate`、`Trans`、`NumDirections`、`Red/Green/Blue`。
+- 手上的施法光效在這裡，不在角色 COF。
+
+### AnimData.d2：動作的幀數、速度、事件
+
+二進位檔，位於 `data\global\animdata.d2`。
+
+- 結構為 256 個 hash bucket，每個 bucket 先是 `uint32 count`，後面接 count 筆 160-byte 記錄。
+- 每筆記錄：`char cof_name[8]`、`uint32 frames_per_direction`、`uint32 animation_speed`、`uint8 flags[144]`。
+- `cof_name` 由「角色代碼(2) + 動作模式(2) + 武器類別(3)」組成，例如 `AMA1HTH`、`NESCHTH`。
+- `animation_speed` 以 256 為基準，256 約等於每 tick 前進 1 幀（25 FPS）。請用已知動作交叉驗證。
+- `flags[f]` 是第 f 幀的事件：`0` 無、`1` 近戰命中、`2` 發射投射物、`3` 音效、`4` 技能觸發。
+
+### COF：角色動畫的圖層合成表
+
+- Header 含 `layers`、`frames_per_dir`、`directions`，另有一段未完全公開的欄位，不要依賴。
+- 每個圖層一筆記錄，包含 `composit`（部位：HD、TR、LG、RA、LA、RH、LH、SH、S1–S8）、`shadow`、`selectable`、`transparent`、`drawEffect`、`weaponClass`。
+- 接著是每幀的 keyframe 事件陣列，語意同 AnimData flags。
+- 最後是 `directions × frames × layers` 的圖層繪製優先序。
+- **COF 管「這個動作用哪幾個 DCC 疊起來、誰在前誰在後」，不含空間座標。**
+
+### DCC：真正的幾何
+
+- Header 有 `directions`、`frames_per_dir`。
+- 每個 direction 有包圍盒，每一幀有 `xoffset`、`yoffset`、`width`、`height`。
+- 這些 offset 是相對於單位世界座標原點的像素位置，就是「真實錨點」的唯一來源。
+- 建議的解碼約定：`top = yoffset - height + 1`，`left = xoffset`。這個約定隨解碼器實作而異，請用已知素材做驗證測試。
+- 圖集被裁邊，幾乎都是因為忽略了每幀 offset，或用單幀包圍盒而不是全域聯集盒。
+
+---
+
+## 2. 發射點與前搖脫手幀
+
+**原版機制（確定的部分）：**
+
+1. 施法動作播放，播到 AnimData／COF 標記為 `2`（missile）的那一幀。
+2. 該幀觸發 Skills.txt 的 `srvdofunc`，伺服器在施法者座標生成投射物，朝目標方向，並預推進 `InitSteps`。
+3. 客戶端以 `cltmissile` 與 Missiles.txt 的繪製偏移渲染。
+
+**沒有手部座標，所以「脫手幀」就是事件幀 `2`。** 前搖由「動作開始到事件幀」的幀數決定，後搖是事件幀之後的收招。
+
+**前端的標準化還原，建議做兩種模式：**
+
+- `faithful`（預設）：起點 = 施法者 world 原點 + `InitSteps` 預推進 + Missiles.txt 繪製偏移，事件幀 = AnimData flag `2`。這與原版一致。
+- `hand_anchor`（增強，需明確標示為非原廠）：在事件幀，對 RH／武器圖層做像素分析，取離身體中心沿施法方向最遠的不透明像素作為發射點。預先離線算好，存進 JSON，執行期零計算：
+
+```
+launch_px[dir][eventFrame] = argmax over opaque pixels of dot(p - bodyCenter, heading[dir])
+```
+
+肚子噴出的問題，通常就是把投射物圖片中心對到單位原點，卻沒套 `InitSteps` 與繪製偏移。先確認 `faithful` 模式對不對，再決定是否要 `hand_anchor`。
+
+**Canvas／WebGL 實作：**
+
+- 角色圖層和投射物都用同一個「世界原點 → 螢幕」變換，每張圖以 `(-pivotX, -pivotY)` 繪製。
+- 等軸測投影（D2 floor tile 為 160×80 px，次單位 32×16）：
+
+```
+screenX = (wx - wy) * 16
+screenY = (wx + wy) * 8      // wx, wy 單位為 subtile
+```
+
+---
+
+## 3. 技能資產中繼資料規範（JSON）
+
+設計原則：
+
+- **只存可由機器驗證的事實。** 凡是推導出來的欄位都標註 `source`。
+- **每個圖集必須通過自檢**，不通過就不輸出。
+
+### 範例（法師火球，數值僅示意）
+
+```json
+{
+  "$schema": "d2-asset-meta/1.0",
+  "id": "missile.fireball",
+  "source": {
+    "mpq": "d2data.mpq",
+    "dcc": "data\\global\\missiles\\fireball.dcc",
+    "sha1": "<dcc bytes hash>",
+    "tables": { "missiles_row": "Fire Ball", "skills_row": "Fire Ball" }
+  },
+  "palette": { "file": "data\\global\\palette\\act1\\pal.dat", "transparentIndex": 0 },
+  "atlas": {
+    "image": "fireball.idx.png",
+    "format": "indexed8",
+    "cell": { "w": 96, "h": 80 },
+    "padding": 1,
+    "grid": { "cols": 8, "rows": 16 }
+  },
+  "geometry": {
+    "directions": 16,
+    "framesPerDirection": 8,
+    "pivot": { "x": 48, "y": 60, "meaning": "world origin inside cell" },
+    "unionBox": { "xmin": -48, "ymin": -60, "xmax": 47, "ymax": 19 },
+    "frames": [
+      { "dir": 0, "f": 0, "cellIndex": 0,
+        "dccOffset": { "x": -30, "y": -41 },
+        "size": { "w": 61, "h": 44 } }
+    ]
+  },
+  "orientation": {
+    "mode": "directional",
+    "directionMap": [
+      { "index": 0, "worldHeadingDeg": 0, "screenHeadingDeg": 0, "source": "calibrated" }
+    ],
+    "headTail": [
+      { "dir": 0,
+        "head": { "x": 80, "y": 62 }, "tail": { "x": 20, "y": 58 },
+        "axisDeg": 3.8, "source": "pca" }
+    ]
+  },
+  "timing": {
+    "frames": 8,
+    "ticksPerFrame": 1.0,
+    "loop": { "start": 0, "end": 7 },
+    "tickRateHz": 25
+  },
+  "physics": {
+    "vel": 0, "velLev": 0, "maxVel": 0, "accel": 0,
+    "range": 0, "initSteps": 0,
+    "collisionSize": 0,
+    "units": "raw_table_values_unverified"
+  },
+  "render": {
+    "trans": 2, "blend": "additive_approx",
+    "light": { "radius": 0, "rgb": [0, 0, 0] }
+  },
+  "children": {
+    "trail": ["<ClientSubMissile ids>"],
+    "hit": ["<ExplosionMissile id>"]
+  },
+  "events": { "cast": { "anim": "SC", "releaseFrame": 0, "source": "animdata" } },
+  "spawn": {
+    "mode": "faithful",
+    "drawOffset": { "x": 0, "y": 0, "z": 0 },
+    "handAnchor": null
+  },
+  "spread": null,
+  "validation": { "roundTripHash": "...", "axisErrorDeg": 0.0, "clipped": false }
+}
+```
+
+### 關鍵欄位的說明
+
+| 欄位 | 取得方式 | 可靠度 |
+|---|---|---|
+| `cell`、`pivot`、`unionBox` | 所有 direction × frame 的 offset 與尺寸取聯集 | 確定 |
+| `frames[].dccOffset` | DCC 每幀 header | 確定 |
+| `timing.frames` | DCC 實際幀數。AnimLen 只當交叉檢查 | 確定 |
+| `physics.*` | Missiles.txt 原值。單位需實測 | 數值確定，單位需驗證 |
+| `directionMap` | 校準（見下） | 校準後確定 |
+| `headTail` | PCA 加方向消歧 | 推導，附誤差 |
+| `releaseFrame` | AnimData flags 中第一個 `2` | 確定 |
+| `spread`（白骨之牙、多重箭） | 無表格來源，需引擎反編譯或遊戲內量測 | 必須人工確認一次，不可猜 |
+| `handAnchor` | 圖層像素分析 | 增強功能，非原廠 |
+
+### 方向映射的校準方法
+
+1. 以一個明顯不對稱的 16 向投射物（如箭矢）為基準資產。
+2. 對每個 direction，用 PCA 求像素主軸角，這個角只在 mod 180° 下有意義。
+3. 假設映射為 `angle(i) = a0 + s·i·(360/N)`，其中 `s ∈ {+1, -1}`。用圓形最小平方法解出 `a0` 與 `s`。
+4. 180° 歧義用箭頭／箭羽的不對稱性（頭端像素分佈較集中）判定，**只需對每種 N（8、16、32）人工確認一次**。D2 的同方向數資產共用同一個約定，確認後可直接套用到其他資產。
+5. 輸出後做自檢：用映射反推螢幕朝向，與每個 direction 的實測主軸誤差必須小於約半個方向步距，否則報錯。
+
+世界角度轉螢幕角度：
+
+```
+screenHeadingDeg = atan2((dx + dy) * 8, (dx - dy) * 16)
+```
+
+### 技能專屬的注意事項
+
+- **火球／炎爆：** 主體通常是旋轉無關的火球動畫，方向意義小。爆炸是 `ExplosionMissile`，要單獨處理一份中繼資料。
+- **骨矛：** 拖尾與穿透都應在對應列的子投射物欄位與 `Pierce` 查證，不要憑肉眼補。
+- **白骨之牙：** 每顆牙是獨立投射物，數量與扇形角由 `srvdofunc` 硬編碼，標為 `spread: null` 待確認。
+- **多重箭、導引箭：** 同理，散布與追蹤在函式裡。導引箭的轉向邏輯應在客戶端依 `pSrvDoFunc` 的行為實作，並以遊戲內錄影對照一次。
+- **標槍：** 投射物 DCC 與物品相關，一律從 Missiles.txt 對應列的 `CelFile` 查，不要硬編碼路徑。
+
+---
+
+## 4. 自動化萃取管線
+
+### 流程
+
+1. **開啟 MPQ 堆疊**：用 StormLib（Python 綁定或 ctypes），依序掛載 d2data、d2exp、patch_d2，後者覆蓋前者。純 Python 的 `mpyq` 對 D2 的壓縮組合支援有限，不建議。
+2. **載入表格**：解析 Skills、Missiles、Overlay 的 TSV，動態讀表頭，不硬編碼欄位順序。
+3. **解析依賴**：Skills → `srvmissile`／`cltmissile*` → Missiles 列 → `CelFile` → DCC 路徑；遞迴處理所有 SubMissile、ClientSubMissile、HitSubMissile、ExplosionMissile。
+4. **解碼 DCC**：移植經過驗證的實作（OpenDiablo2 或 Paul Siramy 的格式文件與參考碼），不要自己從零寫位元流解碼。輸出每幀的索引像素陣列、`xoffset`、`yoffset`、`width`、`height`。
+5. **解析 AnimData** 取得事件幀。
+6. **幾何推導**：全域聯集盒 → 統一 cell → pivot；每方向做 PCA 與頭尾點。
+7. **打包圖集**：索引色 PNG（保留調色盤索引）加預覽用 RGBA PNG。
+8. **自檢後輸出 JSON。**
+
+### 核心程式碼骨架
+
+```python
+import struct, json, hashlib
+import numpy as np
+
+# ---------- AnimData.d2 ----------
+def parse_animdata(b: bytes):
+    off, out = 0, {}
+    for _ in range(256):
+        n, = struct.unpack_from('<I', b, off); off += 4
+        for _ in range(n):
+            name = b[off:off+8].split(b'\0')[0].decode(); off += 8
+            fpd, speed = struct.unpack_from('<II', b, off); off += 8
+            flags = list(b[off:off+144]); off += 144
+            out[name] = {"frames": fpd, "speed": speed, "flags": flags}
+    assert off == len(b), "animdata 長度不符，解析錯誤"
+    return out
+
+def release_frame(rec):
+    return next((i for i, f in enumerate(rec["flags"][:rec["frames"]]) if f == 2), None)
+
+# ---------- DCC (用你選定的已驗證解碼器) ----------
+# decode_dcc(bytes) -> Dcc(dirs: list[Direction]);
+#   Direction.frames: list[Frame(pixels: ndarray[h,w] uint8, x: int, y_top: int)]
+#   y_top 的約定請用已知素材做視覺／數值驗證
+def decode_dcc(data: bytes): ...
+
+# ---------- 幾何 ----------
+def union_box(dcc):
+    xs0, ys0, xs1, ys1 = [], [], [], []
+    for d in dcc.dirs:
+        for f in d.frames:
+            h, w = f.pixels.shape
+            xs0.append(f.x); ys0.append(f.y_top)
+            xs1.append(f.x + w); ys1.append(f.y_top + h)
+    return min(xs0), min(ys0), max(xs1), max(ys1)
+
+def pack_atlas(dcc, pad=1):
+    xmin, ymin, xmax, ymax = union_box(dcc)
+    cw, ch = xmax - xmin + 2*pad, ymax - ymin + 2*pad
+    pivot = (-xmin + pad, -ymin + pad)
+    nd, nf = len(dcc.dirs), len(dcc.dirs[0].frames)
+    atlas = np.zeros((nd*ch, nf*cw), np.uint8)       # 索引 0 = 透明
+    frames = []
+    for di, d in enumerate(dcc.dirs):
+        for fi, f in enumerate(d.frames):
+            h, w = f.pixels.shape
+            ox = fi*cw + (f.x - xmin) + pad
+            oy = di*ch + (f.y_top - ymin) + pad
+            atlas[oy:oy+h, ox:ox+w] = f.pixels
+            frames.append({"dir": di, "f": fi,
+                           "dccOffset": {"x": f.x, "y": f.y_top},
+                           "size": {"w": w, "h": h}})
+    return atlas, (cw, ch), pivot, frames
+
+def principal_axis(atlas, cell, di, nf, pivot):
+    cw, ch = cell
+    ys, xs = np.nonzero(atlas[di*ch:(di+1)*ch, :nf*cw])
+    xs = xs % cw
+    pts = np.stack([xs, ys], 1).astype(float)
+    c = pts.mean(0)
+    u, s, vt = np.linalg.svd(pts - c, full_matrices=False)
+    axis = vt[0]                                      # 單位向量，正負號待消歧
+    proj = (pts - c) @ axis
+    p_max, p_min = pts[proj.argmax()], pts[proj.argmin()]
+    return c, axis, p_max, p_min                      # 頭尾需再用校準決定
+
+# ---------- 自檢 ----------
+def verify(atlas, cell, pivot, frames, dcc):
+    # 1) 無裁邊：每個 frame 的 rect 必須完整落在 cell 內
+    # 2) 還原：由 atlas + frames 重建每幀像素，與 decode 結果逐像素相等
+    # 3) 非空：每個 direction 至少有一幀不透明像素
+    # 4) 方向映射誤差 < 0.5 * 360/N
+    ...
+```
+
+### 混合模式處理
+
+- 輸出兩份：`*.idx.png`（索引色，無損）與 `*.preview.png`（套 act1 調色盤的 RGBA）。
+- `Trans` 近似：
+  - 加亮：`out = min(dst + src, 1)`（WebGL 的 `ONE, ONE`）。
+  - alpha：50% 混合。
+  - 精確還原需要在 shader 內以 `Pal.pl2` 的混合表查詢，但那要求目的緩衝是索引色，在 truecolor 管線裡做不到，只能近似。
+- 調色盤檔位於 `data\global\palette\ACT1\pal.dat`（256×3，BGR 順序）。各 Act 的調色盤不同，以資產所屬場景選擇。
+
+### 驗證與回歸
+
+- 對每個資產跑第 8 步的自檢，失敗即中止並輸出診斷。
+- 建立少數黃金案例：以原版遊戲錄影對照關鍵幀（發射時機、起點、方向）。
+- 把 MPQ 內檔案的 sha1 寫進 JSON，來源變動時可偵測。
+
+---
+
+## 請你人工確認一次的清單
+
+這幾項我不能代替你保證，確認後寫進設定檔，之後 Agent 就不用再猜：
+
+1. `Trans` 各值的確切混合語意。
+2. `Vel`／`Accel`／`Size` 的世界單位換算。
+3. `xoffset`／`yoffset`／`zoffset` 的軸向與單位。
+4. 16 向與 8 向資產的方向索引約定（只需確認一次）。
+5. 白骨之牙、多重箭的數量與扇形角。
+6. DCC 解碼器的 `y_top` 約定。
+
+如果你要的話，我可以接著幫你寫「方向映射校準」的完整程式，或設計 JSON Schema 的正式 `.schema.json` 檔。

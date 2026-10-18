@@ -1,0 +1,38 @@
+{
+  "id": "fistoftheheavens",
+  "name": "Fist of the Heavens",
+  "class": "paladin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "HandOfGod",
+    "celFile": "HandOfGod",
+    "speed": 20.0,
+    "range": 10.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 165,
+    "max": 215,
+    "level": 1,
+    "formula": "150 + 15x7 + 30x8 + 45x4",
+    "maxFormula": "200 + 15x7 + 30x8 + 45x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 25
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "paladin_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/HandOfGod.png",
+    "numbers": "assets/skills/data/fistoftheheavens.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,314 @@
+<title>Joel, Alkalund & Nefarius' Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#6633FF" alink="#336699"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou, Alkalund and Nefarius<br>
+  for The Phrozen Keep</h4>
+<h2><u>Chapter Two : Diablo II Animations Files</u></h2>
+<p>After getting your tools, we'll dig into the core rules that govern all the 
+  animation of Diablo II.</p>
+<h4><i><u>2.1 File Naming Conventions :</u></i></h4>
+<p>Launch CV5 and open d2data.mpq. Navigate to the data/global/monster folder. 
+  <br>
+  Here you'll see a lot of folders named by a two alphanumerical caracters code.</p>
+<p align="center"><img src="images/chapter2/token.gif" width="291" height="407"></p>
+<p>This code is known as the Monster Token. It helps the game to locate and identify 
+  the correct animations to play for a given<br>
+  monster. Take a quick look at monstats.txt, in the column 'Code', you'll see 
+  the same code as in this screenshot.</p>
+<p align="center"><img src="images/chapter2/monstat.gif" width="511" height="268"></p>
+<p>Now open the BH folder. It contains three folders itself.</p>
+<p align="center"><img src="images/chapter2/bodypart.gif" width="291" height="407"></p>
+<p>What's the contents of these folders ?</p>
+<ul>
+  <li>The COF folder : it contains the cof files needed by Diablo II to correctly 
+    place the different parts of the animation together.</li>
+  <li>The S1 and TR folders : they contain the dcc files of the BH token.</li>
+</ul>
+<p>If you look at another token folder, you'll see many other folders like RH,LH,SH 
+  etc ...<br>
+  Whats the meaning of these codes ?</p>
+<ul>
+  <li><b>HD</b> - Contains the Head part of the animation.<br>
+  </li>
+  <li><b>TR</b> - Contains the Torso part of the animation.<br>
+  </li>
+  <li><b>LG</b> - Contains the Leg part of the animation. <br>
+  </li>
+  <li><b>RA</b> - Contains the Right Arm part of the animation. <br>
+  </li>
+  <li><b>LA</b> - Contains the Left Arm part of the animation. <br>
+  </li>
+  <li><b>RH</b> - Contains the Right Hand part of the animation.<br>
+  </li>
+  <li><b>LH</b> - Contains the Left Hand part of the animation.<br>
+  </li>
+  <li><b>SH</b> - Contains the Shield part of the animation.<br>
+  </li>
+  <li><b>S1</b> - Contains the 1st Overlay part of the animation.<br>
+  </li>
+  <li><b>S2</b> - Contains the 2nd Overlay part of the animation.<br>
+  </li>
+  <li><b>S3</b> - Contains the 3rd Overlay part of the animation.<br>
+  </li>
+  <li><b>S4</b> - Contain the 4th Overlay part of the animation.<br>
+  </li>
+  <li><b>S5</b> - Contain the 5th Overlay part of the animation. <br>
+  </li>
+  <li><b>S6</b> - Contain the 6th Overlay part of the animation.<br>
+  </li>
+  <li><b>S7</b> - Contain the 7thOverlay part of the animation.<br>
+  </li>
+  <li><b>S8</b> - Contain the 8th Overlay part of the animation.<br>
+  </li>
+</ul>
+<p>If you look at some animations like the Corrupted Rogues, you'll see that their 
+  RA and LA folders contain<br>
+  different weapon animations. By selecting one of these, Diablo II generates 
+  all the variations of the Rogues<br>
+  we all know. From now, we'll call every monster that has only one bodypart 
+  folder a <b>One-Part Monster </b><br>
+  and all monsters that get several body part folders will be called <b>Multipart 
+  Monsters.</b></p>
+<p>Back to our Blood Hawk, open the TR folder.</p>
+<p align="center"><img src="images/chapter2/dccfiles.gif" width="291" height="407"></p>
+<p>Look at the first file : BHTRLITA1HTH.DCC.<br>
+  We recognize in this name the token <b>BH</b> and the body part <b>TR</b>.But 
+  what does the rest of the name stand for ??<br>
+  <br>
+  Quickly: it contains the armor type, the animation mode and the weapon class the animation 
+  uses.</p>
+<p>- first code is the monster/character token; <br>
+  - second code is for body part;<br>
+  - third code is armor type. They are lit=Lite armor, med=Medium armor, hvy=Heavy 
+  armor; <br>
+  - fourth code is monster/player mode;<br>
+  - fifth is the weapon/hit class. </p>
+<p><br>
+  Here is a list of the codes you can find :</p>
+<table width="45%" border="0" height="397">
+  <tr align="center" valign="top"> 
+    <td width="200"><i><b><u>Player &amp; Monster Modes:</u></b></i></td>
+    <td width="1"><i><b></b></i></td>
+    <td width="218"><b><i><u>Hit &amp; Weapon Classes:</u></i></b></td>
+  </tr>
+  <tr align="center" valign="top"> 
+    <td width="200" height="403"> 
+      <table width="200" border="1" height="339" bordercolor="#000000">
+        <tr bordercolor="#000000"> 
+          <td>Name</td>
+          <td>Token</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Death</td>
+          <td>DT</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td height="5">Neutral</td>
+          <td height="5">NU </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Walk</td>
+          <td>WL</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Run</td>
+          <td>RN</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Get Hit</td>
+          <td>GH</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Town Neutral</td>
+          <td>TN</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Town Walk</td>
+          <td>TW</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Attack1</td>
+          <td>A1</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Attack2</td>
+          <td>A2 </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Block</td>
+          <td>BL</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Cast</td>
+          <td> SC </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Throw</td>
+          <td>TH </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Kick</td>
+          <td> KK </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Skill1</td>
+          <td>S1</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Skill2</td>
+          <td>S2</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Skill3</td>
+          <td>S3</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Skill4</td>
+          <td>S4</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Dead</td>
+          <td>DD</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Sequence</td>
+          <td>??</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Knock Back</td>
+          <td>GH</td>
+        </tr>
+      </table>
+    </td>
+    <td width="1" height="403">&nbsp;</td>
+    <td width="218" height="403"> 
+      <table width="221" border="1" height="339" bordercolor="#000000">
+        <tr bordercolor="#000000"> 
+          <td>Name</td>
+          <td>Code</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Hand-to-Hand</td>
+          <td>HTH</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td height="5">One Hand Swing vs. Small</td>
+          <td height="5">1hss </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>One Hand Swing vs. Large</td>
+          <td>1hsl</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Two Hand Swing vs. Small</td>
+          <td>2hss</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Two Hand Swing vs. Large</td>
+          <td>2hsl</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>One Hand Thrust</td>
+          <td>1ht</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Two Hand Thrust</td>
+          <td>2ht </td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Club</td>
+          <td>club</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Staff</td>
+          <td> staf</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Bow</td>
+          <td>bow</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Crossbow</td>
+          <td>xbow</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Claw</td>
+          <td>claw</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Overlay</td>
+          <td>over</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Left Jab Right Swing</td>
+          <td>1js</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Left Jab Right Thrust</td>
+          <td>1jt</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td height="31">Left Swing Right Swing </td>
+          <td height="31">1ss</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Left Swing Right Thrust</td>
+          <td>1st</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>One Hand-to-Hand</td>
+          <td>ht1</td>
+        </tr>
+        <tr bordercolor="#000000"> 
+          <td>Two Hand-to-Hand</td>
+          <td>ht2</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<p>You can get these lists in PlrMode.txt, MonMode.txt, ObjMode.txt, HitClass.txt, 
+  and WeaponClass.txt. </p>
+<p>Note that we could find dcc animations in the following MPQ files :</p>
+<ul>
+  <li>d2data.mpq </li>
+  <li>d2exp.mpq </li>
+  <li>d2char.mpq </li>
+</ul>
+<h4><i><u>2.2 Animation Specifications :</u></i></h4>
+<p>Now we know where to find animations and how they are buildt, we gonna take 
+  a look at the animations specifications.</p>
+<blockquote> 
+  <h4><u>2.2.1 Directions :</u></h4>
+  <p>Every Diablo II animation is composed of several directions. Each direction 
+    is facing a different point in <br>
+    the virtual 3D isometric space. Commonly, we can find animations with 1, 
+    2, 4, 8, 16 or 32 directions.</p>
+  <div align="center"><img src="images/chapter2/direction2.gif" width="411" height="69"> 
+  </div>
+  <p>Here we look at one of the Clay Golem's [G1] animations. As we can see, it's composed 
+    of 8 directions : <br>
+    South-West, North-West,North-East, South-East, South,West,North and West.</p>
+  <p>Here's an indexed list of the directions by framecounts :</p>
+  <p align="center"><img src="images/chapter2/dcc_dir.gif" width="681" height="240"></p>
+  <h4><u>2.2.2 Framecounts:</u></h4>
+  <p><b>For every direction an animation has the same number of frames</b>. For example, 
+    a 96-frame animation with 8 directions<br>
+    has 12 frames per direction. REMEMBER THIS!!! It's very very important to remember this point because one<br>
+    of the many, many errors that people do when converting animations is to remove or add a frame at the wrong spot, thus<br> violating the Frames per Direction rule.</p>
+  <p>Further discussion on the framecounts is held in  <a href="chapter4.html">Chapter 
+    4</a>.<br>
+    <br>
+  </p>
+  <h4><u>2.2.3 Offsets : </u><br>
+  </h4>
+  <p> When Diablo II displays an animation on the screen, it must know where to 
+    display it. In other words, the game keeps in its<br>
+    memory the position of the monsters in a virtual map. Classicaly, it holds 
+    their bottom-left corners. For having a neat looking<br>
+    animation on your screen, the game must calculate by how much pixels the animation 
+    must be drifted. This is the<br>
+    purpose of the all mighty offsets.</p>
+  <p>With all these informations in mind, we'll hop to the Next Section : <a href="chapter3.html">Converting 
+    Animations - Part I.</a></p>
+</blockquote>

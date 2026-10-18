@@ -1,0 +1,916 @@
+[
+  {
+    "id": "6",
+    "class": "amazon",
+    "name_zh": "魔法箭",
+    "name_en": "Magic Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\magicarrow_icon.jpg"
+  },
+  {
+    "id": "7",
+    "class": "amazon",
+    "name_zh": "火箭",
+    "name_en": "Fire Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\firearrow_icon.jpg"
+  },
+  {
+    "id": "11",
+    "class": "amazon",
+    "name_zh": "冰箭",
+    "name_en": "Cold Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\coldarrow_icon.jpg"
+  },
+  {
+    "id": "12",
+    "class": "amazon",
+    "name_zh": "多重箭",
+    "name_en": "Multiple Shot",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\multipleshot_icon.jpg"
+  },
+  {
+    "id": "16",
+    "class": "amazon",
+    "name_zh": "爆裂箭",
+    "name_en": "Exploding Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\explodingarrow_icon.jpg"
+  },
+  {
+    "id": "21",
+    "class": "amazon",
+    "name_zh": "急凍箭",
+    "name_en": "Ice Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\icearrow_icon.jpg"
+  },
+  {
+    "id": "22",
+    "class": "amazon",
+    "name_zh": "導引箭",
+    "name_en": "Guided Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\guidedarrow_icon.jpg"
+  },
+  {
+    "id": "26",
+    "class": "amazon",
+    "name_zh": "掃射",
+    "name_en": "Strafe",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\strafe_icon.jpg"
+  },
+  {
+    "id": "27",
+    "class": "amazon",
+    "name_zh": "燃燒箭",
+    "name_en": "Immolation Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\immolationarrow_icon.jpg"
+  },
+  {
+    "id": "31",
+    "class": "amazon",
+    "name_zh": "凍結箭",
+    "name_en": "Freezing Arrow",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\freezingarrow_icon.jpg"
+  },
+  {
+    "id": "32",
+    "class": "amazon",
+    "name_zh": "女武神",
+    "name_en": "Valkyrie",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\valkyrie_icon.jpg"
+  },
+  {
+    "id": "19",
+    "class": "amazon",
+    "name_zh": "刺爆",
+    "name_en": "Impale",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\impale_icon.jpg"
+  },
+  {
+    "id": "20",
+    "class": "amazon",
+    "name_zh": "閃電球/閃電標槍",
+    "name_en": "Lightning Bolt",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\lightningbolt_icon.jpg"
+  },
+  {
+    "id": "24",
+    "class": "amazon",
+    "name_zh": "充能一擊",
+    "name_en": "Charged Strike",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\chargedstrike_icon.jpg"
+  },
+  {
+    "id": "25",
+    "class": "amazon",
+    "name_zh": "瘟疫標槍",
+    "name_en": "Plague Javelin",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\plaguejavelin_icon.jpg"
+  },
+  {
+    "id": "30",
+    "class": "amazon",
+    "name_zh": "擊退/刺擊",
+    "name_en": "Fend",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\fend_icon.jpg"
+  },
+  {
+    "id": "34",
+    "class": "amazon",
+    "name_zh": "閃電一擊",
+    "name_en": "Lightning Strike",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\lightningstrike_icon.jpg"
+  },
+  {
+    "id": "35",
+    "class": "amazon",
+    "name_zh": "閃電之怒",
+    "name_en": "Lightning Fury",
+    "screenshots": [],
+    "icon": "official_visual_standards\\amazon\\lightningfury_icon.jpg"
+  },
+  {
+    "id": "251",
+    "class": "assassin",
+    "name_zh": "火焰爆震",
+    "name_en": "Fire Trauma",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "256",
+    "class": "assassin",
+    "name_zh": "電能網",
+    "name_en": "Shock Field",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "257",
+    "class": "assassin",
+    "name_zh": "刃之守衛",
+    "name_en": "Blade Sentinel",
+    "screenshots": [
+      "official_visual_standards\\assassin\\bladesentinel_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "261",
+    "class": "assassin",
+    "name_zh": "雷電網陷阱",
+    "name_en": "Charged Bolt Sentry",
+    "screenshots": [
+      "official_visual_standards\\assassin\\chargedboltsentry_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "262",
+    "class": "assassin",
+    "name_zh": "火之復甦陷阱",
+    "name_en": "Wake of Fire Sentry",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "266",
+    "class": "assassin",
+    "name_zh": "刃之狂怒",
+    "name_en": "Blade Fury",
+    "screenshots": [
+      "official_visual_standards\\assassin\\bladefury_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "271",
+    "class": "assassin",
+    "name_zh": "雷光守衛陷阱",
+    "name_en": "Lightning Sentry",
+    "screenshots": [
+      "official_visual_standards\\assassin\\lightningsentry_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "272",
+    "class": "assassin",
+    "name_zh": "復甦獄火陷阱",
+    "name_en": "Inferno Sentry",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "276",
+    "class": "assassin",
+    "name_zh": "亡者守衛陷阱",
+    "name_en": "Death Sentry",
+    "screenshots": [
+      "official_visual_standards\\assassin\\deathsentry_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "277",
+    "class": "assassin",
+    "name_zh": "刀刃之盾",
+    "name_en": "Blade Shield",
+    "screenshots": [
+      "official_visual_standards\\assassin\\bladeshield_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "279",
+    "class": "assassin",
+    "name_zh": "暗影宗師",
+    "name_en": "Shadow Master",
+    "screenshots": [
+      "official_visual_standards\\assassin\\shadowmaster_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "254",
+    "class": "assassin",
+    "name_zh": "虎擊",
+    "name_en": "Tiger Strike",
+    "screenshots": [
+      "official_visual_standards\\assassin\\tigerstrike_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "255",
+    "class": "assassin",
+    "name_zh": "龍爪/飛踢",
+    "name_en": "Dragon Talon",
+    "screenshots": [
+      "official_visual_standards\\assassin\\dragontalon_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "259",
+    "class": "assassin",
+    "name_zh": "焰拳",
+    "name_en": "Fists of Fire",
+    "screenshots": [
+      "official_visual_standards\\assassin\\fistsoffire_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "260",
+    "class": "assassin",
+    "name_zh": "雙龍爪",
+    "name_en": "Dragon Claw",
+    "screenshots": [
+      "official_visual_standards\\assassin\\dragonclaw_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "265",
+    "class": "assassin",
+    "name_zh": "眼鏡蛇擊",
+    "name_en": "Cobra Strike",
+    "screenshots": [
+      "official_visual_standards\\assassin\\cobrastrike_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "269",
+    "class": "assassin",
+    "name_zh": "雷電爪",
+    "name_en": "Claws of Thunder",
+    "screenshots": [
+      "official_visual_standards\\assassin\\clawsofthunder_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "270",
+    "class": "assassin",
+    "name_zh": "神龍擺尾",
+    "name_en": "Dragon Tail",
+    "screenshots": [
+      "official_visual_standards\\assassin\\dragontail_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "274",
+    "class": "assassin",
+    "name_zh": "寒冰刃",
+    "name_en": "Blades of Ice",
+    "screenshots": [
+      "official_visual_standards\\assassin\\bladesofice_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "275",
+    "class": "assassin",
+    "name_zh": "飛龍在天",
+    "name_en": "Dragon Flight",
+    "screenshots": [
+      "official_visual_standards\\assassin\\dragonflight_screen_1.gif"
+    ],
+    "icon": null
+  },
+  {
+    "id": "280",
+    "class": "assassin",
+    "name_zh": "鳳凰連擊",
+    "name_en": "Royal Strike",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "133",
+    "class": "barbarian",
+    "name_zh": "雙重打擊",
+    "name_en": "Double Swing",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\doubleswing_icon.jpg"
+  },
+  {
+    "id": "140",
+    "class": "barbarian",
+    "name_zh": "雙重投擲",
+    "name_en": "Double Throw",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\doublethrow_icon.jpg"
+  },
+  {
+    "id": "143",
+    "class": "barbarian",
+    "name_zh": "跳躍攻擊",
+    "name_en": "Leap Attack",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\leapattack_icon.jpg"
+  },
+  {
+    "id": "151",
+    "class": "barbarian",
+    "name_zh": "旋風斬",
+    "name_en": "Whirlwind",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\whirlwind_icon.jpg"
+  },
+  {
+    "id": "152",
+    "class": "barbarian",
+    "name_zh": "狂戰士",
+    "name_en": "Berserk",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\berserk_icon.jpg"
+  },
+  {
+    "id": "154",
+    "class": "barbarian",
+    "name_zh": "戰嚎/震撼戰嚎",
+    "name_en": "War Cry",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\warcry_icon.jpg"
+  },
+  {
+    "id": "150",
+    "class": "barbarian",
+    "name_zh": "殘酷庇護所",
+    "name_en": "Grim Ward",
+    "screenshots": [],
+    "icon": "official_visual_standards\\barbarian\\grimward_icon.jpg"
+  },
+  {
+    "id": "221",
+    "class": "druid",
+    "name_zh": "烏鴉",
+    "name_en": "Raven",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\raven_icon.gif"
+  },
+  {
+    "id": "222",
+    "class": "druid",
+    "name_zh": "劇毒藤蔓",
+    "name_en": "Plague Poppy",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "226",
+    "class": "druid",
+    "name_zh": "橡木智者",
+    "name_en": "Oak Sage",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\oaksage_icon.gif"
+  },
+  {
+    "id": "227",
+    "class": "druid",
+    "name_zh": "召喚鬼狼",
+    "name_en": "Summon Spirit Wolf",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\summonspiritwolf_icon.gif"
+  },
+  {
+    "id": "237",
+    "class": "druid",
+    "name_zh": "召喚狂狼/兇狼",
+    "name_en": "Summon Fenris",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "247",
+    "class": "druid",
+    "name_zh": "召喚灰熊",
+    "name_en": "Summon Grizzly",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\summongrizzly_icon.gif"
+  },
+  {
+    "id": "223",
+    "class": "druid",
+    "name_zh": "狼人變化",
+    "name_en": "Wearwolf",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "228",
+    "class": "druid",
+    "name_zh": "熊人變化",
+    "name_en": "Wearbear",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "233",
+    "class": "druid",
+    "name_zh": "撞擊/重擊",
+    "name_en": "Maul",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\maul_icon.gif"
+  },
+  {
+    "id": "238",
+    "class": "druid",
+    "name_zh": "狂犬病",
+    "name_en": "Rabies",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\rabies_icon.gif"
+  },
+  {
+    "id": "239",
+    "class": "druid",
+    "name_zh": "烈焰爪",
+    "name_en": "Fire Claws",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\fireclaws_icon.gif"
+  },
+  {
+    "id": "242",
+    "class": "druid",
+    "name_zh": "飢餓",
+    "name_en": "Hunger",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\hunger_icon.gif"
+  },
+  {
+    "id": "243",
+    "class": "druid",
+    "name_zh": "震波",
+    "name_en": "Shock Wave",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\shockwave_icon.gif"
+  },
+  {
+    "id": "248",
+    "class": "druid",
+    "name_zh": "狂怒",
+    "name_en": "Fury",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\fury_icon.gif"
+  },
+  {
+    "id": "225",
+    "class": "druid",
+    "name_zh": "火風暴",
+    "name_en": "Firestorm",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\firestorm_icon.gif"
+  },
+  {
+    "id": "229",
+    "class": "druid",
+    "name_zh": "熔岩巨石",
+    "name_en": "Molten Boulder",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\moltenboulder_icon.gif"
+  },
+  {
+    "id": "230",
+    "class": "druid",
+    "name_zh": "極地風暴",
+    "name_en": "Arctic Blast",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\arcticblast_icon.gif"
+  },
+  {
+    "id": "234",
+    "class": "druid",
+    "name_zh": "裂縫",
+    "name_en": "Eruption",
+    "screenshots": [],
+    "icon": null
+  },
+  {
+    "id": "235",
+    "class": "druid",
+    "name_zh": "颶風裝甲",
+    "name_en": "Cyclone Armor",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\cyclonearmor_icon.gif"
+  },
+  {
+    "id": "240",
+    "class": "druid",
+    "name_zh": "小旋風",
+    "name_en": "Twister",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\twister_icon.gif"
+  },
+  {
+    "id": "244",
+    "class": "druid",
+    "name_zh": "火山",
+    "name_en": "Volcano",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\volcano_icon.gif"
+  },
+  {
+    "id": "245",
+    "class": "druid",
+    "name_zh": "龍捲風",
+    "name_en": "Tornado",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\tornado_icon.gif"
+  },
+  {
+    "id": "249",
+    "class": "druid",
+    "name_zh": "毀天滅地",
+    "name_en": "Armageddon",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\armageddon_icon.gif"
+  },
+  {
+    "id": "250",
+    "class": "druid",
+    "name_zh": "暴風",
+    "name_en": "Hurricane",
+    "screenshots": [],
+    "icon": "official_visual_standards\\druid\\hurricane_icon.gif"
+  },
+  {
+    "id": "67",
+    "class": "necromancer",
+    "name_zh": "牙",
+    "name_en": "Teeth",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\teeth_icon.jpg"
+  },
+  {
+    "id": "68",
+    "class": "necromancer",
+    "name_zh": "白骨裝甲",
+    "name_en": "Bone Armor",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\bonearmor_icon.jpg"
+  },
+  {
+    "id": "73",
+    "class": "necromancer",
+    "name_zh": "劇毒匕首",
+    "name_en": "Poison Dagger",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\poisondagger_icon.jpg"
+  },
+  {
+    "id": "74",
+    "class": "necromancer",
+    "name_zh": "屍體爆炸",
+    "name_en": "Corpse Explosion",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\corpseexplosion_icon.jpg"
+  },
+  {
+    "id": "92",
+    "class": "necromancer",
+    "name_zh": "劇毒新星",
+    "name_en": "Poison Nova",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\poisonnova_icon.jpg"
+  },
+  {
+    "id": "93",
+    "class": "necromancer",
+    "name_zh": "骨魂",
+    "name_en": "Bone Spirit",
+    "screenshots": [],
+    "icon": "official_visual_standards\\necromancer\\bonespirit_icon.jpg"
+  },
+  {
+    "id": "101",
+    "class": "paladin",
+    "name_zh": "聖光彈",
+    "name_en": "Holy Bolt",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\holybolt_icon.jpg"
+  },
+  {
+    "id": "106",
+    "class": "paladin",
+    "name_zh": "熱誠/白熱",
+    "name_en": "Zeal",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\zeal_icon.jpg"
+  },
+  {
+    "id": "112",
+    "class": "paladin",
+    "name_zh": "祝聖之槌",
+    "name_en": "Blessed Hammer",
+    "screenshots": [
+      "official_visual_standards\\paladin\\blessedhammer_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "117",
+    "class": "paladin",
+    "name_zh": "神聖之盾",
+    "name_en": "Holy Shield",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\holyshield_icon.jpg"
+  },
+  {
+    "id": "121",
+    "class": "paladin",
+    "name_zh": "天堂之拳",
+    "name_en": "Fist of the Heavens",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\fistoftheheavens_icon.jpg"
+  },
+  {
+    "id": "98",
+    "class": "paladin",
+    "name_zh": "力量靈氣",
+    "name_en": "Might",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\might_icon.jpg"
+  },
+  {
+    "id": "102",
+    "class": "paladin",
+    "name_zh": "神聖火焰靈氣",
+    "name_en": "Holy Fire",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\holyfire_icon.jpg"
+  },
+  {
+    "id": "103",
+    "class": "paladin",
+    "name_zh": "荊棘靈氣",
+    "name_en": "Thorns",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\thorns_icon.jpg"
+  },
+  {
+    "id": "108",
+    "class": "paladin",
+    "name_zh": "精準祝福靈氣",
+    "name_en": "Blessed Aim",
+    "screenshots": [
+      "official_visual_standards\\paladin\\blessedaim_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "113",
+    "class": "paladin",
+    "name_zh": "專注靈氣",
+    "name_en": "Concentration",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\concentration_icon.jpg"
+  },
+  {
+    "id": "114",
+    "class": "paladin",
+    "name_zh": "神聖冰凍靈氣",
+    "name_en": "Holy Freeze",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\holyfreeze_icon.jpg"
+  },
+  {
+    "id": "118",
+    "class": "paladin",
+    "name_zh": "神聖衝擊靈氣",
+    "name_en": "Holy Shock",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\holyshock_icon.jpg"
+  },
+  {
+    "id": "119",
+    "class": "paladin",
+    "name_zh": "庇護所靈氣",
+    "name_en": "Sanctuary",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\sanctuary_icon.jpg"
+  },
+  {
+    "id": "122",
+    "class": "paladin",
+    "name_zh": "狂熱靈氣",
+    "name_en": "Fanaticism",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\fanaticism_icon.jpg"
+  },
+  {
+    "id": "123",
+    "class": "paladin",
+    "name_zh": "審判/信念靈氣",
+    "name_en": "Conviction",
+    "screenshots": [],
+    "icon": "official_visual_standards\\paladin\\conviction_icon.jpg"
+  },
+  {
+    "id": "36",
+    "class": "sorceress",
+    "name_zh": "火彈",
+    "name_en": "Fire Bolt",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\firebolt_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "41",
+    "class": "sorceress",
+    "name_zh": "地獄之火",
+    "name_en": "Inferno",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\inferno_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "47",
+    "class": "sorceress",
+    "name_zh": "火球",
+    "name_en": "Fire Ball",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\fireball_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "51",
+    "class": "sorceress",
+    "name_zh": "火牆",
+    "name_en": "Fire Wall",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\firewall_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "56",
+    "class": "sorceress",
+    "name_zh": "隕石",
+    "name_en": "Meteor",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\meteor_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "62",
+    "class": "sorceress",
+    "name_zh": "九頭蛇",
+    "name_en": "Hydra",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\hydra_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "38",
+    "class": "sorceress",
+    "name_zh": "充能彈",
+    "name_en": "Charged Bolt",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\chargedbolt_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "48",
+    "class": "sorceress",
+    "name_zh": "新星",
+    "name_en": "Nova",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\nova_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "53",
+    "class": "sorceress",
+    "name_zh": "連鎖閃電",
+    "name_en": "Chain Lightning",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\chainlightning_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "57",
+    "class": "sorceress",
+    "name_zh": "雷暴",
+    "name_en": "Thunder Storm",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\thunderstorm_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "44",
+    "class": "sorceress",
+    "name_zh": "冰霜新星",
+    "name_en": "Frost Nova",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\frostnova_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "45",
+    "class": "sorceress",
+    "name_zh": "冰風暴",
+    "name_en": "Ice Blast",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\iceblast_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "55",
+    "class": "sorceress",
+    "name_zh": "冰川之刺",
+    "name_en": "Glacial Spike",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\glacialspike_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "59",
+    "class": "sorceress",
+    "name_zh": "暴風雪",
+    "name_en": "Blizzard",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\blizzard_screen_1.jpg"
+    ],
+    "icon": null
+  },
+  {
+    "id": "64",
+    "class": "sorceress",
+    "name_zh": "冰封球",
+    "name_en": "Frozen Orb",
+    "screenshots": [
+      "official_visual_standards\\sorceress\\frozenorb_screen_1.jpg"
+    ],
+    "icon": null
+  }
+]

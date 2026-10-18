@@ -1,0 +1,953 @@
+# 第 1 輪交付:方向與座標核心模組
+
+## 設計約定(先讀這段)
+
+| 項目 | 約定 |
+|---|---|
+| 角度單位 | 全部使用**度**,和 `dir0WorldAngle` 一致,避免弧度與度混用 |
+| φ 範圍 | 輸出一律正規化為 `[0, 360)`,且不會出現 `-0` |
+| 速度 | `speed` 是地面未壓縮像素/tick,只有 `vy` 會乘 0.5 |
+| 半步角平手 | 剛好落在兩格正中時,取較大的索引(模 N)。這個規則是確定性的,測試會固定它 |
+| `rotationMode` | `'none'` 回傳索引 0;`'free'` 呼叫 `dirIndex`/`indexToPhi` 會**丟錯**(沒有離散索引,誤用應該立刻暴露),改用 `resolveDirection` |
+| 方向映射 | 不需要額外查表矩陣。`dir0WorldAngle` 與 `clockwise` 已經完整描述「索引 → φ」 |
+| 非有限數 | `NaN` 和 `Infinity` 一律丟 `RangeError`,不靜默傳播 |
+| `screenToPhi(0, 0)` | 回傳 0,因為零向量沒有方向,呼叫端自行避免 |
+
+我沒有在這個環境實際執行這份程式碼。我逐項手算過邊界與平手情況,但請你跑一次 `npm test`,有任何失敗請貼給我。
+
+---
+
+## 專案設定
+
+**package.json**
+```json
+{
+  "name": "d2-direction-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}
+```
+
+**tsconfig.json**
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": ["src"]
+}
+```
+
+---
+
+## src/geometry.ts
+
+```ts
+/**
+ * geometry.ts — 2:1 等距投影的座標核心(純數學,無 DOM 依賴)
+ *
+ * 約定:
+ *  - 螢幕座標:X 向右,Y 向下,單位為像素。
+ *  - φ(phi):地面平面角,單位為「度」。φ = atan2(dy * 2, dx)。
+ *      φ = 0   → 螢幕正右方
+ *      φ = 90  → 螢幕正下方(因 Y 向下,φ 遞增 = 視覺順時針)
+ *  - 行為層速度一律是「地面未壓縮」像素/tick;只有在轉成螢幕速度時 Y 才乘 0.5。
+ *  - 這裡的 φ 不是 D2 世界座標軸角(世界軸相對螢幕旋轉 45°),請勿混用。
+ */
+
+export const DEG2RAD = Math.PI / 180;
+export const RAD2DEG = 180 / Math.PI;
+
+/** 2:1 等距:地面 Y 投影到螢幕後的壓縮比。 */
+export const ISO_Y_SCALE = 0.5;
+/** 螢幕 Y 還原為地面 Y 的倍率。 */
+export const ISO_Y_UNSQUASH = 1 / ISO_Y_SCALE;
+
+export interface ScreenVelocity {
+  vx: number;
+  vy: number;
+}
+
+function assertFinite(value: number, name: string): void {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${name} must be a finite number, got ${value}`);
+  }
+}
+
+/** 將任意有限角度(度)正規化到 [0, 360)。保證不回傳 -0 或 360。 */
+export function normalizeDeg(deg: number): number {
+  assertFinite(deg, 'deg');
+  return ((deg % 360) + 360) % 360;
+}
+
+/** 兩個角度之間的最短夾角(度),範圍 [0, 180]。 */
+export function angularDistance(a: number, b: number): number {
+  const d = normalizeDeg(a - b);
+  return d > 180 ? 360 - d : d;
+}
+
+/**
+ * 螢幕位移 → φ(度,[0, 360))。
+ * @param dx 螢幕 X 位移(像素)
+ * @param dy 螢幕 Y 位移(像素,向下為正)
+ * 零向量(0, 0)沒有方向,回傳 0。
+ */
+export function screenToPhi(dx: number, dy: number): number {
+  assertFinite(dx, 'dx');
+  assertFinite(dy, 'dy');
+  return normalizeDeg(Math.atan2(dy * ISO_Y_UNSQUASH, dx) * RAD2DEG);
+}
+
+/**
+ * φ(度)與地面速度 → 螢幕速度。
+ * vx = speed·cosφ,  vy = speed·sinφ·0.5
+ * @param speed 地面未壓縮像素/tick。負值代表反向。
+ */
+export function phiToScreenVelocity(phi: number, speed: number): ScreenVelocity {
+  return phiToScreenVelocityInto(phi, speed, { vx: 0, vy: 0 });
+}
+
+/**
+ * 零配置版本:把結果寫入呼叫端提供的 out 物件(給物件池與每 tick 熱路徑使用)。
+ */
+export function phiToScreenVelocityInto(
+  phi: number,
+  speed: number,
+  out: ScreenVelocity,
+): ScreenVelocity {
+  assertFinite(phi, 'phi');
+  assertFinite(speed, 'speed');
+  const rad = phi * DEG2RAD;
+  out.vx = speed * Math.cos(rad);
+  out.vy = speed * Math.sin(rad) * ISO_Y_SCALE;
+  return out;
+}
+```
+
+---
+
+## src/direction.ts
+
+```ts
+/**
+ * direction.ts — 離散方向校準型別、JSON Schema、索引 ↔ φ 轉換
+ *
+ * 嚴禁在此或呼叫端硬編碼偏角。所有「索引 ↔ φ」的對應只由 DirectionCalibration 決定:
+ *   clockwise = true  : φ(i) = dir0WorldAngle + i · step
+ *   clockwise = false : φ(i) = dir0WorldAngle − i · step
+ *   step = 360 / dirCount
+ */
+
+import { angularDistance, normalizeDeg } from './geometry.js';
+
+// ───────────────────────── 型別 ─────────────────────────
+
+export const DIR_COUNTS = [1, 8, 16, 32] as const;
+export type DirCount = (typeof DIR_COUNTS)[number];
+
+export const ROTATION_MODES = ['discrete', 'none', 'free'] as const;
+export type RotationMode = (typeof ROTATION_MODES)[number];
+
+export const CALIBRATION_STATUSES = ['auto-pass', 'needs-review', 'manual-confirmed'] as const;
+export type CalibrationStatus = (typeof CALIBRATION_STATUSES)[number];
+
+export const MEASURE_METHODS = ['auto', 'manual'] as const;
+export type MeasureMethod = (typeof MEASURE_METHODS)[number];
+
+export interface CalibrationMeasure {
+  readonly method: MeasureMethod;
+  /** 擬合最大殘差(度)。 */
+  readonly residualMaxDeg: number;
+  readonly eccentricity: number;
+  /** 0 到 1。 */
+  readonly confidence: number;
+}
+
+export interface DirectionCalibration {
+  /** Missiles.txt 的名稱。 */
+  readonly missileId: string;
+  readonly celFile: string;
+  /** 以 DCC 實際方向數為準。 */
+  readonly dirCount: DirCount;
+  /** 索引 0 對應的 φ(度),範圍 [0, 360)。 */
+  readonly dir0WorldAngle: number;
+  /** 索引遞增時 φ 是否遞增(視覺順時針)。 */
+  readonly clockwise: boolean;
+  readonly rotationMode: RotationMode;
+  readonly measure: CalibrationMeasure;
+  readonly status: CalibrationStatus;
+  readonly notes?: string;
+}
+
+// ───────────────────────── 核心轉換 ─────────────────────────
+
+function assertDirCount(n: number): asserts n is DirCount {
+  if (!(DIR_COUNTS as readonly number[]).includes(n)) {
+    throw new RangeError(`dirCount must be one of ${DIR_COUNTS.join(', ')}, got ${n}`);
+  }
+}
+
+function assertNotFree(c: DirectionCalibration, fn: string): void {
+  if (c.rotationMode === 'free') {
+    throw new Error(
+      `${fn}: rotationMode 'free' has no discrete index; use resolveDirection() instead ` +
+        `(missile: ${c.missileId})`,
+    );
+  }
+}
+
+/**
+ * φ(度)→ 方向索引 ∈ [0, dirCount)。
+ *  - 'none'    → 恆為 0
+ *  - 'discrete'→ 以最近格四捨五入;剛好在半步角平手時取較大索引(模 N)
+ *  - 'free'    → 丟錯
+ * 支援任意實數 φ(含負數與大於 360),輸出必為整數。
+ */
+export function dirIndex(phi: number, calibration: DirectionCalibration): number {
+  assertNotFree(calibration, 'dirIndex');
+  if (!Number.isFinite(phi)) {
+    throw new RangeError(`phi must be a finite number, got ${phi}`);
+  }
+  if (calibration.rotationMode === 'none') return 0;
+
+  const n = calibration.dirCount;
+  assertDirCount(n);
+  if (n === 1) return 0;
+
+  const step = 360 / n;
+  // 先轉成「沿索引遞增方向」的相對角,正規化到 [0, 360) 再 floor,
+  // 這樣負數與正數的平手規則一致(Math.round 對負數的平手行為不同,故不用)。
+  const rel = normalizeDeg(
+    calibration.clockwise ? phi - calibration.dir0WorldAngle : calibration.dir0WorldAngle - phi,
+  );
+  // rel ∈ [0, 360) → floor 結果 ∈ [0, n];n 對應「回繞到 0」
+  return Math.floor(rel / step + 0.5) % n;
+}
+
+/**
+ * 方向索引 → 該格中心的 φ(度,[0, 360))。
+ * index 必須是整數;超出範圍會依 dirCount 回繞(-1 等同 dirCount-1)。
+ * 'none' 回傳 dir0WorldAngle;'free' 丟錯。
+ */
+export function indexToPhi(index: number, calibration: DirectionCalibration): number {
+  assertNotFree(calibration, 'indexToPhi');
+  if (!Number.isInteger(index)) {
+    throw new RangeError(`index must be an integer, got ${index}`);
+  }
+  if (calibration.rotationMode === 'none') return normalizeDeg(calibration.dir0WorldAngle);
+
+  const n = calibration.dirCount;
+  assertDirCount(n);
+
+  const i = ((index % n) + n) % n;
+  const step = 360 / n;
+  const offset = i * step;
+  return normalizeDeg(
+    calibration.clockwise ? calibration.dir0WorldAngle + offset : calibration.dir0WorldAngle - offset,
+  );
+}
+
+export type ResolvedDirection =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'discrete'; readonly index: number; readonly snappedPhi: number }
+  | { readonly kind: 'free'; readonly phi: number };
+
+/**
+ * 統一入口:依 rotationMode 回傳繪製端該怎麼做。
+ * 會配置新物件,適合非熱路徑(載入、除錯疊加層);熱路徑請直接呼叫 dirIndex。
+ */
+export function resolveDirection(phi: number, c: DirectionCalibration): ResolvedDirection {
+  if (!Number.isFinite(phi)) {
+    throw new RangeError(`phi must be a finite number, got ${phi}`);
+  }
+  switch (c.rotationMode) {
+    case 'none':
+      return { kind: 'none' };
+    case 'free':
+      return { kind: 'free', phi: normalizeDeg(phi) };
+    case 'discrete': {
+      const index = dirIndex(phi, c);
+      return { kind: 'discrete', index, snappedPhi: indexToPhi(index, c) };
+    }
+  }
+}
+
+/** 理論 φ 與實際貼圖方向之間的量化誤差上限(度)= 半個離散格。 */
+export function maxQuantizationErrorDeg(dirCount: DirCount): number {
+  return dirCount === 1 ? 180 : 180 / dirCount;
+}
+
+/** 便利函式:φ 被吸附到最近離散格後,與原 φ 的誤差(度)。 */
+export function snapErrorDeg(phi: number, c: DirectionCalibration): number {
+  return angularDistance(phi, indexToPhi(dirIndex(phi, c), c));
+}
+
+// ───────────────────────── JSON Schema ─────────────────────────
+
+export const DIRECTION_CALIBRATION_SCHEMA = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'DirectionCalibration',
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'missileId',
+    'celFile',
+    'dirCount',
+    'dir0WorldAngle',
+    'clockwise',
+    'rotationMode',
+    'measure',
+    'status',
+  ],
+  properties: {
+    missileId: { type: 'string', minLength: 1 },
+    celFile: { type: 'string', minLength: 1 },
+    dirCount: { type: 'integer', enum: [...DIR_COUNTS] },
+    dir0WorldAngle: { type: 'number', minimum: 0, exclusiveMaximum: 360 },
+    clockwise: { type: 'boolean' },
+    rotationMode: { type: 'string', enum: [...ROTATION_MODES] },
+    measure: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['method', 'residualMaxDeg', 'eccentricity', 'confidence'],
+      properties: {
+        method: { type: 'string', enum: [...MEASURE_METHODS] },
+        residualMaxDeg: { type: 'number', minimum: 0 },
+        eccentricity: { type: 'number', minimum: 0 },
+        confidence: { type: 'number', minimum: 0, maximum: 1 },
+      },
+    },
+    status: { type: 'string', enum: [...CALIBRATION_STATUSES] },
+    notes: { type: 'string' },
+  },
+} as const;
+
+// ───────────────────────── 無依賴驗證器(與 Schema 對應) ─────────────────────────
+
+export type ValidationResult =
+  | { readonly ok: true; readonly value: DirectionCalibration }
+  | { readonly ok: false; readonly errors: readonly string[] };
+
+const TOP_KEYS = new Set(Object.keys(DIRECTION_CALIBRATION_SCHEMA.properties));
+const MEASURE_KEYS = new Set(Object.keys(DIRECTION_CALIBRATION_SCHEMA.properties.measure.properties));
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function isFiniteNum(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
+function isOneOf<T extends string | number>(list: readonly T[], v: unknown): v is T {
+  return (list as readonly unknown[]).includes(v);
+}
+
+/** 載入校準 JSON 時使用。不依賴 ajv;規則與 DIRECTION_CALIBRATION_SCHEMA 一致。 */
+export function validateCalibration(value: unknown): ValidationResult {
+  const errors: string[] = [];
+  if (!isRecord(value)) return { ok: false, errors: ['root must be an object'] };
+
+  for (const k of Object.keys(value)) {
+    if (!TOP_KEYS.has(k)) errors.push(`unknown property: ${k}`);
+  }
+  for (const k of DIRECTION_CALIBRATION_SCHEMA.required) {
+    if (!(k in value)) errors.push(`missing required property: ${k}`);
+  }
+
+  if ('missileId' in value && !(typeof value.missileId === 'string' && value.missileId.length > 0))
+    errors.push('missileId must be a non-empty string');
+  if ('celFile' in value && !(typeof value.celFile === 'string' && value.celFile.length > 0))
+    errors.push('celFile must be a non-empty string');
+  if ('dirCount' in value && !isOneOf(DIR_COUNTS, value.dirCount))
+    errors.push(`dirCount must be one of ${DIR_COUNTS.join(', ')}`);
+  if ('dir0WorldAngle' in value) {
+    const a = value.dir0WorldAngle;
+    if (!isFiniteNum(a) || a < 0 || a >= 360) errors.push('dir0WorldAngle must be a number in [0, 360)');
+  }
+  if ('clockwise' in value && typeof value.clockwise !== 'boolean')
+    errors.push('clockwise must be a boolean');
+  if ('rotationMode' in value && !isOneOf(ROTATION_MODES, value.rotationMode))
+    errors.push(`rotationMode must be one of ${ROTATION_MODES.join(', ')}`);
+  if ('status' in value && !isOneOf(CALIBRATION_STATUSES, value.status))
+    errors.push(`status must be one of ${CALIBRATION_STATUSES.join(', ')}`);
+  if ('notes' in value && typeof value.notes !== 'string') errors.push('notes must be a string');
+
+  if ('measure' in value) {
+    const m = value.measure;
+    if (!isRecord(m)) {
+      errors.push('measure must be an object');
+    } else {
+      for (const k of Object.keys(m)) {
+        if (!MEASURE_KEYS.has(k)) errors.push(`unknown property: measure.${k}`);
+      }
+      for (const k of DIRECTION_CALIBRATION_SCHEMA.properties.measure.required) {
+        if (!(k in m)) errors.push(`missing required property: measure.${k}`);
+      }
+      if ('method' in m && !isOneOf(MEASURE_METHODS, m.method))
+        errors.push(`measure.method must be one of ${MEASURE_METHODS.join(', ')}`);
+      if ('residualMaxDeg' in m && !(isFiniteNum(m.residualMaxDeg) && m.residualMaxDeg >= 0))
+        errors.push('measure.residualMaxDeg must be a number >= 0');
+      if ('eccentricity' in m && !(isFiniteNum(m.eccentricity) && m.eccentricity >= 0))
+        errors.push('measure.eccentricity must be a number >= 0');
+      if ('confidence' in m && !(isFiniteNum(m.confidence) && m.confidence >= 0 && m.confidence <= 1))
+        errors.push('measure.confidence must be a number in [0, 1]');
+    }
+  }
+
+  return errors.length === 0
+    ? { ok: true, value: value as unknown as DirectionCalibration }
+    : { ok: false, errors };
+}
+```
+
+---
+
+## src/geometry.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  RAD2DEG,
+  angularDistance,
+  normalizeDeg,
+  phiToScreenVelocity,
+  phiToScreenVelocityInto,
+  screenToPhi,
+} from './geometry.js';
+
+const ANGLES_72 = Array.from({ length: 72 }, (_, i) => i * 5); // 0, 5, ..., 355
+
+/** 錯誤公式:直接用螢幕像素做 atan2(dy, dx),只用於對照測試。 */
+function wrongPhi(dx: number, dy: number): number {
+  return normalizeDeg(Math.atan2(dy, dx) * RAD2DEG);
+}
+
+describe('normalizeDeg', () => {
+  it.each([
+    [0, 0],
+    [360, 0],
+    [-360, 0],
+    [725, 5],
+    [-5, 355],
+    [-725, 355],
+    [359.5, 359.5],
+  ])('normalizeDeg(%f) = %f', (input, expected) => {
+    expect(normalizeDeg(input)).toBeCloseTo(expected, 12);
+  });
+
+  it('never returns -0 or 360', () => {
+    expect(Object.is(normalizeDeg(-0), 0)).toBe(true);
+    expect(Object.is(normalizeDeg(-360), 0)).toBe(true);
+    for (const v of [-1e-300, -1e-14, -1e-17, 359.99999999999994]) {
+      const r = normalizeDeg(v);
+      expect(r).toBeGreaterThanOrEqual(0);
+      expect(r).toBeLessThan(360);
+    }
+  });
+
+  it('throws on non-finite input', () => {
+    expect(() => normalizeDeg(NaN)).toThrow(RangeError);
+    expect(() => normalizeDeg(Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('angularDistance', () => {
+  it('takes the shortest way around the circle', () => {
+    expect(angularDistance(359, 1)).toBeCloseTo(2, 12);
+    expect(angularDistance(1, 359)).toBeCloseTo(2, 12);
+    expect(angularDistance(0, 180)).toBeCloseTo(180, 12);
+    expect(angularDistance(90, 90)).toBe(0);
+  });
+});
+
+describe('screenToPhi', () => {
+  it('maps the four screen axes (Y down => clockwise)', () => {
+    expect(screenToPhi(1, 0)).toBeCloseTo(0, 9);
+    expect(screenToPhi(0, 1)).toBeCloseTo(90, 9); // 螢幕正下方
+    expect(screenToPhi(-1, 0)).toBeCloseTo(180, 9);
+    expect(screenToPhi(0, -1)).toBeCloseTo(270, 9); // 螢幕正上方
+  });
+
+  it('maps the 2:1 iso diagonals to exact 45° multiples', () => {
+    // 螢幕向量 (2, 1) 等距視角下正好是地面 45° 方向
+    expect(screenToPhi(2, 1)).toBeCloseTo(45, 9);
+    expect(screenToPhi(-2, 1)).toBeCloseTo(135, 9);
+    expect(screenToPhi(-2, -1)).toBeCloseTo(225, 9);
+    expect(screenToPhi(2, -1)).toBeCloseTo(315, 9);
+  });
+
+  it('applies the Y ×2 un-squash (not plain atan2)', () => {
+    expect(screenToPhi(1, 1)).toBeCloseTo(Math.atan2(2, 1) * RAD2DEG, 9);
+    expect(screenToPhi(1, 1)).not.toBeCloseTo(45, 1);
+  });
+
+  it('is scale invariant', () => {
+    expect(screenToPhi(3, 2)).toBeCloseTo(screenToPhi(300, 200), 9);
+  });
+
+  it('zero vector returns 0 and always lands in [0, 360)', () => {
+    expect(screenToPhi(0, 0)).toBe(0);
+    for (const [dx, dy] of [[-1, -0], [1, -0], [-0, -1], [1e-300, -1e-300], [-5, 0]] as const) {
+      const p = screenToPhi(dx, dy);
+      expect(p).toBeGreaterThanOrEqual(0);
+      expect(p).toBeLessThan(360);
+    }
+  });
+
+  it('throws on non-finite input', () => {
+    expect(() => screenToPhi(NaN, 0)).toThrow(RangeError);
+    expect(() => screenToPhi(0, Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('round trip: φ -> screen velocity -> φ (72 angles, every 5°)', () => {
+  it.each(ANGLES_72)('φ = %i°', (phi) => {
+    const { vx, vy } = phiToScreenVelocity(phi, 7.3);
+    const back = screenToPhi(vx, vy);
+    expect(angularDistance(back, phi)).toBeLessThan(1e-9);
+  });
+
+  it('covers exactly 72 angles from 0° to 355°', () => {
+    expect(ANGLES_72).toHaveLength(72);
+    expect(ANGLES_72[0]).toBe(0);
+    expect(ANGLES_72[71]).toBe(355);
+  });
+});
+
+describe('speed fidelity', () => {
+  it.each(ANGLES_72)('φ = %i°: ground speed preserved, vy/vx = 0.5·tanφ', (phi) => {
+    const speed = 12;
+    const { vx, vy } = phiToScreenVelocity(phi, speed);
+
+    // 還原地面速度向量(Y×2)後長度應等於 speed
+    expect(Math.hypot(vx, vy * 2)).toBeCloseTo(speed, 9);
+
+    // 螢幕斜率 = 0.5 · tanφ(避開 cosφ≈0 的垂直方向)
+    if (Math.abs(Math.cos((phi * Math.PI) / 180)) > 1e-6) {
+      const tan = Math.tan((phi * Math.PI) / 180);
+      expect(vy / vx).toBeCloseTo(0.5 * tan, 9);
+    }
+  });
+
+  it('pure vertical motion is compressed to half speed', () => {
+    const down = phiToScreenVelocity(90, 10);
+    expect(down.vx).toBeCloseTo(0, 9);
+    expect(down.vy).toBeCloseTo(5, 9); // 向下為正
+    const up = phiToScreenVelocity(270, 10);
+    expect(up.vy).toBeCloseTo(-5, 9);
+  });
+
+  it('pure horizontal motion is not compressed', () => {
+    const right = phiToScreenVelocity(0, 10);
+    expect(right.vx).toBeCloseTo(10, 9);
+    expect(right.vy).toBeCloseTo(0, 9);
+  });
+
+  it('negative speed reverses direction', () => {
+    const f = phiToScreenVelocity(30, 5);
+    const b = phiToScreenVelocity(30, -5);
+    expect(b.vx).toBeCloseTo(-f.vx, 12);
+    expect(b.vy).toBeCloseTo(-f.vy, 12);
+  });
+
+  it('Into-variant writes into and returns the supplied object (zero allocation)', () => {
+    const out = { vx: 0, vy: 0 };
+    const ret = phiToScreenVelocityInto(60, 8, out);
+    expect(ret).toBe(out);
+    const ref = phiToScreenVelocity(60, 8);
+    expect(out.vx).toBe(ref.vx);
+    expect(out.vy).toBe(ref.vy);
+  });
+
+  it('throws on non-finite input', () => {
+    expect(() => phiToScreenVelocity(NaN, 1)).toThrow(RangeError);
+    expect(() => phiToScreenVelocity(0, Infinity)).toThrow(RangeError);
+  });
+});
+
+describe('contrast: why atan2(dy, dx) is wrong', () => {
+  // 設地面角 φ 的螢幕向量為 (cosφ, 0.5·sinφ);錯誤公式直接 atan2(dy, dx)。
+  // 令 t = tanφ,誤差 e 滿足 tan(e) = t / (2 + t²),在 t = √2 取最大值 1/(2√2)。
+  const ANALYTIC_MAX_DEG = Math.atan(1 / (2 * Math.SQRT2)) * RAD2DEG; // ≈ 19.4712°
+
+  it('analytic maximum is ≈ 19.47° (i.e. ≤ 19.5°)', () => {
+    expect(ANALYTIC_MAX_DEG).toBeGreaterThan(19.47);
+    expect(ANALYTIC_MAX_DEG).toBeLessThan(19.5);
+  });
+
+  it('numerical sweep (0.001° resolution) matches the analytic maximum', () => {
+    let maxErr = 0;
+    let argMax = 0;
+    for (let i = 0; i < 360_000; i++) {
+      const phi = i / 1000;
+      const { vx, vy } = phiToScreenVelocity(phi, 1);
+      const err = angularDistance(wrongPhi(vx, vy), phi);
+      if (err > maxErr) {
+        maxErr = err;
+        argMax = phi;
+      }
+    }
+    expect(maxErr).toBeGreaterThan(19.47);
+    expect(maxErr).toBeLessThanOrEqual(19.5);
+    expect(maxErr).toBeCloseTo(ANALYTIC_MAX_DEG, 2);
+
+    // 最大誤差出現在 tanφ = √2 ⇒ φ ≈ 54.7356° 及其對稱位置
+    const expectedArg = Math.atan(Math.SQRT2) * RAD2DEG;
+    const candidates = [expectedArg, 180 - expectedArg, 180 + expectedArg, 360 - expectedArg];
+    expect(Math.min(...candidates.map((c) => angularDistance(argMax, c)))).toBeLessThan(0.01);
+  });
+
+  it('wrong formula is exact only on the four axes', () => {
+    for (const phi of [0, 90, 180, 270]) {
+      const { vx, vy } = phiToScreenVelocity(phi, 1);
+      expect(angularDistance(wrongPhi(vx, vy), phi)).toBeLessThan(1e-9);
+    }
+    const { vx, vy } = phiToScreenVelocity(45, 1);
+    expect(angularDistance(wrongPhi(vx, vy), 45)).toBeGreaterThan(10);
+  });
+
+  it('the correct formula has zero error everywhere (sweep every 0.5°)', () => {
+    for (let phi = 0; phi < 360; phi += 0.5) {
+      const { vx, vy } = phiToScreenVelocity(phi, 1);
+      expect(angularDistance(screenToPhi(vx, vy), phi)).toBeLessThan(1e-9);
+    }
+  });
+});
+```
+
+---
+
+## src/direction.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  DIRECTION_CALIBRATION_SCHEMA,
+  DIR_COUNTS,
+  dirIndex,
+  indexToPhi,
+  resolveDirection,
+  snapErrorDeg,
+  validateCalibration,
+  type DirCount,
+  type DirectionCalibration,
+} from './direction.js';
+import { RAD2DEG, angularDistance, normalizeDeg, phiToScreenVelocity } from './geometry.js';
+
+function makeCal(overrides: Partial<DirectionCalibration> = {}): DirectionCalibration {
+  return {
+    missileId: 'test_missile',
+    celFile: 'test.dcc',
+    dirCount: 16,
+    dir0WorldAngle: 0,
+    clockwise: true,
+    rotationMode: 'discrete',
+    measure: { method: 'manual', residualMaxDeg: 0, eccentricity: 2, confidence: 1 },
+    status: 'manual-confirmed',
+    ...overrides,
+  };
+}
+
+// 可重現的偽隨機(mulberry32)
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const DISCRETE_COUNTS = [8, 16, 32] as const;
+const DIR0S = [0, 45, 135, 160, 270] as const;
+const CLOCKWISES = [true, false] as const;
+
+const COMBOS = DISCRETE_COUNTS.flatMap((n) =>
+  CLOCKWISES.flatMap((cw) => DIR0S.map((d0) => ({ n, cw, d0 }))),
+);
+
+// ───────────────────────── 手算表格(10+ 組) ─────────────────────────
+
+describe('explicit vector table', () => {
+  const rows: Array<[n: DirCount, cw: boolean, d0: number, phi: number, expected: number]> = [
+    [8, true, 0, 0, 0],
+    [8, true, 0, 22.49, 0],
+    [8, true, 0, 22.5, 1], // 平手 → 較大索引
+    [8, true, 0, 337.49, 7],
+    [8, true, 0, 337.5, 0], // 回繞
+    [8, false, 0, 90, 6], // 逆時針:rel = 270°
+    [8, false, 0, 350, 0],
+    [16, true, 160, 160, 0],
+    [16, true, 160, 171.25, 1],
+    [16, true, 160, 148.75, 0], // 平手落在回繞邊界
+    [16, true, 160, 148.74, 15],
+    [16, false, 270, 0, 12],
+    [16, true, 0, -22.5, 15], // 負角度
+    [1, true, 77, 123.4, 0], // 單方向
+  ];
+  it.each(rows)('dirCount=%i cw=%s dir0=%f φ=%f → %i', (n, cw, d0, phi, expected) => {
+    const c = makeCal({ dirCount: n, clockwise: cw, dir0WorldAngle: d0 });
+    expect(dirIndex(phi, c)).toBe(expected);
+  });
+});
+
+// ───────────────────────── 半步角邊界(程式生成) ─────────────────────────
+
+describe.each(COMBOS)('half-step boundaries: dirCount=$n clockwise=$cw dir0=$d0', ({ n, cw, d0 }) => {
+  const c = makeCal({ dirCount: n, clockwise: cw, dir0WorldAngle: d0 });
+  const step = 360 / n;
+  const s = cw ? 1 : -1; // 索引遞增時 φ 的移動方向
+
+  it('index flips exactly at every half-step (±0.5°), ties go to the next index', () => {
+    for (let k = 0; k < n; k++) {
+      const boundary = d0 + s * (k + 0.5) * step; // 索引 k 與 k+1 的分界
+      expect(dirIndex(boundary - s * 0.5, c)).toBe(k);
+      expect(dirIndex(boundary + s * 0.5, c)).toBe((k + 1) % n);
+      expect(dirIndex(boundary, c)).toBe((k + 1) % n);
+    }
+  });
+
+  it('every cell centre and ±0.49·step around it map to the same index', () => {
+    for (let i = 0; i < n; i++) {
+      const centre = indexToPhi(i, c);
+      expect(dirIndex(centre, c)).toBe(i);
+      expect(dirIndex(centre + 0.49 * step, c)).toBe(i);
+      expect(dirIndex(centre - 0.49 * step, c)).toBe(i);
+    }
+  });
+
+  it('indexToPhi(dirIndex(φ)) is within half a step of φ (every 5° and off-grid 0.37° offsets)', () => {
+    for (let phi = 0; phi < 360; phi += 5) {
+      for (const p of [phi, phi + 0.37]) {
+        expect(snapErrorDeg(p, c)).toBeLessThanOrEqual(step / 2 + 1e-9);
+      }
+    }
+  });
+
+  it('index 0 sits at dir0WorldAngle and increments in the declared direction', () => {
+    expect(angularDistance(indexToPhi(0, c), d0)).toBeLessThan(1e-9);
+    expect(angularDistance(indexToPhi(1, c), d0 + s * step)).toBeLessThan(1e-9);
+  });
+});
+
+// ───────────────────────── wrap-around 整數安全 ─────────────────────────
+
+describe('wrap-around & integer safety', () => {
+  const SPECIAL = [
+    -0, 0, 360, -360, 720.5, -720.5, 1e-300, -1e-300, -1e-14, 359.99999999999994,
+    Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER, 1e6, -1e6,
+  ];
+
+  it.each(COMBOS)('special values: n=$n cw=$cw dir0=$d0', ({ n, cw, d0 }) => {
+    const c = makeCal({ dirCount: n, clockwise: cw, dir0WorldAngle: d0 });
+    for (const phi of SPECIAL) {
+      const idx = dirIndex(phi, c);
+      expect(Number.isInteger(idx)).toBe(true);
+      expect(Object.is(idx, -0)).toBe(false);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(n);
+    }
+  });
+
+  it('fuzz: 20,000 random φ ∈ [-1e6, 1e6] across all combos stay in [0, n)', () => {
+    const rnd = mulberry32(0xd2d2d2);
+    for (let i = 0; i < 20_000; i++) {
+      const combo = COMBOS[Math.floor(rnd() * COMBOS.length)]!;
+      const c = makeCal({ dirCount: combo.n, clockwise: combo.cw, dir0WorldAngle: combo.d0 });
+      const phi = (rnd() * 2 - 1) * 1e6;
+      const idx = dirIndex(phi, c);
+      expect(Number.isInteger(idx)).toBe(true);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(idx).toBeLessThan(combo.n);
+    }
+  });
+
+  it('φ and φ ± 360k give the same index', () => {
+    const c = makeCal({ dirCount: 16, clockwise: false, dir0WorldAngle: 160 });
+    for (const phi of [0, 13.7, 99, 200.2, 359]) {
+      const base = dirIndex(phi, c);
+      expect(dirIndex(phi + 360, c)).toBe(base);
+      expect(dirIndex(phi - 720, c)).toBe(base);
+    }
+  });
+
+  it('indexToPhi wraps out-of-range integer indices and always returns [0, 360)', () => {
+    const c = makeCal({ dirCount: 8, clockwise: true, dir0WorldAngle: 45 });
+    expect(angularDistance(indexToPhi(-1, c), indexToPhi(7, c))).toBeLessThan(1e-9);
+    expect(angularDistance(indexToPhi(8, c), indexToPhi(0, c))).toBeLessThan(1e-9);
+    expect(angularDistance(indexToPhi(-17, c), indexToPhi(7, c))).toBeLessThan(1e-9);
+    for (let i = -40; i <= 40; i++) {
+      const p = indexToPhi(i, c);
+      expect(p).toBeGreaterThanOrEqual(0);
+      expect(p).toBeLessThan(360);
+    }
+  });
+});
+
+// ───────────────────────── 特殊模式與錯誤處理 ─────────────────────────
+
+describe('rotationMode & error handling', () => {
+  it('dirCount = 1 always returns 0 for any φ and both clockwise values', () => {
+    for (const cw of CLOCKWISES) {
+      const c = makeCal({ dirCount: 1, clockwise: cw, dir0WorldAngle: 123 });
+      for (const phi of [0, 90, 180, 270, -33, 1e5]) expect(dirIndex(phi, c)).toBe(0);
+    }
+  });
+
+  it("'none' returns index 0 and dir0 as φ", () => {
+    const c = makeCal({ rotationMode: 'none', dirCount: 16, dir0WorldAngle: 40 });
+    expect(dirIndex(200, c)).toBe(0);
+    expect(indexToPhi(5, c)).toBeCloseTo(40, 12);
+  });
+
+  it("'free' throws on dirIndex / indexToPhi", () => {
+    const c = makeCal({ rotationMode: 'free' });
+    expect(() => dirIndex(10, c)).toThrow(/free/);
+    expect(() => indexToPhi(0, c)).toThrow(/free/);
+  });
+
+  it('resolveDirection dispatches by rotationMode', () => {
+    const d = resolveDirection(100, makeCal({ dirCount: 8, dir0WorldAngle: 0 }));
+    expect(d).toEqual({ kind: 'discrete', index: 2, snappedPhi: 90 });
+    expect(resolveDirection(100, makeCal({ rotationMode: 'none' }))).toEqual({ kind: 'none' });
+    const f = resolveDirection(-10, makeCal({ rotationMode: 'free' }));
+    expect(f.kind).toBe('free');
+    if (f.kind === 'free') expect(f.phi).toBeCloseTo(350, 12);
+  });
+
+  it('rejects invalid dirCount, non-finite φ and non-integer index', () => {
+    expect(() => dirIndex(0, makeCal({ dirCount: 12 as never }))).toThrow(RangeError);
+    expect(() => indexToPhi(0, makeCal({ dirCount: 4 as never }))).toThrow(RangeError);
+    expect(() => dirIndex(NaN, makeCal())).toThrow(RangeError);
+    expect(() => dirIndex(Infinity, makeCal())).toThrow(RangeError);
+    expect(() => indexToPhi(1.5, makeCal())).toThrow(RangeError);
+    expect(() => indexToPhi(NaN, makeCal())).toThrow(RangeError);
+  });
+});
+
+// ───────────────────────── 端到端:螢幕向量 → 方向索引 ─────────────────────────
+
+describe('end-to-end with screen vectors', () => {
+  it('dirIndex(screenToPhi(velocity)) recovers the cell for every combo and every 5°', () => {
+    for (const { n, cw, d0 } of COMBOS) {
+      const c = makeCal({ dirCount: n, clockwise: cw, dir0WorldAngle: d0 });
+      for (let phi = 0; phi < 360; phi += 5) {
+        const { vx, vy } = phiToScreenVelocity(phi, 3);
+        const phiBack = normalizeDeg(Math.atan2(vy * 2, vx) * RAD2DEG);
+        expect(dirIndex(phiBack, c)).toBe(dirIndex(phi, c));
+      }
+    }
+  });
+
+  it('using the wrong formula atan2(dy, dx) picks a wrong cell for some angles (16 dirs)', () => {
+    const c = makeCal({ dirCount: 16 });
+    let mismatches = 0;
+    for (let phi = 0; phi < 360; phi += 1) {
+      const { vx, vy } = phiToScreenVelocity(phi, 1);
+      const wrong = normalizeDeg(Math.atan2(vy, vx) * RAD2DEG);
+      if (dirIndex(wrong, c) !== dirIndex(phi, c)) mismatches++;
+    }
+    expect(mismatches).toBeGreaterThan(0);
+  });
+});
+
+// ───────────────────────── JSON Schema 與驗證器 ─────────────────────────
+
+describe('schema & validator', () => {
+  it('schema enums stay in sync with exported constants', () => {
+    expect([...DIRECTION_CALIBRATION_SCHEMA.properties.dirCount.enum]).toEqual([...DIR_COUNTS]);
+    expect(DIRECTION_CALIBRATION_SCHEMA.properties.dir0WorldAngle.exclusiveMaximum).toBe(360);
+  });
+
+  it('accepts a valid calibration', () => {
+    const r = validateCalibration(makeCal());
+    expect(r.ok).toBe(true);
+  });
+
+  it('accepts optional notes', () => {
+    expect(validateCalibration(makeCal({ notes: 'hand verified' })).ok).toBe(true);
+  });
+
+  const bad: Array<[string, unknown]> = [
+    ['non-object root', 42],
+    ['dirCount 12', { ...makeCal(), dirCount: 12 }],
+    ['dirCount as string', { ...makeCal(), dirCount: '16' }],
+    ['dir0 = 360', { ...makeCal(), dir0WorldAngle: 360 }],
+    ['dir0 = -1', { ...makeCal(), dir0WorldAngle: -1 }],
+    ['dir0 NaN', { ...makeCal(), dir0WorldAngle: NaN }],
+    ['clockwise as string', { ...makeCal(), clockwise: 'true' }],
+    ['bad rotationMode', { ...makeCal(), rotationMode: 'spin' }],
+    ['bad status', { ...makeCal(), status: 'ok' }],
+    ['confidence 1.5', { ...makeCal(), measure: { ...makeCal().measure, confidence: 1.5 } }],
+    ['negative residual', { ...makeCal(), measure: { ...makeCal().measure, residualMaxDeg: -1 } }],
+    ['bad measure.method', { ...makeCal(), measure: { ...makeCal().measure, method: 'guess' } }],
+    ['unknown property', { ...makeCal(), extra: 1 }],
+    ['unknown measure property', { ...makeCal(), measure: { ...makeCal().measure, foo: 1 } }],
+    ['empty missileId', { ...makeCal(), missileId: '' }],
+  ];
+  it.each(bad)('rejects: %s', (_label, value) => {
+    const r = validateCalibration(value);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.length).toBeGreaterThan(0);
+  });
+
+  it('reports every missing required property', () => {
+    const r = validateCalibration({});
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      for (const k of DIRECTION_CALIBRATION_SCHEMA.required) {
+        expect(r.errors.some((e) => e.includes(k))).toBe(true);
+      }
+    }
+  });
+});
+```
+
+---
+
+## 執行方式
+
+```bash
+npm install
+npm run typecheck   # tsc --noEmit,strict
+npm test            # vitest run
+```
+
+## 測試覆蓋對照
+
+| 你的要求 | 對應測試 |
+|---|---|
+| 72 個角度往返可逆 | `round trip: φ -> screen velocity -> φ`,容差 1e-9° |
+| 所有離散半步角邊界 | `half-step boundaries`:3 種 dirCount × 2 方向 × 5 種 dir0 = 30 組,共 560 個邊界,每個測 `−0.5°`、`+0.5°`、剛好平手三種輸入 |
+| 速度保真 | `speed fidelity`:地面速度長度保持、`vy/vx = 0.5·tanφ`、純垂直減半、純水平不變 |
+| `atan2(dy,dx)` 對照 | 解析式最大值 `atan(1/(2√2)) = 19.4712°`,再用 0.001° 掃描驗證,最大誤差位置落在 `tanφ=√2` |
+| wrap-around 整數安全 | 特殊值(`-0`、`1e-300`、`MAX_SAFE_INTEGER` 等)加 2 萬次種子化 fuzz,保證結果是 `[0, n)` 的整數且不是 `-0` |
+
+## 對照測試的一個細節
+
+以前我說「最大誤差約 19.5°」,精確值是 **19.4712°**。測試斷言 `> 19.47` 且 `≤ 19.5`。我沒有把閾值鎖成「恰好等於 19.5」,因為那是不成立的。
+
+## 下一步
+
+1. 先執行測試。若有失敗,貼錯誤訊息給我。
+2. 通過後進入第 2 輪(`calibrate.ts`)。它會直接 `import { screenToPhi, normalizeDeg } from './geometry.js'` 和 `DirectionCalibration` 型別。
+3. 第 2 輪我需要你提供:實際 DCC 解碼後每個方向行的代表幀 `ImageData` 的取得方式,以及一兩個已知方向的箭矢素材。這樣我才能判斷自動量測在真實素材上是否可行,而不只是合成圖。

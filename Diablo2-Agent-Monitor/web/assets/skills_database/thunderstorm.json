@@ -1,0 +1,38 @@
+{
+  "id": "thunderstorm",
+  "name": "Thunder Storm",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "ThunderstormCastoperate",
+    "celFile": "ThunderstormCast_operate",
+    "speed": 2.0,
+    "range": 9.0,
+    "size": 3,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 11,
+    "max": 110,
+    "level": 1,
+    "formula": "1 + 10x7 + 10x8 + 11x4",
+    "maxFormula": "100 + 10x7 + 10x8 + 11x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 19
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/ThunderstormCastoperate.png",
+    "numbers": "assets/skills/data/thunderstorm.json（Skills.txt / Missiles.txt）"
+  }
+}

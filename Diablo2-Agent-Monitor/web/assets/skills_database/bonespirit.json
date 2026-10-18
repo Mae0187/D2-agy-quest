@@ -1,0 +1,42 @@
+{
+  "id": "bonespirit",
+  "name": "Bone Spirit",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "BoneSpirit",
+    "celFile": "BoneSpirit",
+    "speed": 12.0,
+    "range": 128.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": {
+    "asset": "BoneSpiritExplode",
+    "celFile": "BoneSpiritExplode",
+    "blend": "lighter"
+  },
+  "damage": {
+    "min": 36,
+    "max": 47,
+    "level": 1,
+    "formula": "20 + 16x7 + 17x8 + 18x4",
+    "maxFormula": "30 + 17x7 + 18x8 + 19x4",
+    "type": "mag"
+  },
+  "cost": {
+    "mana": 24
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/BoneSpirit.png",
+    "numbers": "assets/skills/data/bonespirit.json（Skills.txt / Missiles.txt）"
+  }
+}

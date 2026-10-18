@@ -1,0 +1,38 @@
+{
+  "id": "deathsentry",
+  "name": "Death Sentry",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "DeathSentryMissile",
+    "celFile": "DeathSentryMissile",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 58,
+    "level": 1,
+    "formula": "1 + 0x7 + 0x8 + 0x4",
+    "maxFormula": "50 + 8x7 + 14x8 + 22x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 20
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/DeathSentryMissile.png",
+    "numbers": "assets/skills/data/deathsentry.json（Skills.txt / Missiles.txt）"
+  }
+}

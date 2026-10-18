@@ -1,0 +1,38 @@
+{
+  "id": "inferno",
+  "name": "Inferno",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "Flamethrower",
+    "celFile": "Flamethrower",
+    "speed": 12.0,
+    "range": 30.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 56,
+    "max": 88,
+    "level": 1,
+    "formula": "32 + 24x7 + 26x8 + 28x4",
+    "maxFormula": "64 + 24x7 + 27x8 + 29x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 36
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/Flamethrower.png",
+    "numbers": "assets/skills/data/inferno.json（Skills.txt / Missiles.txt）"
+  }
+}

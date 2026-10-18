@@ -1,0 +1,100 @@
+<title>Joel, Alkalund & Nefarius' Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#6633FF" alink="#336699"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou, Alkalund and Nefarius<br>
+  for The Phrozen Keep</h4>
+<h2><u>Chapter Three : Animation Conversion - Part One :</u></h2>
+
+<p>In the previous chapters you were told which tools are needed to work an animation conversion, introduced to the DCC file name conventions, and the concepts of animation directions, framecounts, and offsets. Now, it is time to actually start working with the tools previously mentioned, and convert your first monster animation.</p>
+<p>This chapter will cover the process of converting a monster animation from an Infinity Engine Game, from the very beginning, using an example. Instructions will be presented in a step-by-step style, and zip files containing reference files for this example are provided. You can compare your work with these reference files, and see if everything was done properly.</p>
+
+<h4><i><u>3.1 Step One : Extracting the Original Animations :</u></i></h4>
+
+<p>The animation to be used in this example is the new green goblin from Icewind Dale II, a small but well designed creature (if you don't own Icewid Dale II, don't worry; use the files provided in the step1.zip that came with the tutorial). Later this new animation will be used to replace the Rat Man token in Diablo II.</p>
+
+<p align="center"><a href="images/chapter3/gobiwd2.gif"><img src="images/chapter3/minigob.gif" width="255" height="191" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+<p>First thing to be done is extract the goblin's animations from the Icewind Dale II game files. We'll use Infinity Explorer to accomplish this. Just so you don't waste much time looking for the files, they're located inside the ANMGobl.bif file, under the reference of MGO1<b>***</b>.</p>
+
+<p align="center"><a href="images/chapter3/step10.jpg"><img src="images/chapter3/ministep10.jpg" width="255" height="224" border="0" alt="Click to Enlarge."></a></p>
+<p>As we can see, the Goblin's animations are scattered through many subfolders inside the 
+  BIF file, organized much in the same way as D2's Token system discussed before. It isn't hard to figure MGOB1<b>A1</b> stands for the goblin's attack 1 animation, MGOB1<b>GH</b> stands for the gethit animation, and so on for example.</p>
+<p>Each animation mode is divided in two parts here; for example, MGOB1<b>A1</b> and MGOB1<b>A1E</b> contain the attack1 animations of the goblin. The first contains directions number 5, 1, 6, 2, 7. The second contains directions number 3, 8, 4. In older Infinity Engine games directions 3, 8, and 4 are generally missing (as they were built in-game by <i>mirroring</i> directions 2, 6, and 1 respectively). In those cases, you will have to create the missing directions later, with the aid of a gif editor.</p> 
+<p>Now, use the navigation buttons to find out all the needed animations and extract them as Animated GIF files using the <b>Extract</b> Button. For each mode you'll extract, you must end up with 5 or 8 files, depending on how much directions are missing. To organize the process a little bit, here are some tips :</p>
+<ul>
+  <li>Create a folder with the name of the monster you're extracting. In our example, we need a folder called <b>Goblin</b>.</li>
+  <li>Save all the animated gifs inside this folder, using some sort of naming convention (It is importan that you are able to recognize which direction and mode a gif file is by its filename). As examples, save the direction number 3 of the attack1 animation as a1<b>3</b>.gif, and the direction number 7 of the neutral animation as nu<b>7</b>.gif.</li>
+</ul>
+<p>The following screenshot gives an idea of how things should be organized in the end of the process:</p>
+<p align="center"><a href="images/chapter3/step11.jpg"><img src="images/chapter3/ministep11.jpg" width="255" height="234" border="0" alt="Click to Enlarge."></a></p>
+<p><br>
+Some old Infinity Engine games store every animation with 16 directions. In order to use these animations in Diablo II, be sure to extract the correct 8 directions (usually, this is achieved by extracting only one of every two directions; a quick inspection should give you the idea).
+<p><a href="files/chapter3/goblin.zip">Here is a zip file containing ALL the extracted 
+  GIF files of the IWD 2 Goblin, use it as reference from now on.</a></p>
+<p>&nbsp;</p>
+<h4><i><u>3.2 Step Two : Creating the Final GIF Files :</u></i></h4>
+
+<p>Before we continue, if you're worried about the fact this step-by-step chapter has only 2 steps, <i>don't be</i>. It is really that easy!</p>
+<p>In the previous step, several animated GIF files were extracted from IWD2, each one corresponding to a direction of one of the animation modes of the Goblin. In this step, you will learn how to glue all the directions together and create the final GIF files for each of the animation modes, in a way they will be compatible with Diablo II.</p>
+<p>Gamani GIF Movie Gear is the Software we will be using. Make sure you have explored this software for a little while, before we proceed. Check out the menus, the buttons and all that, as they will be mentioned during the explanation. Good? Ok then, let's begin with the attack1 animation of the goblin:</p>
+
+<p>Open Gamani, go to the <b>File</b> menu, and select the <b><i>Insert Frame(s)</i></b> option (or press CTRL+I, which amounts to the same thing). Select your Goblin folder from the folder list. You should see then a list with all the GIF files you extracted in the previous step.</p>
+<p>Now, select all GIFS from the attack1 mode, in order (click on a1<b>1</b>.gif, hold the SHIFT key on the keyboard, and then click on a1<b>8</b>.gif). You will see something like this:</p>
+
+<p align="center"><a href="images/chapter3/step20.jpg"><img src="images/chapter3/ministep20.jpg" width="255" height="191" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+Press the <b>Open</b> button. Gamani will create a new GIF animation, with all the frames from all the directions you specified, like this:
+
+<p align="center"><a href="images/chapter3/step21.jpg"><img src="images/chapter3/ministep21.jpg" width="255" height="184" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+<p>The animation may look ok, but it is far from perfection. There are some things we need to correct, such as the size of the frames, the background color, and remove the goblin's shadow (which isn't needed since Diablo II can create a shadow for the monster during the game).</p>
+
+<p>The first thing to be done is <i>Optimize</i> the animation. Go to the <b>Animation</b> menu, and select the <b><i>Optimize...</i></b> option (or press CTRL+T on the keyboard, which is the same thing). The <i>Optimize Animation</i> window will appear. There are some important options to be selected here, namely</p>
+<ul>
+  <li>Shrink palettes (global and local)</li>
+  <li>Remove local palettes</li>
+  <li>Create a global meta-palette</li>
+  <li>Shrink frames to smallest needed rectangle</li>
+</ul>
+
+The following screenshot shows you what you should be seeing, and what options to select:
+
+<p align="center"><a href="images/chapter3/step22.jpg"><img src="images/chapter3/ministep22.jpg" width="255" height="154" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+<p>Press the <b>OK</b> button to apply the changes. Don't worry if the animation may look like it wasn't changed, the changes are not apparent at this point.</p>
+<p>Next, we are going to change the background and the shadow color. Go to the <b>Animation</b> menu, and select the <b><i>Properties...</i></b> option (there is also a button for the animation properties, in case you noticed). Go to the <i>Animation</i> Tab, and click on the <b>Edit</b> button, as in the screenshot:</p>
+
+<p align="center"><a href="images/chapter3/step23.jpg"><img src="images/chapter3/ministep23.jpg" width="255" height="289" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+The <i>Edit Palette</i> window will appear. Now, the shadow's color needs to be selected. To do this, simply click on the shadow of the goblin image, or select the first color in the palette, as in the screenshot below:
+
+<p align="center"><a href="images/chapter3/step24.jpg"><img src="images/chapter3/ministep24.jpg" width="255" height="192" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+The RGB fields of this color read 0,0,0 (pure black). You will now change them to 170,170,170, which is the background color  Diablo II uses. Once you've done that, select the goblin's background color from the image (or select the last color in the palette), and also change its RGB values to 170,170,170. Once again, a screenshot to visualize the process:
+
+<p align="center"><a href="images/chapter3/step25.jpg"><img src="images/chapter3/ministep25.jpg" width="255" height="192" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+<p>Apply the changes with the <b>OK</b> button. Now, it is time to <i>Unoptimize</i> the animation, to make all the frames have the same size, and to merge the shadow with the background. Go to the <b>Animation</b> menu, and select the <b><i>Unoptimize</i></b> option. You will notice a change in the background color of the frames, like this:</p>
+
+<p align="center"><a href="images/chapter3/step26.jpg"><img src="images/chapter3/ministep26.jpg" width="255" height="183" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+<p>We are almost done with the changes. For the finishing touch, go to the <b>Animation</b> menu, and select the <b><i>Properties</i></b> option. The Animation Properties window will appear, go to the <i>Global Frame</i> tab:</p>
+
+<p align="center"><a href="images/chapter3/step27.jpg"><img src="images/chapter3/ministep27.jpg" width="255" height="289" border="0" alt="Click to Enlarge."></a></p>
+<p>&nbsp;</p>
+
+<p>In the Animation box at the bottom, select <b>Background Color</b> as in the screenshot above. Click <b>Ok</b> to apply the changes. Congratulations, the goblin's attack1 final GIF is ready! Don't forget to save your work, as goblin_attack1.gif or something like that.
+
+<p>The other animation modes are left as an exercise to the reader. Remember that the monster needs a <i>corpse</i> animation, composed of 8 frames, 1 for each direction. In order to create a corpse animation for the goblin, simply use the last frame of each direction of its death animation (start a new animation, insert the frames from the death animation, and delete all frames but the last one from each direction). Easy isn't it?</p>
+
+<p>When you have all the final GIFs done, you're ready to proceed to the next 
+  chapter; it will cover how to save the animations as .dcc files that Diablo 
+  II can use, and how to find the correct offsets for them.
+<p>Now head to the Next Section : <a href="chapter4.html">Converting Animations 
+  - Part II.</a>

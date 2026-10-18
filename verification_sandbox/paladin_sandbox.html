@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    if (window.location.protocol === 'file:') {
+      const base = document.createElement('base');
+      base.href = '../Diablo2-Agent-Monitor/web/';
+      document.head.appendChild(base);
+    }
+  </script>
+  <title>聖騎士 (Paladin) 原廠 MPQ 技能實機驗證沙盒 (Port 8766 - D2 Engine)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: #060709;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .header { margin-bottom: 12px; text-align: center; }
+    .header h1 {
+      font-size: 22px; color: #F59E0B;
+      text-shadow: 0 0 10px rgba(245,158,11,0.4);
+      margin-bottom: 4px; letter-spacing: 1px;
+    }
+    .header p { font-size: 13px; color: #94A3B8; }
+    .control-deck {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 1000px; margin-bottom: 8px; gap: 12px;
+    }
+    .element-tabs {
+      display: flex; gap: 6px;
+      background: #111827; padding: 6px 10px;
+      border-radius: 8px; border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+    }
+    .tab-btn {
+      background: #1E293B; color: #94A3B8;
+      border: 1px solid #334155; padding: 7px 14px;
+      border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 700; transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab-btn .tab-key {
+      font-size: 11px; background: rgba(0,0,0,0.3);
+      padding: 1px 5px; border-radius: 3px; color: #64748B;
+    }
+    .tab-btn:hover { color: #F1F5F9; background: #334155; }
+    .tab-btn.active.combat {
+      background: linear-gradient(180deg, #78350F 0%, #451A03 100%);
+      color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+    }
+    .tab-btn.active.combat .tab-key { color: #FCD34D; }
+    .tab-btn.active.aura {
+      background: linear-gradient(180deg, #1E3A8A 0%, #0F172A 100%);
+      color: #E0E7FF; border-color: #6366F1;
+      box-shadow: 0 0 12px rgba(99, 102, 241, 0.45);
+    }
+    .tab-btn.active.aura .tab-key { color: #A5B4FC; }
+
+    .deck-utils { display: flex; gap: 8px; align-items: center; }
+    .util-btn {
+      background: #1F2937; color: #D1D5DB; border: 1px solid #374151;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .util-btn:hover { background: #374151; color: #FFF; }
+    .util-btn.active { background: #047857; border-color: #10B981; color: #FFF; }
+
+    .skills-deck {
+      display: flex; gap: 8px; width: 1000px;
+      background: #111827; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #374151; margin-bottom: 10px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      flex-wrap: wrap;
+    }
+    .skill-card-btn {
+      background: #1E293B; color: #D1D5DB; border: 1px solid #334155;
+      padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .skill-card-btn:hover:not(:disabled) {
+      background: #374151; color: #FFF; border-color: #9CA3AF;
+    }
+    .skill-card-btn.active {
+      background: #B45309; color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245,158,11,0.5);
+    }
+    .skill-card-btn.active.aura {
+      background: #4338CA; color: #EEF2FF; border-color: #818CF8;
+      box-shadow: 0 0 12px rgba(129,140,248,0.5);
+    }
+
+    .canvas-container {
+      position: relative;
+      border: 2px solid #374151; border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
+      overflow: hidden; background: #0B0D11;
+    }
+    canvas { display: block; cursor: crosshair; }
+
+    .footer {
+      margin-top: 12px;
+      display: flex; gap: 20px; font-size: 12px; color: #64748B;
+      background: #0F172A; padding: 6px 16px;
+      border-radius: 6px; border: 1px solid #1E293B;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .key-badge {
+      background: #334155; color: #F1F5F9; padding: 2px 6px;
+      border-radius: 4px; font-family: monospace; font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 全面停用音效 (依使用者指令強制靜音) -->
+  <script>window.__D2_DISABLE_AUDIO__ = true;</script>
+
+  <div class="header">
+    <h1>🛡️ 聖騎士 (Paladin) 原廠 MPQ 技能實機驗證沙盒</h1>
+    <p>25Hz 固定邏輯步長 | 原廠 DCC 圖集與覆蓋層 | 100% 暴雪原版判定 | 雙層靈氣脈衝與傷害反饋</p>
+  </div>
+
+  <div class="control-deck">
+    <div class="element-tabs">
+      <button class="tab-btn active combat" id="tab-combat" onclick="switchCategory('combat')">
+        <span>⚔️ 作戰技能</span> <span class="tab-key">Tab</span>
+      </button>
+      <button class="tab-btn aura" id="tab-auras" onclick="switchCategory('auras')">
+        <span>🌟 攻擊與防禦靈氣</span> <span class="tab-key">[Q]</span>
+      </button>
+    </div>
+
+    <div class="deck-utils">
+      <button id="btn-toggle-run" class="util-btn">🏃 走跑: 奔跑中 [Shift]</button>
+      <button id="btn-inspect-16dir" class="util-btn">🔄 [R] 16向自轉巡檢: 關閉</button>
+      <button id="btn-cycle-armor" class="util-btn">🛡️ [T] 裝甲: 輕裝</button>
+      <div style="display: flex; align-items: center; gap: 4px; background: #1F2937; border: 1px solid #374151; padding: 4px 8px; border-radius: 6px;">
+        <span style="font-size: 11px; color: #94A3B8;">方向:</span>
+        <button id="btn-dir-prev" class="util-btn" style="padding: 2px 6px; font-size: 11px;">◀</button>
+        <span id="hud-dir-display" style="color: #FCD34D; font-weight: bold; font-size: 12px; min-width: 80px; text-align: center;">0 正南</span>
+        <button id="btn-dir-next" class="util-btn" style="padding: 2px 6px; font-size: 11px;">▶</button>
+      </div>
+      <button id="btn-spawn-dummies" class="util-btn">👾 [G] 召喚怪群</button>
+      <button id="btn-toggle-debug" class="util-btn active">🛠️ [D] 除錯錨點</button>
+    </div>
+  </div>
+
+  <!-- 當前系別技能動作列 -->
+  <div class="skills-deck" id="skills-deck"></div>
+
+  <div class="main-area">
+    <div class="canvas-container">
+      <canvas id="paladin-canvas" width="1000" height="600"></canvas>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>🖱️ <span class="key-badge">左鍵點擊地面 / 右鍵</span> 走位尋路 | <span class="key-badge">左鍵點擊怪物</span> 施展選中技能 (重擊需身前 90px 內，過遠自動靠近)</div>
+    <div>⌨️ <span class="key-badge">WASD</span> 鍵盤方向自由移動走位 | <span class="key-badge">Shift</span> 切換走跑模式</div>
+    <div>🛡️ <span class="key-badge">1~3</span> 切換作戰技能 (1 重擊 / 2 衝鋒 / 3 神聖之盾)</div>
+    <div>🌟 <span class="key-badge">Q</span> 輪轉靈氣池 (1 神聖火焰 / 2 神聖冰凍 / 3 神聖衝擊 / 4 無靈氣)</div>
+    <div>🔄 <span class="key-badge">R</span> 16方向巡檢 | <span class="key-badge">T</span> 4階裝甲切換 | <span class="key-badge">G</span> 重生怪群假人 | <span class="key-badge">D</span> 開關碰撞範圍圈</div>
+  </div>
+
+  <!-- 引入真實角色控制器與聖騎士 16 方向動作圖集配置 -->
+  <script src="js/direction_controller.js"></script>
+  <script src="js/cast_sockets.js"></script>
+  <script src="assets/characters/paladin/manifest.js"></script>
+  <script src="assets/characters/paladin/light/manifest.js"></script>
+  <script src="assets/characters/paladin/medium/manifest.js"></script>
+  <script src="assets/characters/paladin/heavy/manifest.js"></script>
+  <script src="assets/characters/paladin/heavy_tower/manifest.js"></script>
+  <script src="assets/characters/paladin/light_holyshield/manifest.js"></script>
+  <script src="assets/characters/paladin/medium_holyshield/manifest.js"></script>
+  <script src="assets/characters/paladin/heavy_holyshield/manifest.js"></script>
+  <script src="assets/skills/paladin/holy_shield/manifest.js"></script>
+  <script src="assets/fx/fx_manifest.js"></script>
+  <script src="js/skills_manifest.js"></script>
+  <script src="js/character_controller.js"></script>
+
+  <script>
+    // ── 聖騎士《全角色技能清單與實裝選擇表.md》指定實裝 [x] 技能與靈氣 ──
+    const PALADIN_COMBAT_SKILLS = [
+      { id: 'smite', key: '1', icon: '🛡️', name: '重擊 (Smite - 原廠盾牌衝撞近戰打擊必中昏眩)', isAttack: true },
+      { id: 'charge', key: '2', icon: '💨', name: '衝鋒 (Charge - 高速直線突進重撞)', isAttack: true },
+      { id: 'holy_shield', key: '3', icon: '🌟', name: '神聖之盾 (Holy Shield - 手盾一體化身金色神盾 原廠星芒閃爍)', isAttack: false }
+    ];
+
+    const PALADIN_AURAS = [
+      { id: 'holyfire', key: '1', icon: '🔥', name: '神聖火焰 (Holy Fire - 烈火靈氣 範圍火傷)' },
+      { id: 'holyfreeze', key: '2', icon: '❄️', name: '神聖冰凍 (Holy Freeze - 霜雪雪花 群體緩速)' },
+      { id: 'holyshock', key: '3', icon: '⚡', name: '神聖衝擊 (Holy Shock - 高壓電弧 天雷直劈)' },
+      { id: 'none', key: '4', icon: '❌', name: '無靈氣 (None)' }
+    ];
+
+    let currentCategory = 'combat'; // 'combat' | 'auras'
+    let currentSkillId = 'smite';
+    let currentAuraId = 'holyfire';
+    let debugMode = true;
+    let inspect16DirActive = false;
+    let currentArmorIndex = 0;
+    const armorTiers = ['light', 'medium', 'heavy', 'heavy_tower'];
+    const armorNames = ['輕裝 (圓盾)', '中裝 (鳶盾)', '重裝·紋章盾 (冷金屬銀十字飾紋盾)', '重裝·塔盾 (黑鐵高塔盾)'];
+
+    // 假人木人與浮動文字系統
+    const dummies = [];
+    const floatingTexts = [];
+    const overlays = [];
+    window.__paladinDummies = dummies;
+    window.__floatingTexts = floatingTexts;
+
+    function initDummies() {
+      dummies.length = 0;
+      const coords = [
+        { x: 500, y: 250 }, // 前方木人 (重擊近戰可及處)
+        { x: 580, y: 310 }, // 右側偏遠木人
+        { x: 420, y: 330 }, // 左側木人
+        { x: 640, y: 230 }, // 遠端木人 1
+        { x: 360, y: 240 }, // 遠端木人 2
+        { x: 500, y: 160 }  // 上方遠端木人
+      ];
+      coords.forEach((c, idx) => {
+        dummies.push({
+          id: idx + 1,
+          x: c.x,
+          y: c.y,
+          hp: 250,
+          maxHp: 250,
+          hitTime: 0,
+          isDead: false,
+          remove: false,
+          isFrozen: false,
+          freezeTimer: 0,
+          takeDamage(amount) {
+            this.hp = Math.max(0, this.hp - amount);
+            this.hitTime = performance.now();
+            if (this.hp <= 0) {
+              this.isDead = true;
+            }
+          }
+        });
+      });
+    }
+
+    function addFloatingText(x, y, text, color) {
+      if (!text || text === 'NaN' || text.includes('NaN')) return;
+      floatingTexts.push({ x, y, text, color, alpha: 1.0 });
+    }
+    window.addFloatingText = addFloatingText;
+
+    // 載入命中特效圖集
+    const hitImages = {
+      holyfire_hit: new Image(),
+      holyshock_hit: new Image(),
+      hit_shock: new Image()
+    };
+    hitImages.holyfire_hit.src = 'assets/skills/paladin/AuraHolyFireHit.png';
+    hitImages.holyshock_hit.src = 'assets/skills/paladin/HolyShockHit.png';
+    hitImages.hit_shock.src = 'assets/fx/hit_shock_sheet.png';
+
+    function spawnHitOverlay(x, y, type) {
+      if (type === 'holyfire_hit') {
+        overlays.push({
+          img: hitImages.holyfire_hit,
+          x: x, y: y - 10,
+          cw: 86, ch: 63, px: 43, py: 35,
+          frames: 18, frame: 0, time: 0, blend: 'lighter'
+        });
+      } else if (type === 'holyshock_hit') {
+        overlays.push({
+          img: hitImages.holyshock_hit,
+          x: x, y: y,
+          cw: 70, ch: 263, px: 35, py: 242,
+          frames: 21, frame: 0, time: 0, blend: 'lighter'
+        });
+      } else {
+        overlays.push({
+          img: hitImages.hit_shock,
+          x: x, y: y - 25,
+          cw: 100, ch: 100, px: 50, py: 50,
+          frames: 20, frame: 0, time: 0, blend: 'lighter'
+        });
+      }
+    }
+
+    // 建立畫布與角色控制器
+    const canvas = document.getElementById('paladin-canvas');
+    const ctx = canvas.getContext('2d');
+    const heroPos = { x: 500, y: 340 };
+
+    const character = new CharacterController(
+      'assets/characters/paladin/manifest.json',
+      () => {
+        console.log('[Paladin Sandbox] CharacterController loaded: Paladin');
+        character.activeAura = currentAuraId;
+      },
+      'paladin'
+    );
+    character.x = heroPos.x;
+    character.y = heroPos.y;
+    character.prevX = heroPos.x;
+    character.prevY = heroPos.y;
+    window.__sandboxCharacter = character;
+
+    // 切換技能與分頁 UI
+    function switchCategory(cat) {
+      currentCategory = cat;
+      document.getElementById('tab-combat').className = 'tab-btn ' + (cat === 'combat' ? 'active combat' : '');
+      document.getElementById('tab-auras').className = 'tab-btn ' + (cat === 'auras' ? 'active aura' : '');
+      renderSkillsDeck();
+    }
+
+    function renderSkillsDeck() {
+      const deck = document.getElementById('skills-deck');
+      deck.innerHTML = '';
+      if (currentCategory === 'combat') {
+        PALADIN_COMBAT_SKILLS.forEach(s => {
+          const btn = document.createElement('button');
+          const isHsActive = (s.id === 'holy_shield' && character && character.holyShieldActive);
+          btn.className = 'skill-card-btn ' + (currentSkillId === s.id ? 'active' : '') + (isHsActive ? ' active' : '');
+          const statusSuffix = isHsActive ? ' ✨[紋章盾作用中]' : '';
+          btn.innerHTML = `<span>[${s.key}] ${s.icon} ${s.name}${statusSuffix}</span>`;
+          btn.onclick = () => selectSkill(s.id);
+          deck.appendChild(btn);
+        });
+      } else {
+        PALADIN_AURAS.forEach(a => {
+          const btn = document.createElement('button');
+          btn.className = 'skill-card-btn aura ' + (currentAuraId === a.id ? 'active aura' : '');
+          btn.innerHTML = `<span>[${a.key}] ${a.icon} ${a.name}</span>`;
+          btn.onclick = () => selectAura(a.id);
+          deck.appendChild(btn);
+        });
+      }
+    }
+
+    function selectSkill(skillId) {
+      currentSkillId = skillId;
+      renderSkillsDeck();
+    }
+
+    function selectAura(auraId) {
+      currentAuraId = auraId;
+      character.activeAura = auraId;
+      renderSkillsDeck();
+      addFloatingText(character.x, character.y - 75, `靈氣切換: ${auraId.toUpperCase()}`, '#818cf8');
+    }
+
+    // 靈氣週期脈衝計時器 (每 2 秒向範圍內木人觸發傷害與專屬原廠打擊特效)
+    let auraPulseTimer = 0;
+    function updateAuraPulse(dtMs) {
+      auraPulseTimer += dtMs;
+      if (auraPulseTimer < 2000) return;
+      auraPulseTimer = 0;
+
+      const aura = character.activeAura;
+      if (aura === 'holyfire') {
+        let hitCount = 0;
+        dummies.forEach(d => {
+          if (!d.isDead && !d.remove) {
+            const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 2);
+            if (dist <= 220) {
+              d.takeDamage(22);
+              spawnHitOverlay(d.x, d.y, 'holyfire_hit');
+              addFloatingText(d.x, d.y - 45, '-22 聖火灼燒！', '#f97316');
+              hitCount++;
+            }
+          }
+        });
+      } else if (aura === 'holyshock') {
+        let hitCount = 0;
+        dummies.forEach(d => {
+          if (!d.isDead && !d.remove) {
+            const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 2);
+            if (dist <= 260) {
+              d.takeDamage(42);
+              spawnHitOverlay(d.x, d.y, 'holyshock_hit');
+              addFloatingText(d.x, d.y - 45, '-42 神聖天雷直劈！', '#facc15');
+              hitCount++;
+            }
+          }
+        });
+      } else if (aura === 'holyfreeze') {
+        dummies.forEach(d => {
+          if (!d.isDead && !d.remove) {
+            const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 2);
+            if (dist <= 220) {
+              d.takeDamage(18);
+              d.isFrozen = true;
+              d.freezeTimer = 2500;
+              spawnHitOverlay(d.x, d.y, 'hit_shock');
+              addFloatingText(d.x, d.y - 45, '-18 寒冰極速急凍！', '#38bdf8');
+            }
+          }
+        });
+      }
+    }
+
+    // 執行施法或攻擊出招 (僅限全角色清單打勾 [x] 的重擊、衝鋒、神聖之盾)
+    function executeSkillAt(tx, ty) {
+      const skill = PALADIN_COMBAT_SKILLS.find(s => s.id === currentSkillId) || PALADIN_COMBAT_SKILLS[0];
+      if (skill.id === 'smite') {
+        const dist = Math.hypot(tx - character.x, (ty - character.y) * 2);
+        if (dist > 85) {
+          character.startMeleeAutoApproach(tx, ty, 'smite');
+          return;
+        }
+        character.currentSkillType = 'smite';
+        character.currentSkillName = skill.name;
+        character.triggerAttack(tx, ty, 'smite');
+      } else if (skill.id === 'charge') {
+        // 衝鋒突進撞擊
+        character.currentSkillType = 'charge';
+        character.currentSkillName = skill.name;
+        character.triggerAttack(tx, ty, 'charge');
+      } else if (skill.id === 'holy_shield') {
+        // 若神聖之盾已開啟，再次施放可切換解除 (方便玩家對比基礎裝甲與紋章盾)
+        if (character.holyShieldActive) {
+          character.deactivateHolyShield();
+          addFloatingText(character.x, character.y - 75, "神聖之盾解除，還原原本盾牌！", "#94a3b8");
+          updateArmorDisplay();
+          renderSkillsDeck();
+          return;
+        }
+        // 神聖之盾啟動：施法動作 + 盾牌動態切換為手盾一體金色神盾 + 原廠星芒閃爍
+        character.currentSkillType = 'holy_shield';
+        character.currentSkillName = skill.name;
+        character.triggerCast(character.x, character.y, 'holy_shield');
+        character.activateHolyShield();
+        addFloatingText(character.x, character.y - 75, "神聖之盾！手盾一體 金光璀璨 聖光星芒閃耀", "#fbbf24");
+        updateArmorDisplay();
+        renderSkillsDeck();
+      }
+    }
+
+    // 畫布滑鼠操作 (左鍵點擊地面移動 / 點擊木人出招 / 右鍵純移動)
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // 檢查是否點擊在假人木人身上 (等軸測判定半徑 35px)
+      let clickedDummy = null;
+      for (const d of dummies) {
+        if (!d.isDead && !d.remove) {
+          const dDist = Math.hypot(clickX - d.x, (clickY - (d.y - 25)) * 1.5);
+          if (dDist <= 35) {
+            clickedDummy = d;
+            break;
+          }
+        }
+      }
+
+      if (e.button === 2) {
+        // 滑鼠右鍵：走位尋路移動
+        character.moveTo(clickX, clickY);
+        return;
+      }
+
+      if (clickedDummy) {
+        // 點擊假人怪物施展當前選定技能
+        executeSkillAt(clickedDummy.x, clickedDummy.y);
+      } else {
+        // 點擊空地：若為神聖之盾直接原地啟動，其餘作戰技能走位前往該坐標！
+        if (currentSkillId === 'holy_shield') {
+          executeSkillAt(clickX, clickY);
+        } else {
+          character.moveTo(clickX, clickY);
+        }
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // 鍵盤移動與快捷鍵監聽 (支援 WASD 自由走位與 16 方向奔跑)
+    const activeKeys = {};
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      activeKeys[e.key.toLowerCase()] = true;
+      activeKeys[e.code] = true;
+
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        const isRun = character.toggleRunMode();
+        updateMovementHud(isRun);
+      } else if (e.code === 'Tab') {
+        e.preventDefault();
+        switchCategory(currentCategory === 'combat' ? 'auras' : 'combat');
+      } else if (e.code === 'KeyQ') {
+        e.preventDefault();
+        const curIdx = PALADIN_AURAS.findIndex(a => a.id === currentAuraId);
+        const nextAura = PALADIN_AURAS[(curIdx + 1) % PALADIN_AURAS.length];
+        selectAura(nextAura.id);
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        inspect16DirActive = !inspect16DirActive;
+        window.__inspect16DirsActive = inspect16DirActive;
+        const btn = document.getElementById('btn-inspect-16dir');
+        btn.textContent = `🔄 [R] 16向自轉巡檢: ${inspect16DirActive ? '開啟中' : '關閉'}`;
+        btn.className = `util-btn ${inspect16DirActive ? 'active' : ''}`;
+      } else if (e.code === 'KeyT') {
+        e.preventDefault();
+        currentArmorIndex = (currentArmorIndex + 1) % armorTiers.length;
+        const tier = armorTiers[currentArmorIndex];
+        character.loadHero('paladin', tier).then(() => {
+          updateArmorDisplay();
+        });
+        updateArmorDisplay();
+      } else if (e.code === 'KeyG') {
+        e.preventDefault();
+        initDummies();
+        addFloatingText(heroPos.x, heroPos.y - 70, "召喚全新作戰假人木人群！", "#34d399");
+      } else if (e.code === 'KeyD') {
+        e.preventDefault();
+        debugMode = !debugMode;
+        document.getElementById('btn-toggle-debug').className = `util-btn ${debugMode ? 'active' : ''}`;
+      } else if (e.code === 'BracketLeft') {
+        e.preventDefault();
+        stepDir(-1);
+      } else if (e.code === 'BracketRight') {
+        e.preventDefault();
+        stepDir(1);
+      } else if (e.key >= '1' && e.key <= '4') {
+        const num = parseInt(e.key) - 1;
+        if (currentCategory === 'combat') {
+          if (num < PALADIN_COMBAT_SKILLS.length) selectSkill(PALADIN_COMBAT_SKILLS[num].id);
+        } else {
+          if (num < PALADIN_AURAS.length) selectAura(PALADIN_AURAS[num].id);
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      delete activeKeys[e.key.toLowerCase()];
+      delete activeKeys[e.code];
+    });
+
+    function updateMovementHud(isRun) {
+      const btn = document.getElementById('btn-toggle-run');
+      if (btn) btn.textContent = isRun ? '🏃 走跑: 奔跑中 [Shift]' : '🚶 走跑: 行走中 [Shift]';
+    }
+
+    const DIR_NAMES = [
+      "0 正南 (S)", "1 南南東 (SSE)", "2 東南 (SE)", "3 東東南 (ESE)",
+      "4 正東 (E)", "5 東東北 (ENE)", "6 東北 (NE)", "7 北東北 (NNE)",
+      "8 正北 (N)", "9 北西北 (NNW)", "10 西北 (NW)", "11 西西北 (WNW)",
+      "12 正西 (W)", "13 西西南 (WSW)", "14 西南 (SW)", "15 南西南 (SSW)"
+    ];
+
+    function stepDir(delta) {
+      if (!character) return;
+      const next = (character.currentDir + delta + 16) % 16;
+      character.currentDir = next;
+      updateDirDisplay(next);
+    }
+
+    function updateDirDisplay(dir) {
+      const el = document.getElementById('hud-dir-display');
+      if (el) el.textContent = DIR_NAMES[dir] || `${dir}`;
+    }
+    window.updateDirDisplay = updateDirDisplay;
+
+    // 工具按鈕事件綁定
+    document.getElementById('btn-toggle-run').onclick = () => {
+      const isRun = character.toggleRunMode();
+      updateMovementHud(isRun);
+    };
+    document.getElementById('btn-inspect-16dir').onclick = () => {
+      inspect16DirActive = !inspect16DirActive;
+      window.__inspect16DirsActive = inspect16DirActive;
+      const btn = document.getElementById('btn-inspect-16dir');
+      btn.textContent = `🔄 [R] 16向自轉巡檢: ${inspect16DirActive ? '開啟中' : '關閉'}`;
+      btn.className = `util-btn ${inspect16DirActive ? 'active' : ''}`;
+    };
+    function updateArmorDisplay() {
+      const btn = document.getElementById('btn-cycle-armor');
+      if (!btn) return;
+      const baseName = armorNames[currentArmorIndex];
+      if (character && character.holyShieldActive) {
+        btn.textContent = `🛡️ [T] 裝甲: ${baseName} (✨手盾一體金色神盾作用中)`;
+      } else {
+        btn.textContent = `🛡️ [T] 裝甲: ${baseName}`;
+      }
+    }
+    window.updateArmorDisplay = updateArmorDisplay;
+
+    document.getElementById('btn-cycle-armor').onclick = () => {
+      currentArmorIndex = (currentArmorIndex + 1) % armorTiers.length;
+      const tier = armorTiers[currentArmorIndex];
+      character.setArmorTier(tier).then(() => {
+        updateArmorDisplay();
+      });
+      updateArmorDisplay();
+    };
+    document.getElementById('btn-dir-prev').onclick = () => stepDir(-1);
+    document.getElementById('btn-dir-next').onclick = () => stepDir(1);
+    document.getElementById('btn-spawn-dummies').onclick = () => {
+      initDummies();
+      addFloatingText(heroPos.x, heroPos.y - 70, "召喚全新作戰假人木人群！", "#34d399");
+    };
+    document.getElementById('btn-toggle-debug').onclick = () => {
+      debugMode = !debugMode;
+      document.getElementById('btn-toggle-debug').className = `util-btn ${debugMode ? 'active' : ''}`;
+    };
+
+    // 25Hz 物理與動畫主循環
+    let lastTime = performance.now();
+    let accum = 0;
+    const TICK_MS = 40;
+    let inspectCounter = 0;
+
+    function gameLoop(now) {
+      accum += (now - lastTime);
+      lastTime = now;
+
+      while (accum >= TICK_MS) {
+        if (character && character.isLoaded) {
+          // 支援鍵盤 WASD 移動
+          character.handleKeyboardInput(activeKeys);
+          character.fixedTick(TICK_MS);
+          updateDirDisplay(character.currentDir);
+
+          // 16 向自動巡檢 (每 ~440ms 自轉出招一次)
+          if (inspect16DirActive) {
+            inspectCounter++;
+            if (inspectCounter >= 11) {
+              inspectCounter = 0;
+              const nextDir = (character.currentDir + 1) % 16;
+              character.currentDir = nextDir;
+              updateDirDisplay(nextDir);
+              const rad = ((90 + nextDir * 22.5) % 360) * Math.PI / 180;
+              const tx = character.x + Math.cos(rad) * 80;
+              const ty = character.y + Math.sin(rad) * 40;
+              executeSkillAt(tx, ty);
+            }
+          }
+        }
+
+        // 靈氣週期脈衝傷害
+        updateAuraPulse(TICK_MS);
+
+        // 木人狀態更新 (急凍解凍計時)
+        dummies.forEach(d => {
+          if (d.freezeTimer > 0) {
+            d.freezeTimer -= TICK_MS;
+            if (d.freezeTimer <= 0) d.isFrozen = false;
+          }
+        });
+
+        // 浮動文字動畫推進
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y -= 0.8;
+          ft.alpha -= 0.025;
+          if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+        }
+
+        // 命中特效動畫推進
+        for (let i = overlays.length - 1; i >= 0; i--) {
+          const ov = overlays[i];
+          ov.time += TICK_MS;
+          ov.frame = Math.floor(ov.time / 40);
+          if (ov.frame >= ov.frames) overlays.splice(i, 1);
+        }
+
+        accum -= TICK_MS;
+      }
+
+      // ── 畫面渲染 (60FPS 平滑插值) ──
+      renderScene();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function renderScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. 等軸測 2:1 地面網格底襯
+      if (window.showGrid !== false) {
+        ctx.strokeStyle = '#1E293B';
+        ctx.lineWidth = 1;
+        const stepX = 80;
+        const stepY = 40;
+        ctx.beginPath();
+        for (let x = -canvas.width; x < canvas.width * 2; x += stepX) {
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x + canvas.height * 2, canvas.height);
+        }
+        for (let x = -canvas.width; x < canvas.width * 2; x += stepX) {
+          ctx.moveTo(x, canvas.height);
+          ctx.lineTo(x + canvas.height * 2, 0);
+        }
+        ctx.stroke();
+      }
+
+      // 2. 除錯射程圓圈 (重擊近戰範圍 90px、靈氣範圍 220px/260px)
+      if (debugMode) {
+        ctx.save();
+        // 重擊近戰 90px 綠圈
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(character.x, character.y, 90, 45, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 靈氣 220px 藍紫圈
+        ctx.strokeStyle = 'rgba(99, 102, 241, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(character.x, character.y, 220, 110, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 3. 繪製作戰木人假人 (含等軸測陰影與血條)
+      dummies.forEach(d => {
+        if (d.remove) return;
+        ctx.save();
+        // 木人陰影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(d.x, d.y, 20, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 木人本體
+        ctx.fillStyle = d.isFrozen ? '#38BDF8' : (d.hitTime && performance.now() - d.hitTime < 150 ? '#EF4444' : '#94A3B8');
+        ctx.beginPath();
+        ctx.arc(d.x, d.y - 25, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 血條
+        const bw = 36;
+        const bh = 5;
+        const hpPct = Math.max(0, d.hp / d.maxHp);
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(d.x - bw / 2, d.y - 50, bw, bh);
+        ctx.fillStyle = d.isFrozen ? '#38BDF8' : '#EF4444';
+        ctx.fillRect(d.x - bw / 2, d.y - 50, bw * hpPct, bh);
+
+        // 標記近戰可擊標籤
+        if (debugMode) {
+          const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 2);
+          if (dist <= 90) {
+            ctx.fillStyle = '#4ADE80';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('近戰範圍', d.x, d.y - 55);
+          }
+        }
+        ctx.restore();
+      });
+
+      // 4. 繪製聖騎士角色控制器 (含前後雙層靈氣、神聖之盾常駐流光、出招動畫)
+      if (character && character.isLoaded) {
+        character.render(ctx, 1.0);
+      }
+
+      // 5. 繪製命中特效 (原廠神聖火焰火爆、神聖天雷光柱、受擊火花)
+      overlays.forEach(ov => {
+        if (!ov.img.complete) return;
+        ctx.save();
+        ctx.globalCompositeOperation = ov.blend || 'source-over';
+        const sx = ov.frame * ov.cw;
+        const sy = 0;
+        ctx.drawImage(
+          ov.img,
+          sx, sy, ov.cw, ov.ch,
+          Math.round(ov.x - ov.px), Math.round(ov.y - ov.py), ov.cw, ov.ch
+        );
+        ctx.restore();
+      });
+
+      // 6. 繪製浮動文字
+      floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = ft.alpha;
+        ctx.fillStyle = ft.color;
+        ctx.font = "bold 15px 'Cinzel', -apple-system, sans-serif";
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      });
+    }
+
+    // 初始化與啟動
+    initDummies();
+    renderSkillsDeck();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

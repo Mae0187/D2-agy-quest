@@ -1,0 +1,38 @@
+{
+  "id": "bonespear",
+  "name": "Bone Spear",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "BoneSpear",
+    "celFile": "BoneSpear",
+    "speed": 24.0,
+    "range": 40.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 24,
+    "max": 32,
+    "level": 1,
+    "formula": "16 + 8x7 + 9x8 + 12x4",
+    "maxFormula": "24 + 8x7 + 9x8 + 13x4",
+    "type": "mag"
+  },
+  "cost": {
+    "mana": 28
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/BoneSpear.png",
+    "numbers": "assets/skills/data/bonespear.json（Skills.txt / Missiles.txt）"
+  }
+}

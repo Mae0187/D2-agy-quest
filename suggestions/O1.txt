@@ -1,0 +1,1000 @@
+對，你現在這張圖就是一個非常典型的「**D2 動畫素材集 / contact sheet**」，但它**不是遊戲可以直接播放的動畫**。
+
+我檢查了你上傳的檔案：它實際上是一張 **817×2048、只有 1 張影格的 RGBA 圖片**；也就是說，`.gif` 副檔名在這裡只是容器/下載格式，裡面不是「逐幀 GIF 動畫」。原始 Spriters Resource 頁面的 `Barbarian (Heavy)` 則標示原始素材尺寸為 **4189×10496**、格式 GIF。([Spriter's Resource][1])
+
+真正要做的事情是：
+
+```text
+這一張超大圖
+       ↓
+辨識「哪一塊是什麼動作」
+       ↓
+辨識「哪幾張屬於同一個方向」
+       ↓
+按照 frame 順序切出 sprite
+       ↓
+恢復每幀的 anchor / offset
+       ↓
+按照 D2 timing 播放
+       ↓
+才會變成遊戲中的連續動畫
+```
+
+而且你的專案若最終要做到「真的像 D2」，**最好不要以這張 Contact Sheet 作為最終 Runtime 資產**；它應該是「預覽/參考圖」，真正 Runtime 應該回到 DCC + COF + Palette。DCC 本身就是「多組動畫方向、每組多幀」的格式，而且不包含 palette；OpenDiablo2 的 DCC loader 也是先建立 `NumberOfDirections × FramesPerDirection` 的動畫結構，再逐方向、逐 frame 解碼。([GitHub][2])
+
+---
+
+# 先看懂你這張圖
+
+你看到的不是：
+
+```text
+第 1 張 → 第 2 張 → 第 3 張 → 第 4 張
+```
+
+這麼單純。
+
+比較接近：
+
+```text
+                Barbarian Heavy
+┌─────────────────────────────────────────┐
+│ Animation Mode A                        │
+│                                         │
+│ dir 0:  [f0][f1][f2][f3][f4]...        │
+│ dir 1:  [f0][f1][f2][f3][f4]...        │
+│ dir 2:  [f0][f1][f2][f3][f4]...        │
+│ ...                                     │
+├─────────────────────────────────────────┤
+│ Animation Mode B                        │
+│                                         │
+│ dir 0:  [f0][f1][f2][f3]...            │
+│ dir 1:  [f0][f1][f2][f3]...            │
+│ ...                                     │
+├─────────────────────────────────────────┤
+│ Animation Mode C                        │
+│ ...                                     │
+└─────────────────────────────────────────┘
+```
+
+所以你第一個工作不是「裁切圖片」。
+
+而是：
+
+> **找出這張 contact sheet 的語義結構。**
+
+---
+
+# 一、最重要：D2 動畫的單位是「Animation Clip」
+
+你最後不要寫成：
+
+```javascript
+play("image_001.png");
+play("image_002.png");
+play("image_003.png");
+```
+
+而應該建立：
+
+```javascript
+const animation = {
+    actor: "barbarian",
+
+    mode: "RN",
+
+    direction: 5,
+
+    frames: [
+        ...
+    ],
+
+    fps: 25
+};
+```
+
+概念上：
+
+```text
+Barbarian
+ │
+ ├─ mode = NU   // idle
+ ├─ mode = RN   // run
+ ├─ mode = A1   // attack 1
+ ├─ mode = A2   // attack 2
+ ├─ mode = SC   // spell/cast
+ ├─ mode = DT   // death
+ └─ ...
+```
+
+這些 Mode / COF 組合才是「遊戲動畫」。
+
+COF 本身就是拿來組合動畫 layer、direction、frame 等資訊的；OpenDiablo2 也為 COF 建立了獨立的方向映射與 animation metadata。([GitHub][3])
+
+---
+
+# 二、你這種圖要拆成「Mode → Direction → Frame」
+
+最終你的資料結構應該長成：
+
+```text
+Barbarian
+│
+├── NU
+│   ├── direction 0
+│   │   ├── frame 0
+│   │   ├── frame 1
+│   │   ├── frame 2
+│   │   └── ...
+│   ├── direction 1
+│   │   ├── frame 0
+│   │   ├── frame 1
+│   │   └── ...
+│   └── ...
+│
+├── RN
+│   ├── direction 0
+│   ├── direction 1
+│   └── ...
+│
+├── A1
+├── A2
+├── SC
+└── DT
+```
+
+然後你的遊戲畫面真正播放的是：
+
+```text
+Barbarian
+Mode = RN
+Direction = 7
+Frame = 0 → 1 → 2 → 3 → 4 → ...
+```
+
+這才是「連續動畫」。
+
+---
+
+# 三、為什麼不能直接把你這張圖全部切成固定大小
+
+因為 **D2 的 DCC frame 不是一般現代 sprite sheet 的固定格子動畫。**
+
+這一點非常重要。
+
+DCC 每個 direction 裡面有自己的 frames，而且 frame 可以有自己的 bounding box / offset。OpenDiablo2 的 DCC animation decoder 會把每個 direction 的 frame 尺寸和 `Box.Left / Box.Top` 當成 frame offset 保存。([GitHub][2])
+
+所以真實情況可能是：
+
+```text
+Frame 0
+┌────────┐
+│        │
+│   ●    │
+│        │
+└────────┘
+
+Frame 1
+┌──────────┐
+│          │
+│    ●     │
+│          │
+└──────────┘
+
+Frame 2
+┌───────┐
+│       │
+│ ●     │
+│       │
+└───────┘
+```
+
+三張圖的尺寸根本不需要相同。
+
+可是角色在遊戲中仍然要：
+
+```text
+腳底固定
+      ↓
+   ● 人物
+```
+
+而不是：
+
+```text
+Frame 1
+     ●
+
+Frame 2
+        ●
+
+Frame 3
+  ●
+```
+
+這就是 **anchor / offset** 的用途。
+
+---
+
+# 四、真正的 D2 播放器應該這樣運作
+
+假設：
+
+```text
+Character position
+X = 400
+Y = 300
+```
+
+每個 frame 有：
+
+```javascript
+{
+    width: 72,
+    height: 96,
+    offsetX: -36,
+    offsetY: -91
+}
+```
+
+那麼：
+
+```javascript
+drawX = characterX + offsetX;
+drawY = characterY + offsetY;
+```
+
+所以所有 animation frame 都以同一個：
+
+```text
+Character World Position
+```
+
+為基準。
+
+這就是你之後看到：
+
+```text
+待機
+走路
+攻擊
+施法
+```
+
+時角色不會「跳來跳去」的關鍵。
+
+---
+
+# 五、方向不是 8 張圖那麼簡單
+
+D2 的方向系統也不能直接寫：
+
+```javascript
+direction = Math.floor(angle / 45);
+```
+
+正確思路是：
+
+```text
+移動向量
+   ↓
+World Direction
+   ↓
+Canonical direction
+   ↓
+DCC direction
+```
+
+OpenDiablo2 的 DCC 實作直接限制 canonical direction 為 64 個，再依照動畫實際 direction 數量映射到 DCC direction。([GitHub][2])
+
+例如：
+
+```text
+64-direction space
+        ↓
+      DCC
+        ↓
+  8 / 16 / 32 directions
+```
+
+所以你的 runtime：
+
+```javascript
+direction64 = getDirection(dx, dy);
+dccDirection = mapDirection(
+    direction64,
+    animation.numberOfDirections
+);
+```
+
+這樣才能正確。
+
+---
+
+# 六、你的這張圖可以先做「人工標註版」
+
+因為你目前拿到的是：
+
+```text
+大 Contact Sheet
+```
+
+而不是：
+
+```text
+原始 DCC
+```
+
+所以第一階段最實際的是做一個：
+
+## Sprite Sheet Manifest
+
+例如：
+
+```json
+{
+    "actor": "barbarian_heavy",
+
+    "animations": {
+
+        "idle": {
+            "mode": "NU",
+            "directions": {
+                "0": {
+                    "x": 10,
+                    "y": 20,
+                    "width": 320,
+                    "height": 400
+                }
+            }
+        },
+
+        "run": {
+            "mode": "RN",
+            "directions": {
+                "0": {},
+                "1": {},
+                "2": {}
+            }
+        }
+    }
+}
+```
+
+你的 PixiJS 就不必知道這張巨大圖片到底怎麼排。
+
+它只知道：
+
+```text
+run
+direction 3
+frame 7
+```
+
+然後從 manifest 找：
+
+```text
+sourceX
+sourceY
+sourceWidth
+sourceHeight
+offsetX
+offsetY
+```
+
+---
+
+# 七、但更推薦：直接從 DCC 生成 Runtime Asset
+
+這才是你專案真正應該走的路。
+
+因為你之前已經說過你可以從 MPQ 解出：
+
+```text
+DCC
+DS1
+DT1
+DC6
+```
+
+那你其實已經不需要被 Spriters Resource 這種 Contact Sheet 綁住。
+
+你的 pipeline 可以變成：
+
+```text
+D2 MPQ
+ │
+ ├── Barbarian DCC
+ │        ↓
+ │      decoder
+ │        ↓
+ │   directions
+ │        ↓
+ │     frames
+ │
+ ├── COF
+ │        ↓
+ │   animation modes
+ │
+ └── Palette
+          ↓
+     final colors
+```
+
+最後產生：
+
+```json
+{
+    "animation": "barbarian_rn",
+    "directions": 16,
+    "framesPerDirection": 8
+}
+```
+
+以及：
+
+```text
+frame textures
+frame offsets
+frame duration
+```
+
+---
+
+# 八、而且你不能只抓「Barbarian Heavy」
+
+這張圖很可能只是 **Barbarian 的某一個視覺組件 / 裝備層**。
+
+這是 D2 角色系統真正麻煩的地方。
+
+玩家不是：
+
+```text
+一張完整 Barbarian PNG
+```
+
+而是多個 layer 組合。
+
+概念上會接近：
+
+```text
+                Barbarian
+                     │
+       ┌─────────────┼─────────────┐
+       ↓             ↓             ↓
+      Body          Head         Legs
+       │             │             │
+       ↓             ↓             ↓
+    Armor          Helmet       Armor
+       │
+       ↓
+     Weapon
+       │
+       ↓
+     Shield
+```
+
+最後：
+
+```text
+Layer 0
+Layer 1
+Layer 2
+Layer 3
+...
+```
+
+按照 COF 的 layer order 合成。
+
+OpenDiablo2 的 renderer 也是按照 COF layer 來建立/繪製角色動畫，而不是把一個單獨的 sprite sheet 視為完整角色。([GitHub][2])
+
+因此：
+
+> **如果你的目標是「真正 D2 角色」，不能只把這張 Barbarian Heavy 圖做成 GIF。**
+
+---
+
+# 九、你現在可以先做一個「簡化版 D2 動畫」
+
+第一階段不要追求完整 equipment composition。
+
+例如選：
+
+```text
+Barbarian
+```
+
+只做：
+
+```text
+Idle
+Run
+Attack
+```
+
+每個只取：
+
+```text
+8 directions
+```
+
+例如：
+
+```text
+idle/
+    dir00/
+       000.png
+       001.png
+       002.png
+
+    dir01/
+       000.png
+       001.png
+       002.png
+
+run/
+    dir00/
+       000.png
+       001.png
+       ...
+```
+
+---
+
+# 十、然後 PixiJS 播放器就是非常簡單
+
+概念：
+
+```javascript
+class D2Animation {
+
+    constructor(frames, fps = 25) {
+        this.frames = frames;
+        this.fps = fps;
+        this.time = 0;
+    }
+
+    update(dt) {
+        this.time += dt;
+
+        const frameDuration = 1 / this.fps;
+
+        return Math.floor(
+            this.time / frameDuration
+        ) % this.frames.length;
+    }
+}
+```
+
+渲染：
+
+```javascript
+const frameIndex = animation.update(deltaTime);
+
+sprite.texture =
+    animation.frames[frameIndex];
+```
+
+但這只是 **D2-like runtime**。
+
+---
+
+# 十一、要更接近 D2，時間不要直接寫死
+
+前面提過，D2 的核心時間尺度是 25 ticks/sec，而動畫實際速度還受到資料中的動畫速度資訊影響。
+
+OpenDiablo2 的 helper 會依 COF speed 計算動畫 FPS：
+
+```text
+FPS = 25 × Speed / 256
+```
+
+所以：
+
+```text
+Speed 256
+→ 25 FPS
+```
+
+而：
+
+```text
+Speed 128
+→ 12.5 FPS
+```
+
+([GitHub][2])
+
+因此你的 AnimationClip 最終應該：
+
+```javascript
+{
+    mode: "A1",
+    directions: 16,
+    frames: [...],
+    speed: 256
+}
+```
+
+而不是：
+
+```javascript
+{
+    fps: 60
+}
+```
+
+瀏覽器可以 60 FPS / 144 FPS rendering，但 **遊戲動畫時間尺度不要因此變成 60 FPS 動畫**。
+
+---
+
+# 十二、你這張圖最適合做成「Animation Viewer」
+
+這其實是你現在最該做的小工具。
+
+做一個網頁：
+
+```text
+┌───────────────────────────────────────────────┐
+│ D2 Sprite Animation Viewer                    │
+├───────────────────────────────────────────────┤
+│                                               │
+│                  Barbarian                    │
+│                                               │
+│                    🧍                         │
+│                                               │
+│                                               │
+├───────────────────────────────────────────────┤
+│ Mode: [ NU ▼ ]                                │
+│ Direction: [ 05 ]                             │
+│ Frame:  [ 07 / 12 ]                           │
+│ FPS:    [ 25 ]                                │
+│                                               │
+│ [ ▶ Play ] [ ⏸ Pause ] [ ↺ ]                 │
+└───────────────────────────────────────────────┘
+```
+
+旁邊再放：
+
+```text
+[ Contact Sheet ]
+
+┌───────────────────────┐
+│                       │
+│   大圖                │
+│                       │
+│ [框]                  │
+│                       │
+└───────────────────────┘
+```
+
+你點某一區：
+
+```text
+這一區 = Run
+這一排 = Direction 5
+```
+
+然後：
+
+```text
+▶
+```
+
+就播放。
+
+這個工具完成之後，之後做：
+
+```text
+Amazon
+Assassin
+Barbarian
+Druid
+Necromancer
+Paladin
+Sorceress
+Monster
+NPC
+```
+
+都可以共用。
+
+---
+
+# 十三、如果你的目標是「從這張圖直接還原」，流程是這樣
+
+```text
+                    Contact Sheet
+                         │
+                         ▼
+              ┌────────────────────┐
+              │ 1. 找區塊邊界      │
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 2. 找 animation    │
+              │    group           │
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 3. 找 direction    │
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 4. 找 frame        │
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 5. 建立 manifest   │
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 6. 補 anchor/offset│
+              └─────────┬──────────┘
+                        ▼
+              ┌────────────────────┐
+              │ 7. AnimationPlayer │
+              └─────────┬──────────┘
+                        ▼
+                 連續遊戲動畫
+```
+
+---
+
+# 十四、但是有一條路比「拆這張圖」好很多
+
+你目前其實已經有：
+
+> **D2 1.13c 的 MPQ**
+
+那我強烈建議你的正式架構直接變成：
+
+```text
+MPQ
+ ↓
+DCC Decoder
+ ↓
+COF Decoder
+ ↓
+Palette
+ ↓
+Animation Runtime
+ ↓
+PixiJS
+```
+
+而：
+
+```text
+Spriters Resource
+```
+
+變成：
+
+```text
+參考 / debug / prototype
+```
+
+這樣的好處非常大。
+
+因為你可以直接取得：
+
+```text
+NumberOfDirections
+FramesPerDirection
+Frame Width
+Frame Height
+Frame Offset
+Animation Mode
+Layer
+Palette
+```
+
+這些東西接觸 sheet 的時候全部都被「烘」成了一張展示圖；原始資料則是結構化的。
+
+OpenDiablo2 的相關 parser/工具就是按這種方式處理 DCC、COF、DC6、DS1、DT1、palette 等格式；它的工具甚至直接提供 DCC、COF、DS1、DT1、DAT、PL2 等資產查看/編輯能力。([GitHub][4])
+
+---
+
+# 十五、對你的 Agent Monitor，我會再多加一層
+
+你最後甚至不用直接控制：
+
+```text
+frame = 0,1,2,3
+```
+
+而是：
+
+```text
+Agent Event
+     ↓
+D2 Animation State
+```
+
+例如：
+
+```javascript
+const mapping = {
+
+    idle: {
+        class: "barbarian",
+        mode: "NU"
+    },
+
+    coding: {
+        class: "barbarian",
+        mode: "A1"
+    },
+
+    searching: {
+        class: "sorceress",
+        mode: "RN"
+    },
+
+    thinking: {
+        class: "sorceress",
+        mode: "NU"
+    },
+
+    error: {
+        class: "barbarian",
+        mode: "HIT"
+    },
+
+    retry: {
+        class: "barbarian",
+        mode: "A2"
+    }
+};
+```
+
+然後：
+
+```text
+CLI
+ ↓
+Agent State
+ ↓
+D2 Actor State
+ ↓
+Animation Clip
+ ↓
+Direction
+ ↓
+Frame
+ ↓
+Render
+```
+
+這樣就完全符合你「把枯燥 CLI 日誌變成 D2 戰鬥」的核心概念。
+
+---
+
+# 十六、你現在最需要避免的一個錯誤
+
+不要現在就：
+
+```text
+817×2048
+↓
+切成小圖片
+↓
+全部塞進 PixiJS
+↓
+開始播放
+```
+
+這會讓你很快遇到：
+
+```text
+角色走路腳漂
+攻擊動作跳動
+方向錯誤
+不同動作速度不一致
+角色旋轉後中心位移
+裝備無法疊
+武器漂浮
+動畫循環不自然
+```
+
+因為你缺的是：
+
+```text
+Mode
+Direction
+Frame
+Offset
+Anchor
+Speed
+Layer
+Palette
+```
+
+---
+
+# 最終你應該把這張圖理解成
+
+```text
+                  這張巨大圖片
+                         │
+                         │
+             「D2 動畫資料的展示表」
+                         │
+                         ▼
+        ┌───────────────────────────┐
+        │                           │
+        │ Animation Group           │
+        │      │                    │
+        │      ├── Direction 0      │
+        │      │    ├─ Frame 0      │
+        │      │    ├─ Frame 1      │
+        │      │    └─ Frame 2      │
+        │      │                    │
+        │      ├── Direction 1      │
+        │      │    ├─ Frame 0      │
+        │      │    └─ ...          │
+        │      │                    │
+        │      └── Direction N      │
+        │                           │
+        └─────────────┬─────────────┘
+                      ▼
+              AnimationClip
+                      │
+             ┌────────┼─────────┐
+             ▼        ▼         ▼
+           Frame    Offset     Speed
+             │
+             ▼
+          PixiJS
+             │
+             ▼
+        「連續 D2 動畫」
+```
+
+而且你的這張 `Barbarian (Heavy)` 是一個很好的測試素材；Spriters Resource 目前仍把它列作 D2/LoD 的 Barbarian Heavy 類別資產，原始尺寸 4189×10496。([Spriter's Resource][1])
+
+**對你的專案，最正確的下一步不是再下載更多 PNG，而是做一個 `D2 Sprite Sheet / DCC Animation Viewer`。**
+
+這個工具應該能：
+
+```text
+載入這張 Barbarian (Heavy)
+        ↓
+滑鼠框選一個動畫區域
+        ↓
+設定：
+Mode
+Direction
+Frame Count
+Frame Size
+Offset
+FPS
+        ↓
+按 Play
+        ↓
+連續播放
+        ↓
+輸出：
+manifest.json
+frames/
+```
+
+然後第二版把輸入從：
+
+```text
+Spriters GIF
+```
+
+換成：
+
+```text
+D2 MPQ → DCC
+```
+
+這樣就從「人工拼 Sprite Sheet」正式升級成「真正的 D2 Animation Runtime」。
+
+[1]: https://www.spriters-resource.com/pc_computer/diablo2diablo2lordofdestruction/asset/54293/?utm_source=chatgpt.com "Barbarian (Heavy) - Diablo 2 / Diablo 2: Lord of Destruction - PC / Computer - The Spriters Resource"
+[2]: https://github.com/OpenDiablo2/OpenDiablo2/blob/master/d2core/d2asset/dcc_animation.go?utm_source=chatgpt.com "OpenDiablo2/d2core/d2asset/dcc_animation.go at master · OpenDiablo2/OpenDiablo2 · GitHub"
+[3]: https://github.com/OpenDiablo2/cof?utm_source=chatgpt.com "GitHub - OpenDiablo2/cof: COF file format decoder. This file type a composition of files that form an animation. An arcane format, used by Blizzard's Diablo II. · GitHub"
+[4]: https://github.com/orgs/OpenDiablo2/repositories?utm_source=chatgpt.com "OpenDiablo2 repositories · GitHub"

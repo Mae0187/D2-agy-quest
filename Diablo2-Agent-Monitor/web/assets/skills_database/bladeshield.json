@@ -1,0 +1,35 @@
+{
+  "id": "bladeshield",
+  "name": "Blade Shield",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "bladeshield",
+    "celFile": "blade_shield",
+    "speed": 20.0,
+    "range": 500.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 1,
+    "max": 2,
+    "type": "physical"
+  },
+  "cost": {
+    "mana": 27
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/bladeshield.png",
+    "numbers": "assets/skills/data/bladeshield.json（Skills.txt / Missiles.txt）"
+  }
+}

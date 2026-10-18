@@ -1,0 +1,262 @@
+{
+  "id": "nest",
+  "name": "Nest",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 22 monster row(s), 1 of them bosses"
+    ],
+    "kind": "boss",
+    "usedBy": {
+      "bosses": [
+        {
+          "id": "bloodraven",
+          "name": "Bloodraven",
+          "type": "",
+          "boss": true,
+          "minion": false,
+          "ai": "BloodRaven",
+          "slot": "Skill1"
+        }
+      ],
+      "monsters": [
+        {
+          "id": "crownest1",
+          "name": "FoulCrowNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FoulCrowNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "crownest2",
+          "name": "BloodHawkNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FoulCrowNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "crownest3",
+          "name": "BlackVultureNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FoulCrowNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "crownest4",
+          "name": "CloudStalkerNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FoulCrowNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sarcophagus",
+          "name": "MummyGenerator",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "Sarcophagus",
+          "slot": "Skill1"
+        },
+        {
+          "id": "vilemother1",
+          "name": "FleshSpawner",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "VileMother",
+          "slot": "Skill1"
+        },
+        {
+          "id": "vilemother2",
+          "name": "StygianHag",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "VileMother",
+          "slot": "Skill1"
+        },
+        {
+          "id": "vilemother3",
+          "name": "Grotesque",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "VileMother",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhole1",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhole2",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhole3",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhole4",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhole5",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        },
+        {
+          "id": "suckernest1",
+          "name": "SuckerNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "MosquitoNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "suckernest2",
+          "name": "FeederNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "MosquitoNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "suckernest3",
+          "name": "BloodHookNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "MosquitoNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "suckernest4",
+          "name": "BloodWingNest",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "MosquitoNest",
+          "slot": "Skill1"
+        },
+        {
+          "id": "evilhut",
+          "name": "Evil hut",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "GenericSpawner",
+          "slot": "Skill1"
+        },
+        {
+          "id": "vilemother4",
+          "name": "Grotesque",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "VileMother",
+          "slot": "Skill1"
+        },
+        {
+          "id": "vilemother5",
+          "name": "FleshSpawner",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "VileMother",
+          "slot": "Skill1"
+        },
+        {
+          "id": "demonhole",
+          "name": "Dummy",
+          "type": "",
+          "boss": false,
+          "minion": false,
+          "ai": "EvilHole",
+          "slot": "Skill1"
+        }
+      ],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    },
+    "bossNames": [
+      "Bloodraven"
+    ]
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 91,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  }
+}

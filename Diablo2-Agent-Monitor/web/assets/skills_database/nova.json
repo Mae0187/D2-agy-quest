@@ -1,0 +1,38 @@
+{
+  "id": "nova",
+  "name": "Nova",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "FrostNova",
+    "celFile": "FrostNova",
+    "speed": 24.0,
+    "range": 13.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 7,
+    "max": 28,
+    "level": 1,
+    "formula": "1 + 6x7 + 7x8 + 8x4",
+    "maxFormula": "20 + 8x7 + 9x8 + 10x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 15
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/FrostNova.png",
+    "numbers": "assets/skills/data/nova.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,286 @@
+# D2 風格 Canvas 戰鬥看板：四大技能家族底層架構
+
+## 0. 先立三條全局鐵律
+
+四個問題的解法都建立在這三條上：
+
+1. **邏輯與視覺分池**：凡是會寫入遊戲狀態（碰撞、傷害、生成邏輯彈）的，進 `MissilePool`；凡是只讀不寫邏輯的，進 `FxPool`。兩池的驅逐策略完全不同。
+2. **生成走命令緩衝，Tick 末統一 flush**：迭代池時禁止直接 alloc。所有 spawn 寫入 `SpawnCmd` 環形緩衝，Tick 結尾統一落地，新生彈從下一 Tick 才開始更新。這一條同時解決「同 Tick 連鎖級聯」和「迭代中改鏈表」兩類 Bug。
+3. **所有配額都以整數 Tick 為單位**，不使用 ms 或 `performance.now()`，以保證重放與沙盒驗證可重現。
+
+---
+
+## 1. 父子分裂／爆裂連鎖（冰封球、雷霆標槍、FoH）
+
+### 1.1 生命週期解耦：子彈不認父親，只認「施法者 + 傷害快照」
+
+- 子彈在孵化時**複製**傷害快照（`dmgMin/dmgMax/type/toHit`，十幾個 byte），並存 `ownerHandle`（施法者）、`rootSerial`（同一次施法的流水號）、`depth`。
+- 子彈不存 `parentHandle`，更不反向解引用父親。父彈死亡、爆炸、被回收，都不影響子彈。
+- 不要做 DamagePacket 引用計數。複製 12 個 byte 比維護 refcount 便宜，也沒有懸空引用問題。
+
+```ts
+// MissilePool SoA 關鍵欄位（節選）
+owner: Uint32Array;      // 施法者 handle（idx|gen）
+rootSerial: Uint32Array; // 同一次施法共用，用於配額與命中限流
+depth: Uint8Array;       // 0=原彈 1=子彈；子彈禁止再孵化（硬上限 1）
+cls: Uint8Array;         // 0=CRITICAL 1=BURST
+emitAccum: Float32Array; // 發射器狀態，只有父彈使用
+emitAngle: Float32Array;
+```
+
+### 1.2 發射器狀態機（以冰封球為例）
+
+```
+Travel(發射中) ──ttl到/命中數到──▶ Detonate(收尾爆裂) ──▶ Dead
+   │ 每 emitInterval tick：admit() → 寫 SpawnCmd(角度 += 黃金角步進)
+```
+
+- 發射頻率用 `age % emitInterval` 決定（25Hz 下建議 2 Tick，即 12.5 發/秒），不要用累加浮點時間。
+- 螺旋角使用固定步進（例如 `+ 137.5°`，黃金角），分佈均勻，不需要 `Math.random`。
+- 冰彈的 TTL 取 12~16 Tick。穩態存活量約 `TTL / interval ≈ 8` 顆/球，這個數字要對照下面的配額。
+
+### 1.3 單 Tick 生成配額：三層閘門
+
+```ts
+const BUDGET = {
+  logicSpawnPerTick: 24,   // 全域：每 Tick 最多落地 24 顆邏輯子彈
+  burstLiveCap: 512,       // BURST 類同屏上限
+  criticalReserved: 256,   // CRITICAL 專屬保留槽，BURST 不得佔用
+  perRootLive: 48,         // 單次施法的子彈存活上限
+};
+
+// 回傳實際准許數；請求 n 顆，可能只給 k 顆
+function admit(root: number, n: number): number {
+  let k = Math.min(
+    n,
+    BUDGET.logicSpawnPerTick - spawnedThisTick,
+    BUDGET.burstLiveCap - liveBurst,
+    BUDGET.perRootLive - liveByRoot(root),
+  );
+  return Math.max(0, k);
+}
+```
+
+**傷害守恆降級（關鍵技巧）**：被削減時不是單純丟彈，否則玩家 DPS 會隨負載抖動。改為 `granted < requested` 時，將 `dmgScale = requested / granted` 乘到被准許的子彈上（上限 ×3），未能兌現的部分記入 root 的 `debt` 累加器，下一 Tick 優先償還（`debt` 也設上限）。這樣高負載時畫面變稀疏，但輸出傷害守恆。
+
+### 1.4 最老視覺粒子優先驅逐
+
+- **邏輯彈永不被驅逐。** 池滿時直接拒絕新邏輯彈，並累加 `rejectCount` 遙測。靜默刪掉邏輯彈會造成不可解釋的傷害缺失。
+- **只有純視覺子粒子（冰屑、拖尾、火花）可被驅逐**，且它們在 `FxPool` 而非 `MissilePool`。
+- 實作用「分級年齡環」，攤銷 O(1)：
+
+```ts
+// 每個 tier 一個環形佇列，按分配順序入隊 = 按年齡排序
+ageRing[tier]: Int32Array(CAP); head, tail
+function evictOldest(maxTier: number): boolean {
+  for (let t = 0; t <= maxTier; t++) {
+    while (head[t] !== tail[t]) {
+      const h = ageRing[t][head[t]++ & MASK];
+      if (isAlive(h)) { softKill(h); return true; } // gen 比對，過期句柄直接跳過
+    }
+  }
+  return false;
+}
+```
+
+- **軟驅逐**：不直接 `free`，而是 `ttl = min(ttl, 2)` 讓它兩 Tick 內淡出，避免畫面突然消失。
+- 觸發條件：`live > 0.8*CAP` 或 free-list 空，且新粒子 `tier >= 受害者 tier`。tier 0 是拖尾塵，tier 2 是命中主閃光，後者幾乎不被驅逐。
+
+### 1.5 連鎖防護
+
+| 技能 | 防線 |
+|---|---|
+| 雷霆標槍 | 命中 → `HitEvent` → 扇出 N 條電弧（`depth=1`，不可再孵化）。電弧與目標之間套用第 2 節的 `rootSerial` 命中限流，避免單怪吃滿全部電弧。 |
+| FoH | 聖光彈命中後以 `ignoreTarget` 排除母目標，透過空間格子（64px 格）取最近 K 個（K≤5）目標。查詢半徑有硬上限。 |
+| 冰封球 | 母彈自身傷害為 0（或很小），傷害全部由冰彈承擔。母彈只負責位移與發射。 |
+
+---
+
+## 2. 多發散彈（白骨之牙、多重箭）與 NextDelay
+
+**先校準一個事實**：原廠 Missiles.txt 的 `NextHit/NextDelay` 語意是「同一個彈體對持續接觸目標的重複命中間隔」，並不是散彈限流。原廠散彈貼臉本來就會全吃。所以我們要做的是「設計層安全閥」，不是還原。這兩個概念要分開實作，但可以共用同一塊 typed array。
+
+### 最輕量解法：單位側戳記（Unit-side Stamp）
+
+不要讓彈體記住打過誰，那需要每彈一個小集合。讓**被打的單位**記住「最近一次被哪個齊射、打了幾下」。
+
+```ts
+const HIT_GROUPS = 8; // 技能家族分組：Teeth/MultiShot/Orb/Beam...
+const volleyId   = new Uint32Array(MAX_UNITS * HIT_GROUPS);
+const volleyHits = new Uint8Array (MAX_UNITS * HIT_GROUPS);
+const lockUntil  = new Uint32Array(MAX_UNITS * HIT_GROUPS); // 齊射間 ICD / 持續彈 NextDelay
+
+interface HitPolicy { group: number; cap: number; falloff: Float32Array; icd: number; }
+
+function resolveHit(u: number, p: HitPolicy, vid: number, now: number): number {
+  const i = u * HIT_GROUPS + p.group;
+  if (volleyId[i] === vid) {                 // 同一齊射
+    if (volleyHits[i] >= p.cap) return 0;    // 超額：傷害 0，彈體穿過
+    return p.falloff[volleyHits[i]++];       // 回傳傷害係數
+  }
+  if (now < lockUntil[i]) return 0;          // 不同齊射：ICD 未過
+  volleyId[i] = vid; volleyHits[i] = 1; lockUntil[i] = now + p.icd;
+  return p.falloff[0];
+}
+```
+
+- **零 GC**：三個預分配 typed array，O(1) 讀寫，不佔用彈體欄位。
+- **一個機制三種語意**：
+  - 散彈限流：`cap=3, falloff=[1, .5, .35]`。
+  - 持續彈 NextDelay（火牆、冰封球接觸）：`cap=1, icd=N tick`。
+  - 射線 Tick 傷害（第 3 節）：`cap=1, icd=interval`。
+- `vid` 就是 `rootSerial`，施法時遞增一次，7 發共用。
+- Uint32 的 Tick 在 25Hz 下約 5.4 年才溢位，不需要處理迴繞。
+
+### 超額彈的處理
+
+超額的彈**穿過而不消失、不爆炸**，傷害係數為 0。這樣扇形在畫面上依然完整，只是數值被收斂。如果你要「超額彈在命中點無傷爆開」也可以，只需多一個 FX 事件。
+
+### 可選的生成期優化
+
+施法瞬間用「射線與 22px 圓是否相交」預判有幾發會命中同一目標。若貼臉，可把 `cap` 提前套用，並把多餘彈的 `hitEnabled=0`。這能省下多餘彈的碰撞檢測，但不是必需。
+
+**公平性注意**：falloff 索引取決於**命中到達順序**而非 pool 索引。free-list 重用會讓 pool 順序不可預期，所以用 `volleyHits++` 的計數，而不是依賴彈體的 slot 編號。
+
+---
+
+## 3. 持續射線／能量串流
+
+### 結論：專屬 `ChannelBeam` 模組，不用電弧鏈彈池
+
+理由如下：
+- 電弧鏈做成一串投射物，每條射線就吃掉 10~20 個 slot，且節點間會因 Tick 離散而撕裂。
+- 射線沒有「飛行」概念，它是**施法者與目標之間的瞬時關係**。邏輯用 hitscan，視覺用即時重建。
+- 原廠的 Hose 表現層本質上接近高頻短命彈串疊，那是引擎限制下的做法，我們不需要複刻。
+
+### 資料結構（固定 32 槽，SoA + generation）
+
+```ts
+state: Uint8Array;        // 0 Idle, 1 WindUp, 2 Active, 3 Release, 4 Dead
+casterH, targetH: Uint32Array;
+dstPrevX, dstPrevY, dstCurX, dstCurY: Float32Array; // 追蹤點（非目標本體）
+anchorPrev, anchorCur: Float32Array;                // 手掌偏移（x,y 各一對）
+nextDmgTick: Uint32Array;
+seed: Uint32Array;
+```
+
+### 狀態機
+
+```
+Idle → WindUp(2~4 tick 預備) → Active(每 interval tick 結算) → Release(淡出 3~5 tick) → Dead
+Active 的中斷條件：施法者 handle 失效/硬直/死亡；超出 maxRange + 遲滯；目標失效 → 追蹤點停留原地後進入 Release
+```
+
+### 不撕裂的四個關鍵
+
+1. **端點不存座標，存 handle**。渲染時從施法者與目標的**插值後位置**即時解算端點，起點 = 施法者 + 手掌錨點，終點 = 追蹤點。施法者移動或目標位移時，射線端點必然與實體同幀，不可能脫鉤。
+2. **手掌錨點平滑**：D2 朝向是 16 方向離散的，錨點偏移會跳變。每 Tick 對 `anchorCur` 做 `lerp(prev, target, 0.5)`，渲染時再做 Alpha 插值。
+3. **追蹤點限速追蹤目標軀幹點（-18px）**：換目標時，射線以每 Tick 約 40px 的速度掃過去，而非瞬間閃現，視覺上像水管甩動。目標死亡則追蹤點停在最後位置。
+4. **電弧形狀不依賴線段數**：預生成 K=12 個控制點的一維噪聲（由 `hash(seed, tick>>1)` 決定），沿 t 取樣插值。線段數隨長度變化（`clamp(len/20, 2, 24)`），但形狀不會因段數改變而跳動。兩端用 `sin(πt)` 包絡釘住，抖動方向取當前幀 src→dst 的垂直向量。
+
+```ts
+function drawBeam(ctx, b, alpha) {
+  const s = srcPoint(b, alpha), d = dstPoint(b, alpha);
+  const n = clamp(Math.ceil(dist(s, d) / 20), 2, 24);
+  const nx = -(d.y - s.y), ny = d.x - s.x; // 垂直向量（正規化略）
+  for (const [w, a, col] of PASSES) {      // 3 pass：外暈/主體/白芯
+    ctx.beginPath(); ctx.moveTo(s.x, s.y);
+    for (let i = 1; i < n; i++) {
+      const t = i / n, off = noise(b.seed, tickHalf, t) * AMP * Math.sin(Math.PI * t);
+      ctx.lineTo(lerp(s.x, d.x, t) + nx * off, lerp(s.y, d.y, t) + ny * off);
+    }
+    ctx.lineTo(d.x, d.y); ctx.lineWidth = w; ctx.strokeStyle = col; ctx.globalAlpha = a; ctx.stroke();
+  }
+}
+```
+
+- 使用 `globalCompositeOperation = 'lighter'`，三個 pass，**不要用 `shadowBlur`**（極貴）。
+- 全程只用 `beginPath/lineTo`，不建立 `Path2D`，零 GC。
+- 抖動以 `tick>>1` 為鍵，維持約 12.5Hz 的閃爍，且同一 Tick 內的所有渲染幀形狀穩定。
+
+### 傷害：hitscan + 膠囊體
+
+每 `interval` Tick（建議 4 Tick = 160ms）對線段做「膠囊（半徑 22px）與目標圓」測試，格子查詢只掃線段 AABB 覆蓋的格子。命中後用第 2 節的 `resolveHit`（`cap=1, icd=interval`）限流。Hose 可穿透所有目標，Sentry 則取單一目標。
+
+### 雷電哨塔（Lightning Sentry）
+
+它更接近**瞬發雷電彈**，不需要持續通道。做法：hitscan 即時結算，並在 `FxPool` 產生一個 3~5 Tick 的 `BoltFlash`（端點掛 handle，壽命很短）。不佔用 ChannelBeam 槽。
+
+---
+
+## 4. Overlay.txt 與 Missiles.txt 的責任邊界
+
+### 判斷準則（一句話）
+
+> **會影響下一 Tick 遊戲狀態的進 MissilePool；只影響這一幀畫面的進 FxPool。**
+
+Overlay.txt 的條目（命中閃光、狀態光環、受創火花）本質是純視覺，進 `FxPool`。Missiles.txt 的 `Explosion/ExplosionMissile`，若有範圍傷害，傷害在**命中瞬間做一次性區域查詢結算**，不留下「爆炸彈」；爆炸動畫本身則走 FxPool。
+
+### 解耦方式：HitEvent 環形緩衝
+
+投射物池**不得直接呼叫** FxPool，一律透過事件：
+
+```ts
+// HitEvent SoA 環形（單 Tick 寫入，Tick 末由 FxSystem 消費）
+kind: Uint8Array; x,y,z: Float32Array; targetH: Uint32Array;
+hitFxId: Uint16Array; dir: Uint8Array; flags: Uint8Array;
+```
+
+好處是邏輯層可以脫離渲染單獨沙盒測試，FX 因負載被降級或驅逐時，完全不影響傷害結算。
+
+### FxPool 設計
+
+```ts
+defId, gen: ...
+attachMode: Uint8Array;  // 0 World, 1 AttachUnit, 2 AttachMissile
+attachH: Uint32Array; ox, oy: Float32Array;     // 掛載偏移（如軀幹 -18px）
+x, y, px, py: Float32Array;                      // 當前與前一 Tick 位置（供插值）
+frame, ttl: Uint16Array; layer, prio, flags: Uint8Array;
+```
+
+- **OverlayDef** 表（對應 Overlay.txt）：`atlasId, frames, ticksPerFrame, trans(混合模式), preDraw(單位下方), height, loop`。
+- **掛載跟隨**：`AttachUnit` 每幀從單位插值位置 + `ox/oy` 解算；單位失效時依旗標選擇「原地消散」或「立即結束」。
+- **防疊加白屏**：同一目標同一 `fxId` 同時最多 3 個；超過則**刷新既有實例的 ttl 與 frame**，而不是新增。加法混合下疊加是白屏的主要來源。
+- **每幀總量與 tier 驅逐**沿用 1.4 的分級年齡環。
+
+### 十層渲染分工（請對應到你實際的層級定義）
+
+| 層 | 內容 | 來源池 | 排序 |
+|---|---|---|---|
+| L0 | 地表貼花（焦痕、冰霜地面） | Fx | 無（按生成序） |
+| L1 | 地面光斑、陷阱底座 | Fx / 世界物件 | 無 |
+| L2 | **Y-sort 主層**：怪物、玩家、地面/軀幹高度投射物、**PreDraw / PostDraw Overlay** | Unit + Missile + Fx | 腳底 Y 桶排序 |
+| L3 | 空中加法特效（命中閃光、爆裂碎片、火花） | Fx（`lighter`） | **不排序** |
+| L4 | 射線（ChannelBeam）、BoltFlash | Beam / Fx | 無 |
+| L5 | 環境光／暗角疊層 | — | — |
+| L6 | 頭頂狀態圖示 | Fx | 無 |
+| L7 | 傷害數字、血條 | UI | 無 |
+| L8~L9 | 後處理、除錯 HUD | — | — |
+
+**兩個分工要點**：
+
+1. **掛載在單位身上的 Overlay 要擠進 L2 的 Y-sort**，而不是丟到獨立層。`sortKey = ownerFootY ± ε`，PreDraw 取 `-ε`（畫在單位後面），PostDraw 取 `+ε`。否則怪物走到火球後面時，受擊閃光卻浮在最上層，視覺必然錯位。
+2. **加法混合是可交換的（commutative），不需要排序。** L3 的加法特效按混合模式批次繪製，省掉排序成本，也減少 `globalCompositeOperation` 切換次數。
+
+**Y-sort 實作**：腳底 Y 取整後 `>>2` 做桶排序（約 360 桶），用 `Int32Array` 的 counting sort，零 GC。單位數量不大，不需要通用 `Array.sort`。
+
+---
+
+## 5. 起始預算與遙測
+
+| 項目 | 建議起始值 |
+|---|---|
+| MissilePool | 1024（CRITICAL 保留 256） |
+| FxPool | 2048，軟上限 80% |
+| 每 Tick 邏輯生成 | 24 |
+| 每 Tick FX 生成 | 64 |
+| ChannelBeam 槽 | 32 |
+| 單目標同 fxId 並存 | 3 |
+
+**必做遙測（畫在 debug HUD 上）**：各池 live 數、`rejectCount`（邏輯彈被拒）、`softEvictCount`、`debtTotal`（傷害守恆欠帳）、每 Tick 的 spawn 峰值。
+
+**壓測驗收場景**：5 顆冰封球同時在場 + 20 隻怪 + 1 隻 Boss 貼臉 Teeth + 兩條 Hose。通過標準是 `rejectCount` 為 0 或極低、`debtTotal` 在數 Tick 內歸零、單幀 CPU 時間無尖峰。
+
+---
+
+**最後的判斷建議**：這四件事的共同模式是「把不可控的數量，在入口處轉換成可預算的整數」。配額閘門、命中戳記、事件緩衝、tier 驅逐都屬於這種做法。實作順序建議是先做第 0 節的命令緩衝與兩池分離，再做第 2 節的單位側戳記，因為其他三項都要依賴這兩個基礎設施。

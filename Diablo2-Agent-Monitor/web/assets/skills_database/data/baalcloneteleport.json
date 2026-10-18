@@ -1,0 +1,63 @@
+{
+  "id": "baalcloneteleport",
+  "name": "Baal Clone Teleport",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [],
+    "kind": "unclassified",
+    "note": "neither a player class nor listed in any monster's Skill1..Skill4. Typically a generic routine the AI calls directly (Attack, Kick, Throw, Jump, Unsummon)."
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 98,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  },
+  "clientMissiles": [
+    {
+      "value": "baalclonedeath",
+      "source": "Skills.txt cltmissilea"
+    },
+    {
+      "value": "baalteleport",
+      "source": "Skills.txt cltmissileb"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "blizzard_shard_v1",
+  "atlas": "blizzard_shard_v1_auth.png",
+  "cellW": 58,
+  "cellH": 200,
+  "pivotX": 51,
+  "pivotY": 186,
+  "frames": 6,
+  "dirs": 1,
+  "totalW": 348,
+  "totalH": 200,
+  "unionBox": {
+    "minX": -50,
+    "maxX": 6,
+    "minY": -185,
+    "maxY": 13
+  }
+}

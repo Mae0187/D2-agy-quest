@@ -1,0 +1,579 @@
+{
+  "id": "skeletonraise",
+  "name": "SkeletonRaise",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 58 monster row(s), 0 of them bosses"
+    ],
+    "kind": "monster",
+    "usedBy": {
+      "bosses": [],
+      "monsters": [
+        {
+          "id": "skeleton1",
+          "name": "Skeleton",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton2",
+          "name": "Returned",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton3",
+          "name": "BoneWarrior",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton4",
+          "name": "BurningDead",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton5",
+          "name": "Horror",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish1",
+          "name": "RatMan",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish2",
+          "name": "Fetish",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish3",
+          "name": "Flayer",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish4",
+          "name": "SoulKiller",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish5",
+          "name": "StygianDoll",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois1",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois2",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois3",
+          "name": "BurningDeadMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois4",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold1",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold2",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold3",
+          "name": "BaalColdMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold4",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire1",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire2",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire3",
+          "name": "BurningDeadMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire4",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng1",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng2",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng3",
+          "name": "BurningDeadMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng4",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow1",
+          "name": "RatMan",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow2",
+          "name": "Fetish",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow3",
+          "name": "Flayer",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow4",
+          "name": "SoulKiller",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow5",
+          "name": "StygianDoll",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish11",
+          "name": "RatMan",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer6",
+          "name": "BurningDeadArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer7",
+          "name": "BoneArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer8",
+          "name": "BurningDeadArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer9",
+          "name": "ReturnedArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer10",
+          "name": "HorrorArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire5",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire6",
+          "name": "BurningDeadMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng5",
+          "name": "ReturnedMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng6",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold5",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois5",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois6",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton6",
+          "name": "BoneWarrior",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton7",
+          "name": "Returned",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish6",
+          "name": "Flayer",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish7",
+          "name": "StygianDoll",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetish8",
+          "name": "SoulKiller",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Fetish",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow6",
+          "name": "Flayer",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow7",
+          "name": "StygianDoll",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "fetishblow8",
+          "name": "SoulKiller",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "FetishBlowgun",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skeleton8",
+          "name": "Returned",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "Skeleton",
+          "slot": "Skill1"
+        },
+        {
+          "id": "sk_archer11",
+          "name": "HorrorArcher",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonBow",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_fire7",
+          "name": "BurningDeadMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_ltng7",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_cold6",
+          "name": "BoneMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        },
+        {
+          "id": "skmage_pois7",
+          "name": "HorrorMage",
+          "type": "",
+          "boss": false,
+          "minion": true,
+          "ai": "SkeletonMage",
+          "slot": "Skill1"
+        }
+      ],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    }
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": null,
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  }
+}

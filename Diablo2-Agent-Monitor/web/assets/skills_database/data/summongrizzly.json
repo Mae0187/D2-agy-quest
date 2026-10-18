@@ -1,0 +1,161 @@
+{
+  "id": "summongrizzly",
+  "name": "Summon Grizzly",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": {
+      "value": "dru",
+      "source": "Skills.txt charclass"
+    },
+    "levelRequirement": {
+      "value": 30,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": {
+      "value": 20,
+      "source": "Skills.txt maxlvl"
+    },
+    "description": {
+      "value": "summon grizzly",
+      "source": "Skills.txt skilldesc"
+    }
+  },
+  "category": {
+    "evidence": [
+      "charclass is dru"
+    ],
+    "kind": "player",
+    "playerClass": {
+      "value": "druid",
+      "source": "Skills.txt charclass"
+    }
+  },
+  "tree": {
+    "page": {
+      "value": 1,
+      "source": "SkillDesc.txt SkillPage"
+    },
+    "row": {
+      "value": 6,
+      "source": "SkillDesc.txt SkillRow"
+    },
+    "column": {
+      "value": 2,
+      "source": "SkillDesc.txt SkillColumn"
+    },
+    "icon": {
+      "value": 18,
+      "source": "SkillDesc.txt IconCel"
+    },
+    "nameKey": {
+      "value": "Skillname248",
+      "source": "SkillDesc.txt str name"
+    },
+    "manaKey": {
+      "value": "StrSkill3",
+      "source": "SkillDesc.txt str mana"
+    }
+  },
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": {
+      "value": 40,
+      "source": "Skills.txt mana"
+    },
+    "manaShift": {
+      "value": 8,
+      "source": "Skills.txt manashift"
+    }
+  },
+  "animation": {
+    "cast": {
+      "value": "SC",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SC",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 119,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": [
+      {
+        "index": 1,
+        "value": "25",
+        "description": "% feral add to damage",
+        "source": "Skills.txt Param1",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 2,
+        "value": "10",
+        "description": "% feral damage per level",
+        "source": "Skills.txt Param2",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 7,
+        "value": "0",
+        "description": "resist",
+        "source": "Skills.txt Param7",
+        "descriptionSource": "Skills.txt description column"
+      },
+      {
+        "index": 8,
+        "value": "5",
+        "description": "resist/lvl",
+        "source": "Skills.txt Param8",
+        "descriptionSource": "Skills.txt description column"
+      }
+    ]
+  },
+  "summon": {
+    "monster": {
+      "value": "druidbear",
+      "source": "Skills.txt summon"
+    },
+    "petType": {
+      "value": "grizzly",
+      "source": "Skills.txt pettype"
+    },
+    "petMax": {
+      "value": "1",
+      "source": "Skills.txt petmax"
+    },
+    "resolved": true,
+    "note": "A summon's attack is not in Skills.txt. The monster names it in Skill1..Skill4, and those name skills, which name missiles - four tables deep.",
+    "monsterName": {
+      "value": "Druid Bear",
+      "source": "MonStats.txt NameStr"
+    },
+    "ai": {
+      "value": "DruidBear",
+      "source": "MonStats.txt AI"
+    },
+    "abilities": [
+      {
+        "skill": {
+          "name": "BearSmite",
+          "source": "MonStats.txt Skill1",
+          "resolvedInSkills": true,
+          "missile": null
+        }
+      }
+    ]
+  }
+}

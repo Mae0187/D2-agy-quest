@@ -1,0 +1,579 @@
+{
+  "schema": 1,
+  "tool": "d2_proj_toolkit 1.0.0",
+  "name": "iceorb",
+  "source": {
+    "frameCount": 16,
+    "yMode": "bottom"
+  },
+  "coordinateSystem": {
+    "world": "原點=單位錨點，x右 y下，像素中心=索引+0.5",
+    "cell": "cell = world + (pivot_x, pivot_y)"
+  },
+  "atlas": {
+    "file": "iceorb.png",
+    "cell_w": 56,
+    "cell_h": 55,
+    "pivot_x": 28,
+    "pivot_y": 73,
+    "pivotNorm": {
+      "x": 0.5,
+      "y": 1.327273
+    },
+    "unionBox": {
+      "minX": -27,
+      "minY": -72,
+      "maxX": 27,
+      "maxY": -19,
+      "w": 54,
+      "h": 53
+    },
+    "padding": 1,
+    "symmetric": false,
+    "yMode": "bottom",
+    "trimAlpha": true,
+    "alphaThreshold": 0,
+    "columns": 16,
+    "rowsPerDir": 1,
+    "directions": [
+      0
+    ],
+    "directionCount": 1,
+    "framesPerDir": 16,
+    "width": 896,
+    "height": 55
+  },
+  "frames": {
+    "0": {
+      "0": {
+        "dir": 0,
+        "frame": 0,
+        "empty": false,
+        "atlas": {
+          "x": 0,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 4,
+          "y": 1,
+          "w": 49,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 4,
+          "y": 1,
+          "w": 49,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -72,
+          "w": 49,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": -20
+        }
+      },
+      "1": {
+        "dir": 0,
+        "frame": 1,
+        "empty": false,
+        "atlas": {
+          "x": 56,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 4,
+          "y": 1,
+          "w": 49,
+          "h": 53
+        },
+        "contentAtlas": {
+          "x": 60,
+          "y": 1,
+          "w": 49,
+          "h": 53
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -72,
+          "w": 49,
+          "h": 53
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": -19
+        }
+      },
+      "2": {
+        "dir": 0,
+        "frame": 2,
+        "empty": false,
+        "atlas": {
+          "x": 112,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 4,
+          "y": 1,
+          "w": 49,
+          "h": 51
+        },
+        "contentAtlas": {
+          "x": 116,
+          "y": 1,
+          "w": 49,
+          "h": 51
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -72,
+          "w": 49,
+          "h": 51
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": -21
+        }
+      },
+      "3": {
+        "dir": 0,
+        "frame": 3,
+        "empty": false,
+        "atlas": {
+          "x": 168,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 4,
+          "y": 2,
+          "w": 50,
+          "h": 49
+        },
+        "contentAtlas": {
+          "x": 172,
+          "y": 2,
+          "w": 50,
+          "h": 49
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -71,
+          "w": 50,
+          "h": 49
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": -22
+        }
+      },
+      "4": {
+        "dir": 0,
+        "frame": 4,
+        "empty": false,
+        "atlas": {
+          "x": 224,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 2,
+          "y": 2,
+          "w": 52,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 226,
+          "y": 2,
+          "w": 52,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -71,
+          "w": 52,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": -21
+        }
+      },
+      "5": {
+        "dir": 0,
+        "frame": 5,
+        "empty": false,
+        "atlas": {
+          "x": 280,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 4,
+          "y": 1,
+          "w": 50,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 284,
+          "y": 1,
+          "w": 50,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -24,
+          "y": -72,
+          "w": 50,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -24,
+          "y": -20
+        }
+      },
+      "6": {
+        "dir": 0,
+        "frame": 6,
+        "empty": false,
+        "atlas": {
+          "x": 336,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 1,
+          "w": 51,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 339,
+          "y": 1,
+          "w": 51,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -72,
+          "w": 51,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -20
+        }
+      },
+      "7": {
+        "dir": 0,
+        "frame": 7,
+        "empty": false,
+        "atlas": {
+          "x": 392,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 395,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -71,
+          "w": 51,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -21
+        }
+      },
+      "8": {
+        "dir": 0,
+        "frame": 8,
+        "empty": false,
+        "atlas": {
+          "x": 448,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 1,
+          "y": 2,
+          "w": 54,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 449,
+          "y": 2,
+          "w": 54,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -27,
+          "y": -71,
+          "w": 54,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -27,
+          "y": -21
+        }
+      },
+      "9": {
+        "dir": 0,
+        "frame": 9,
+        "empty": false,
+        "atlas": {
+          "x": 504,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 507,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -71,
+          "w": 51,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -21
+        }
+      },
+      "10": {
+        "dir": 0,
+        "frame": 10,
+        "empty": false,
+        "atlas": {
+          "x": 560,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 1,
+          "w": 51,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 563,
+          "y": 1,
+          "w": 51,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -72,
+          "w": 51,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -20
+        }
+      },
+      "11": {
+        "dir": 0,
+        "frame": 11,
+        "empty": false,
+        "atlas": {
+          "x": 616,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 1,
+          "w": 50,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 619,
+          "y": 1,
+          "w": 50,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -72,
+          "w": 50,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -20
+        }
+      },
+      "12": {
+        "dir": 0,
+        "frame": 12,
+        "empty": false,
+        "atlas": {
+          "x": 672,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 2,
+          "y": 2,
+          "w": 52,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 674,
+          "y": 2,
+          "w": 52,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -26,
+          "y": -71,
+          "w": 52,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -26,
+          "y": -21
+        }
+      },
+      "13": {
+        "dir": 0,
+        "frame": 13,
+        "empty": false,
+        "atlas": {
+          "x": 728,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 731,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -71,
+          "w": 51,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -21
+        }
+      },
+      "14": {
+        "dir": 0,
+        "frame": 14,
+        "empty": false,
+        "atlas": {
+          "x": 784,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 3,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "contentAtlas": {
+          "x": 787,
+          "y": 2,
+          "w": 51,
+          "h": 50
+        },
+        "worldRect": {
+          "x": -25,
+          "y": -71,
+          "w": 51,
+          "h": 50
+        },
+        "sourceOffset": {
+          "x": -25,
+          "y": -21
+        }
+      },
+      "15": {
+        "dir": 0,
+        "frame": 15,
+        "empty": false,
+        "atlas": {
+          "x": 840,
+          "y": 0,
+          "w": 56,
+          "h": 55
+        },
+        "content": {
+          "x": 5,
+          "y": 1,
+          "w": 47,
+          "h": 52
+        },
+        "contentAtlas": {
+          "x": 845,
+          "y": 1,
+          "w": 47,
+          "h": 52
+        },
+        "worldRect": {
+          "x": -23,
+          "y": -72,
+          "w": 47,
+          "h": 52
+        },
+        "sourceOffset": {
+          "x": -23,
+          "y": -20
+        }
+      }
+    }
+  },
+  "anim": {}
+}

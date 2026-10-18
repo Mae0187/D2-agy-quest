@@ -1,0 +1,161 @@
+{
+  "id": "primebolt",
+  "name": "PrimeBolt",
+  "sources": [
+    "Skills.txt",
+    "Missiles.txt",
+    "MonStats.txt"
+  ],
+  "identity": {
+    "class": null,
+    "levelRequirement": {
+      "value": 1,
+      "source": "Skills.txt reqlevel"
+    },
+    "maxLevel": null,
+    "description": null
+  },
+  "category": {
+    "evidence": [
+      "named by 2 monster row(s), 2 of them bosses"
+    ],
+    "kind": "boss",
+    "usedBy": {
+      "bosses": [
+        {
+          "id": "mephisto",
+          "name": "Mephisto",
+          "type": "",
+          "boss": true,
+          "minion": false,
+          "ai": "Mephisto",
+          "slot": "Skill2"
+        },
+        {
+          "id": "ubermephisto",
+          "name": "Mephisto",
+          "type": "",
+          "boss": true,
+          "minion": false,
+          "ai": "UberMephisto",
+          "slot": "Skill2"
+        }
+      ],
+      "monsters": [],
+      "source": "MonStats.txt Skill1..Skill4, searched backwards"
+    },
+    "bossNames": [
+      "Mephisto"
+    ]
+  },
+  "tree": null,
+  "castDelay": {
+    "frames": null,
+    "seconds": null,
+    "source": "Skills.txt delay, in frames at 25 fps",
+    "validated": "checked against the published cast-delay list: 17 of 18 skills agree"
+  },
+  "cost": {
+    "mana": null,
+    "manaShift": null
+  },
+  "animation": {
+    "cast": {
+      "value": "SQ",
+      "source": "Skills.txt anim"
+    },
+    "sequence": {
+      "value": "SQ",
+      "source": "Skills.txt seqtrans"
+    }
+  },
+  "behaviour": {
+    "implemented": false,
+    "serverFunction": {
+      "value": 17,
+      "source": "Skills.txt srvdofunc"
+    },
+    "note": "srvdofunc is a routine number in the game executable. The parameters below say what it is called with; the routine itself is not in any table and is not implemented here.",
+    "parameters": []
+  },
+  "missiles": [
+    {
+      "value": "chargedstrikebolt",
+      "source": "Skills.txt srvmissilea",
+      "missile": {
+        "name": "chargedstrikebolt",
+        "resolved": true,
+        "celFile": {
+          "value": "ChargedBolt",
+          "source": "Missiles.txt CelFile"
+        },
+        "velocity": {
+          "value": 12,
+          "source": "Missiles.txt Vel"
+        },
+        "maxVelocity": {
+          "value": 12,
+          "source": "Missiles.txt MaxVel"
+        },
+        "range": {
+          "value": 98,
+          "source": "Missiles.txt Range"
+        },
+        "size": {
+          "value": 1,
+          "source": "Missiles.txt Size"
+        },
+        "collideType": {
+          "value": 3,
+          "source": "Missiles.txt CollideType"
+        },
+        "collideKill": {
+          "value": 1,
+          "source": "Missiles.txt CollideKill"
+        },
+        "nextHit": null,
+        "nextDelay": null,
+        "pierce": null,
+        "knockBack": null,
+        "trans": {
+          "value": 1,
+          "source": "Missiles.txt Trans"
+        },
+        "animLen": {
+          "value": 10,
+          "source": "Missiles.txt AnimLen"
+        },
+        "animSpeed": {
+          "value": 16,
+          "source": "Missiles.txt AnimSpeed"
+        },
+        "subMissiles": [],
+        "hitSubMissiles": [],
+        "explosion": null,
+        "explosionMissile": null,
+        "elemental": {
+          "type": null,
+          "min": null,
+          "max": null
+        },
+        "parameters": [],
+        "serverTickFunction": {
+          "value": "1",
+          "known": "linear",
+          "source": "Missiles.txt pSrvDoFunc"
+        },
+        "serverHitFunction": {
+          "value": "",
+          "known": null,
+          "source": "Missiles.txt pSrvHitFunc"
+        }
+      }
+    }
+  ],
+  "clientMissiles": [
+    {
+      "value": "chargedbolt",
+      "source": "Skills.txt cltmissilea"
+    }
+  ]
+}

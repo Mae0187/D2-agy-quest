@@ -1,0 +1,35 @@
+{
+  "image": "map/act4-1.png",
+  "size": {
+    "width": 2880,
+    "height": 1440
+  },
+  "originInImage": {
+    "x": 4167,
+    "y": -795
+  },
+  "originSource": "carried from act4.json, shifted by the crop at (1593, 795)",
+  "worldExtent": {
+    "width": 147.7,
+    "height": 221.5,
+    "source": "the left and right corners of the projected parallelogram"
+  },
+  "pixelsPerUnit": {
+    "horizontal": 26.0,
+    "vertical": 13.0,
+    "matchesEngineProjection": false,
+    "source": "halfTileW from the top vertex to the right corner"
+  },
+  "croppedFrom": {
+    "image": "map/act4.png",
+    "cropOrigin": {
+      "x": 1593,
+      "y": 795
+    },
+    "size": {
+      "width": 2880,
+      "height": 1440
+    },
+    "foundBy": "tools/find_crop.py patch match"
+  }
+}

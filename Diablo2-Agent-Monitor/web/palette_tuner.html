@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>《暗黑破壞神2》角色光影與色彩即時調校台</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0b0c10;
+            color: #dcdcdc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 頂部標題 */
+        header {
+            background: linear-gradient(180deg, #1f232b 0%, #12141a 100%);
+            border-bottom: 2px solid #5a4a30;
+            padding: 10px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .title-group h1 {
+            font-size: 19px;
+            color: #e5c378;
+            letter-spacing: 1px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .title-group p {
+            font-size: 12px;
+            color: #9a9a9a;
+            margin-top: 3px;
+        }
+
+        /* 主工作區 */
+        .workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* 視圖預覽區域 */
+        .viewport-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-color: #08090c;
+            overflow: hidden;
+        }
+
+        /* 視圖標籤列 */
+        .view-tabs {
+            display: flex;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 16px;
+            border-bottom: 1px solid #333;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tab-btn {
+            background: #1e222b;
+            border: 1px solid #4a3e2a;
+            color: #bbb;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            background: #2b3240;
+            color: #fff;
+            border-color: #8c734b;
+        }
+
+        .tab-btn.active {
+            background: #443722;
+            color: #f3d790;
+            border-color: #e5c378;
+            box-shadow: 0 0 8px rgba(229, 195, 120, 0.3);
+        }
+
+        .tab-tip {
+            margin-left: auto;
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* 畫布視窗 */
+        .view-stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: auto;
+            padding: 15px;
+        }
+
+        /* 英雄精靈圖套件 (受 CSS 濾鏡調校) */
+        .tuned-subject {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        /* 實景營火視圖 (1024x768 原版真實重現) */
+        #campfire-view {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #camp-stage {
+            position: relative;
+            width: 1024px;
+            height: 768px;
+            background-image: url('assets/stitched_bg.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            box-shadow: 0 0 35px rgba(0, 0, 0, 0.95);
+            border: 2px solid #2e261a;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        #tune-campfire {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) scale(1.25);
+            transform-origin: center bottom;
+            width: 140px;
+            height: 150px;
+            z-index: 15;
+            pointer-events: none;
+        }
+
+        #tune-campfire-flame {
+            width: 100%;
+            height: 100%;
+            background-size: auto;
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            image-rendering: pixelated;
+        }
+
+        #tune-campfire-glow {
+            position: absolute;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 330px;
+            height: 110px;
+            background: radial-gradient(ellipse at center, rgba(255, 140, 40, 0.40) 0%, rgba(200, 70, 10, 0.15) 40%, rgba(0,0,0,0) 70%);
+            filter: brightness(120%) saturate(120%);
+            pointer-events: none;
+        }
+
+        .tune-char-slot {
+            position: absolute;
+            width: 80px;
+            height: 260px;
+            margin-left: -40px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            transform: scale(1.25);
+            transform-origin: center bottom;
+            overflow: visible;
+            z-index: 10;
+            transition: z-index 0.1s;
+        }
+
+        .tune-char-slot:hover {
+            z-index: 50 !important;
+        }
+
+        .tune-char-slot.selected {
+            z-index: 999 !important;
+        }
+
+        .tune-char-shadow {
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 20px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 75%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .tune-char-sprite {
+            position: absolute;
+            bottom: -55px;
+            left: 50%;
+            transform: translateX(-50%) translateZ(0);
+            width: 320px;
+            height: 320px;
+            background-position: 0 0;
+            background-repeat: no-repeat;
+            background-size: 320px 320px;
+            image-rendering: pixelated;
+            pointer-events: none;
+            overflow: visible;
+            z-index: 2;
+        }
+
+        /* 英雄站位與弧度 */
+        #tune-slot-amazon      { bottom: 190px; left: 19%;   z-index: 12; }
+        #tune-slot-assassin    { bottom: 206px; left: 29.5%; z-index: 13; }
+        #tune-slot-necromancer { bottom: 222px; left: 40%;   z-index: 11; }
+        #tune-slot-barbarian   { bottom: 232px; left: 50%;   z-index: 11; }
+        #tune-slot-paladin     { bottom: 222px; left: 60%;   z-index: 12; }
+        #tune-slot-sorceress   { bottom: 206px; left: 70.5%; z-index: 13; }
+        #tune-slot-druid       { bottom: 190px; left: 81%;   z-index: 12; }
+
+        /* 營火提示小浮標 */
+        #camp-hero-toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 12, 8, 0.85);
+            border: 1px solid #6b5735;
+            color: #ecd399;
+            font-size: 14px;
+            padding: 6px 18px;
+            border-radius: 4px;
+            pointer-events: none;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 4px #000;
+        }
+
+        /* 排排站視圖 */
+        #lineup-view {
+            display: flex;
+            align-items: flex-end;
+            gap: 20px;
+        }
+
+        .hero-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .hero-card img {
+            width: 120px;
+            height: 150px;
+            object-fit: contain;
+        }
+
+        .hero-shadow {
+            width: 80px;
+            height: 16px;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 70%);
+            margin-top: -8px;
+            z-index: 1;
+        }
+
+        .hero-name {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #cbb88a;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* 單人特寫視圖 */
+        #solo-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .solo-select-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .solo-hero-btn {
+            background: #1e222b;
+            border: 1px solid #444;
+            color: #aaa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .solo-hero-btn.active {
+            background: #614a27;
+            border-color: #d4a755;
+            color: #fff;
+        }
+
+        .solo-display {
+            transform: scale(2);
+            transform-origin: center center;
+            margin: 60px 0;
+        }
+
+        /* 控制面板側邊欄 */
+        .controls-sidebar {
+            width: 390px;
+            background: #14171f;
+            border-left: 2px solid #3d3424;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .controls-scroll {
+            flex: 1;
+            padding: 18px;
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: #e5c378;
+            border-bottom: 1px solid #3a3222;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 模式切換 */
+        .mode-toggle-box {
+            background: #0d1017;
+            border: 1px solid #383022;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 14px;
+        }
+
+        .mode-toggle-box label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #ddd;
+            cursor: pointer;
+            margin-bottom: 6px;
+        }
+
+        .mode-desc {
+            font-size: 11px;
+            color: #888;
+            margin-left: 24px;
+            line-height: 1.3;
+        }
+
+        /* 預設按鈕區 */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .preset-btn {
+            background: #202633;
+            border: 1px solid #4f412c;
+            color: #d4c5a9;
+            padding: 7px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #343c4f;
+            border-color: #baa06e;
+            color: #fff;
+        }
+
+        /* 滑桿項目 */
+        .slider-item {
+            margin-bottom: 14px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #ccc;
+            margin-bottom: 5px;
+        }
+
+        .slider-value {
+            color: #f0c36d;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #252b38;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #d4a755;
+            border: 2px solid #14171f;
+            box-shadow: 0 0 5px rgba(0,0,0,0.8);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #ffcf70;
+        }
+
+        /* 底部結果回報面板 */
+        .report-box {
+            background: #0d0f14;
+            border-top: 2px solid #4a3e2a;
+            padding: 14px 18px;
+        }
+
+        .report-title {
+            font-size: 12px;
+            color: #a09070;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .report-content {
+            background: #161a22;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #79e09b;
+            word-break: break-all;
+            margin-bottom: 8px;
+            user-select: all;
+        }
+
+        .report-css {
+            background: #10131a;
+            border: 1px dashed #444;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #ffd276;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            width: 100%;
+            background: linear-gradient(180deg, #876d3f 0%, #544222 100%);
+            border: 1px solid #c9aa69;
+            color: #fff;
+            padding: 9px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .copy-btn:hover {
+            background: linear-gradient(180deg, #a68750 0%, #69522b 100%);
+            box-shadow: 0 0 10px rgba(212, 167, 85, 0.4);
+        }
+
+        .copy-btn:active {
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title-group">
+            <h1>《暗黑破壞神2》角色光影與色彩即時調校台</h1>
+            <p>Phase 1 輔助工具：在真實動態營火與 7 英雄呼吸動作中即時調配最佳質感</p>
+        </div>
+        <div>
+            <button class="tab-btn" onclick="resetDefaults()">重設為 265% 基準</button>
+        </div>
+    </header>
+
+    <div class="workspace">
+        <!-- 視圖呈現區域 -->
+        <div class="viewport-container" id="viewport">
+            <div class="view-tabs">
+                <button class="tab-btn active" onclick="switchView('campfire')">🔥 營火選角實景 (1024x768 真實重現)</button>
+                <button class="tab-btn" onclick="switchView('lineup')">七大英雄並列 (Lineup)</button>
+                <button class="tab-btn" onclick="switchView('solo')">單一英雄 2X 特寫 (Solo)</button>
+                <span class="tab-tip">💡 在營火實景中點擊任一英雄可查看選中邁步</span>
+            </div>
+
+            <div class="view-stage">
+                <!-- 視圖 1: 實景營火 1024x768 -->
+                <div id="campfire-view">
+                    <div id="camp-stage">
+                        <!-- 動態營火火焰與光暈 -->
+                        <div id="tune-campfire">
+                            <div id="tune-campfire-flame" class="tuned-subject"></div>
+                            <div id="tune-campfire-glow"></div>
+                        </div>
+
+                        <!-- 七大英雄動態待命槽位 -->
+                        <div class="tune-char-slot" id="tune-slot-amazon" onclick="tuneSelectHero('amazon')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-amazon"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-assassin" onclick="tuneSelectHero('assassin')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-assassin"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-necromancer" onclick="tuneSelectHero('necromancer')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-necromancer"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-barbarian" onclick="tuneSelectHero('barbarian')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-barbarian"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-paladin" onclick="tuneSelectHero('paladin')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-paladin"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-sorceress" onclick="tuneSelectHero('sorceress')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-sorceress"></div>
+                        </div>
+                        <div class="tune-char-slot" id="tune-slot-druid" onclick="tuneSelectHero('druid')">
+                            <div class="tune-char-shadow"></div>
+                            <div class="tune-char-sprite tuned-subject" id="tune-sprite-druid"></div>
+                        </div>
+
+                        <div id="camp-hero-toast">當前模式：營火動態實景（點擊角色可切換選中狀態）</div>
+                    </div>
+                </div>
+
+                <!-- 視圖 2: 英雄並列 -->
+                <div id="lineup-view" style="display: none;">
+                    <div class="hero-card">
+                        <img src="assets/idle/amazon.png" class="tuned-subject" alt="Amazon">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">亞馬遜</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/assassin.png" class="tuned-subject" alt="Assassin">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">刺客</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/barbarian.png" class="tuned-subject" alt="Barbarian">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">野蠻人</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/druid.png" class="tuned-subject" alt="Druid">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">德魯伊</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/necromancer.png" class="tuned-subject" alt="Necromancer">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">死靈法師</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/paladin.png" class="tuned-subject" alt="Paladin">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">聖騎士</span>
+                    </div>
+                    <div class="hero-card">
+                        <img src="assets/idle/sorceress.png" class="tuned-subject" alt="Sorceress">
+                        <div class="hero-shadow"></div>
+                        <span class="hero-name">魔法使</span>
+                    </div>
+                </div>
+
+                <!-- 視圖 3: 單人特寫 -->
+                <div id="solo-view" style="display: none;">
+                    <div class="solo-select-row">
+                        <button class="solo-hero-btn" onclick="selectSolo('amazon')">亞馬遜</button>
+                        <button class="solo-hero-btn" onclick="selectSolo('assassin')">刺客</button>
+                        <button class="solo-hero-btn active" onclick="selectSolo('barbarian')">野蠻人</button>
+                        <button class="solo-hero-btn" onclick="selectSolo('druid')">德魯伊</button>
+                        <button class="solo-hero-btn" onclick="selectSolo('necromancer')">死靈法師</button>
+                        <button class="solo-hero-btn" onclick="selectSolo('paladin')">聖騎士</button>
+                        <button class="solo-hero-btn" onclick="selectSolo('sorceress')">魔法使</button>
+                    </div>
+                    <div class="solo-display">
+                        <img id="solo-hero-img" src="assets/idle/barbarian.png" class="tuned-subject" alt="Solo Hero">
+                    </div>
+                    <span id="solo-hero-name" style="color: #e5c378; font-size: 16px; font-weight: bold;">野蠻人 (Barbarian)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 側邊控制器 -->
+        <div class="controls-sidebar">
+            <div class="controls-scroll">
+
+                <!-- 模式切換 -->
+                <div class="control-section">
+                    <div class="section-title">
+                        <span>亮度映射模式</span>
+                    </div>
+                    <div class="mode-toggle-box">
+                        <label>
+                            <input type="radio" name="calc-mode" value="direct" checked onchange="updateFilters()">
+                            <strong>直接套用模式 (Direct 265%)</strong>
+                        </label>
+                        <div class="mode-desc">CSS brightness 直接套用滑桿數值，無過度提亮，最穩定不刺眼。</div>
+                    </div>
+                    <div class="mode-toggle-box">
+                        <label>
+                            <input type="radio" name="calc-mode" value="composite" onchange="updateFilters()">
+                            <strong>Gamma 綜合換算模式 (Composite)</strong>
+                        </label>
+                        <div class="mode-desc">亮度隨 Gamma 補償遞增（先前換算 327.6%）。</div>
+                    </div>
+                </div>
+
+                <!-- 常用預設 -->
+                <div class="control-section">
+                    <div class="section-title">
+                        <span>快速預設檔 (Presets)</span>
+                    </div>
+                    <div class="preset-grid">
+                        <button class="preset-btn" onclick="applyPreset(265, 95, 160, 0, 1.70, 'direct')" style="border-color: #ffd700; color: #ffd700; font-weight:bold;">★ 營火調校 (265%直出)</button>
+                        <button class="preset-btn" onclick="applyPreset(265, 95, 160, 0, 1.70, 'composite')">★ 綜合換算 (327%)</button>
+                        <button class="preset-btn" onclick="applyPreset(200, 100, 140, 0, 1.2, 'direct')">清晰柔和 (200%)</button>
+                        <button class="preset-btn" onclick="applyPreset(150, 105, 110, 0, 1.0, 'direct')">微亮原味 (150%)</button>
+                        <button class="preset-btn" onclick="applyPreset(100, 100, 100, 0, 1.0, 'direct')">原版基準 (100%)</button>
+                        <button class="preset-btn" onclick="applyPreset(240, 100, 150, 5, 1.5, 'direct')">營火暖陽 (240%)</button>
+                    </div>
+                </div>
+
+                <!-- 光影與色彩滑桿 -->
+                <div class="control-section">
+                    <div class="section-title">
+                        <span>色彩與光影細項調整</span>
+                    </div>
+
+                    <!-- 亮度 -->
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>☀️ 亮度增益 (Brightness)</span>
+                            <span class="slider-value" id="val-brightness">265%</span>
+                        </div>
+                        <input type="range" id="input-brightness" min="50" max="350" step="5" value="265" oninput="updateFilters()">
+                    </div>
+
+                    <!-- 對比度 -->
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>🌗 對比度 (Contrast)</span>
+                            <span class="slider-value" id="val-contrast">95%</span>
+                        </div>
+                        <input type="range" id="input-contrast" min="50" max="200" step="5" value="95" oninput="updateFilters()">
+                    </div>
+
+                    <!-- 飽和度 -->
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>🎨 色彩飽和度 (Saturation)</span>
+                            <span class="slider-value" id="val-saturate">160%</span>
+                        </div>
+                        <input type="range" id="input-saturate" min="50" max="250" step="5" value="160" oninput="updateFilters()">
+                    </div>
+
+                    <!-- 灰度曲線 / 陰影提亮 (Gamma 模擬) -->
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>⚡ 暗部層次補償 (Shadow Gamma)</span>
+                            <span class="slider-value" id="val-gamma">1.70</span>
+                        </div>
+                        <input type="range" id="input-gamma" min="0.6" max="2.2" step="0.05" value="1.70" oninput="updateFilters()">
+                    </div>
+
+                    <!-- 營火暖光色彩 -->
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>🔥 營火暖橘光暈 (Warmth Tint)</span>
+                            <span class="slider-value" id="val-warmth">0%</span>
+                        </div>
+                        <input type="range" id="input-warmth" min="0" max="35" step="1" value="0" oninput="updateFilters()">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 底部回報與複製區 -->
+            <div class="report-box">
+                <div class="report-title">
+                    <span>調校結果數據 (調整滿意後複製給我)</span>
+                </div>
+                <div class="report-content" id="report-text">
+                    亮度: 265% | 對比: 95% | 飽和: 160% | 暗部Gamma: 1.70 | 暖光: 0%
+                </div>
+                <div class="report-css" id="report-css">
+                    filter: brightness(265%) contrast(95%) saturate(160%);
+                </div>
+                <button class="copy-btn" onclick="copySettings()">
+                    📋 一鍵複製目前設定數值
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 七大職業幀資料
+        const heroesData = {
+            'amazon':      { idlePrefix: 'AMNU1', idleFrames: 26, name: '亞馬遜' },
+            'assassin':    { idlePrefix: 'ASNU1', idleFrames: 31, name: '刺客' },
+            'barbarian':   { idlePrefix: 'banu1', idleFrames: 16, name: '野蠻人' },
+            'druid':       { idlePrefix: 'DZNU1', idleFrames: 21, name: '德魯伊' },
+            'necromancer': { idlePrefix: 'NENU1', idleFrames: 12, name: '死靈法師' },
+            'paladin':     { idlePrefix: 'PANU1', idleFrames: 26, name: '聖騎士' },
+            'sorceress':   { idlePrefix: 'SONU1', idleFrames: 32, name: '魔法使' }
+        };
+
+        const heroRuntime = {};
+        Object.keys(heroesData).forEach(id => {
+            heroRuntime[id] = { currentFrame: Math.floor(Math.random() * 5) };
+        });
+
+        // 營火動畫
+        const fireFrames = 30;
+        let currentFireFrame = 0;
+        const tuneFlameEl = document.getElementById('tune-campfire-flame');
+
+        function animateTuneFire() {
+            if (tuneFlameEl) {
+                tuneFlameEl.style.backgroundImage = `url('assets/fire/fire_d0_f${currentFireFrame}.png')`;
+                currentFireFrame = (currentFireFrame + 1) % fireFrames;
+            }
+        }
+        setInterval(animateTuneFire, 85);
+
+        // 英雄烤火待命動畫
+        function animateTuneHeroes() {
+            Object.keys(heroesData).forEach(id => {
+                const data = heroesData[id];
+                const runtime = heroRuntime[id];
+                const spriteEl = document.getElementById(`tune-sprite-${id}`);
+                if (spriteEl) {
+                    spriteEl.style.backgroundImage = `url('assets/${id}/${data.idlePrefix}_d0_f${runtime.currentFrame}.png')`;
+                    runtime.currentFrame = (runtime.currentFrame + 1) % data.idleFrames;
+                }
+            });
+        }
+        setInterval(animateTuneHeroes, 40);
+
+        // 點擊選中英雄反饋
+        let selectedTuneHero = null;
+        function tuneSelectHero(id) {
+            const toast = document.getElementById('camp-hero-toast');
+            if (selectedTuneHero) {
+                const prev = document.getElementById(`tune-slot-${selectedTuneHero}`);
+                if (prev) prev.classList.remove('selected');
+            }
+            if (selectedTuneHero === id) {
+                selectedTuneHero = null;
+                toast.textContent = '已取消選中，全英雄待命烤火中';
+                return;
+            }
+            selectedTuneHero = id;
+            const cur = document.getElementById(`tune-slot-${id}`);
+            if (cur) cur.classList.add('selected');
+            toast.textContent = `當前選中：${heroesData[id].name} (光影已即時套用)`;
+        }
+
+        // 滑桿元件參照
+        const inBrightness = document.getElementById('input-brightness');
+        const inContrast = document.getElementById('input-contrast');
+        const inSaturate = document.getElementById('input-saturate');
+        const inGamma = document.getElementById('input-gamma');
+        const inWarmth = document.getElementById('input-warmth');
+
+        // 標籤參照
+        const valBrightness = document.getElementById('val-brightness');
+        const valContrast = document.getElementById('val-contrast');
+        const valSaturate = document.getElementById('val-saturate');
+        const valGamma = document.getElementById('val-gamma');
+        const valWarmth = document.getElementById('val-warmth');
+        const reportText = document.getElementById('report-text');
+        const reportCss = document.getElementById('report-css');
+
+        // 更新濾鏡效果
+        function updateFilters() {
+            const b = inBrightness.value;
+            const c = inContrast.value;
+            const s = inSaturate.value;
+            const g = parseFloat(inGamma.value);
+            const w = inWarmth.value;
+            const mode = document.querySelector('input[name="calc-mode"]:checked').value;
+
+            // 標籤更新
+            valBrightness.textContent = `${b}%`;
+            valContrast.textContent = `${c}%`;
+            valSaturate.textContent = `${s}%`;
+            valGamma.textContent = g.toFixed(2);
+            valWarmth.textContent = `${w}%`;
+
+            // 計算有效綜合亮度
+            let finalBrightness = b;
+            if (mode === 'composite') {
+                finalBrightness = (b * Math.pow(g, 0.4)).toFixed(1);
+            }
+
+            // 組裝 CSS 濾鏡
+            let filterStr = `brightness(${finalBrightness}%) contrast(${c}%) saturate(${s}%)`;
+            if (w > 0) {
+                filterStr += ` sepia(${w}%) hue-rotate(-10deg)`;
+            }
+
+            // 套用到所有角色元素與動態營火
+            document.querySelectorAll('.tuned-subject').forEach(el => {
+                el.style.filter = filterStr;
+            });
+
+            // 更新結果文字
+            reportText.textContent = `亮度: ${b}% | 對比: ${c}% | 飽和: ${s}% | 暗部Gamma: ${g.toFixed(2)} | 暖光: ${w}% (${mode === 'direct' ? '直出模式' : '換算模式'})`;
+            reportCss.textContent = `filter: ${filterStr};`;
+        }
+
+        // 套用快速預設檔
+        function applyPreset(b, c, s, w, g, mode = 'direct') {
+            inBrightness.value = b;
+            inContrast.value = c;
+            inSaturate.value = s;
+            inWarmth.value = w;
+            inGamma.value = g;
+            const radio = document.querySelector(`input[name="calc-mode"][value="${mode}"]`);
+            if (radio) radio.checked = true;
+            updateFilters();
+        }
+
+        // 重設為建議預設
+        function resetDefaults() {
+            applyPreset(265, 95, 160, 0, 1.70, 'direct');
+        }
+
+        // 切換視圖
+        function switchView(viewName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('campfire-view').style.display = 'none';
+            document.getElementById('lineup-view').style.display = 'none';
+            document.getElementById('solo-view').style.display = 'none';
+
+            if (viewName === 'campfire') {
+                document.getElementById('campfire-view').style.display = 'block';
+                event.target.classList.add('active');
+            } else if (viewName === 'lineup') {
+                document.getElementById('lineup-view').style.display = 'flex';
+                event.target.classList.add('active');
+            } else if (viewName === 'solo') {
+                document.getElementById('solo-view').style.display = 'flex';
+                event.target.classList.add('active');
+            }
+        }
+
+        // 單人英雄切換
+        function selectSolo(heroId) {
+            document.querySelectorAll('.solo-hero-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('solo-hero-img').src = `assets/idle/${heroId}.png`;
+            document.getElementById('solo-hero-name').textContent = `${heroesData[heroId].name} (${heroId})`;
+        }
+
+        // 複製數值
+        function copySettings() {
+            const text = `${reportText.textContent.trim()}\n${reportCss.textContent.trim()}`;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✅ 已成功複製到剪貼簿！直接貼給我就好';
+                btn.style.background = 'linear-gradient(180deg, #2d8a4e 0%, #1c5e34 100%)';
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    btn.style.background = '';
+                }, 2500);
+            }).catch(() => {
+                alert('請手動選取綠色方框內的文字進行複製：\n' + text);
+            });
+        }
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            updateFilters();
+        });
+    </script>
+</body>
+</html>

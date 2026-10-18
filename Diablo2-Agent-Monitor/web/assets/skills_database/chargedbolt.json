@@ -1,0 +1,38 @@
+{
+  "id": "chargedbolt",
+  "name": "Charged Bolt",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "LightningBoltBig",
+    "celFile": "LightningBoltBig",
+    "speed": 12.0,
+    "range": 98.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 5,
+    "max": 9,
+    "level": 1,
+    "formula": "4 + 1x7 + 1x8 + 2x4",
+    "maxFormula": "8 + 1x7 + 1x8 + 2x4",
+    "type": "ltng"
+  },
+  "cost": {
+    "mana": 24
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/LightningBoltBig.png",
+    "numbers": "assets/skills/data/chargedbolt.json（Skills.txt / Missiles.txt）"
+  }
+}

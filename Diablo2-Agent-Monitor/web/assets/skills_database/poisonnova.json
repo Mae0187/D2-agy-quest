@@ -1,0 +1,38 @@
+{
+  "id": "poisonnova",
+  "name": "Poison Nova",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "poisonNova",
+    "celFile": "poisonNova",
+    "speed": 12.0,
+    "range": 30.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 18,
+    "max": 29,
+    "level": 1,
+    "formula": "14 + 4x7 + 5x8 + 8x4",
+    "maxFormula": "25 + 4x7 + 5x8 + 8x4",
+    "type": "pois"
+  },
+  "cost": {
+    "mana": 20
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/poisonNova.png",
+    "numbers": "assets/skills/data/poisonnova.json（Skills.txt / Missiles.txt）"
+  }
+}

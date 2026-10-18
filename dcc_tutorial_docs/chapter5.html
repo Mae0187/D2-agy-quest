@@ -1,0 +1,206 @@
+<title>Joel, Alkalund & Nefarius' Animation Conversion Tutorial v1.0</title>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#6633FF" alink="#336699"><script type="text/javascript">document.write('<script type="text/javascript" src="http://wrapper.gamespy.com/a?pagetype=pnh_content&amp;size=prestitial"></scr' + 'ipt>');</script>
+<h1 align="center">Diablo II Animation Conversion Extended Tutorial</h1>
+<h4 align="center">by Joel Falcou, Alkalund and Nefarius<br>
+  for The Phrozen Keep</h4>
+<h2><u>Chapter Five : .COF Editing of Framecounts</u></h2>
+<h4><i><u>5.0 Overview :</u></i></h4>
+
+<p>In the previous chapters you learned how to convert animations, using Gamani GIF Movie Gear. By now you have the goblin's dcc files ready for use, with correct offsets and everything. Now comes the delicate process of putting your animation to work in the game.</p>
+
+<p>This chapter will be somewhat heavier in information than the previous ones. Two new types of archives will be introduced, the files with <b>.D2</b> and <b>.COF</b> extension. The modifications to be done in such files will require a <i>HEX Editor</i> software; in this tutorial we are going to use the <b>XVI32</b> hex editor. We assume the reader understands hexadecimal numbers and has some knowledge on how to work with this software (there are tutorials covering this, like Sir_General's Code Editing Tutorial for example). By the end of this chapter, you should have successfuly replaced the Quill Rat with your new Goblin animations.</p>
+
+<h4><i><u>5.1 Some Tips on XVI32 :</u></i></h4>
+
+<p>Roughly speaking, XVI32 is similar to an ordinary text editor; you can type in new bytes, overwrite bytes, select several bytes at once and copy/cut/paste them etc. Here are some tips that will help you make the necessary changes in the files we will discuss later:</p>
+
+<p>There are two ways of typing bytes with XVI32, they are called <b>Overwrite mode</b> and <b>Insert mode</b>. When typing in overwrite mode, you are doing just that: <i>overwriting</i> already existing bytes in the file. This mode is useful and used when you want to <i>replace</i> bytes in a file. When typing in Insert mode, you are again doing just what is says: <i>inserting</i> new bytes in the file. You can insert new bytes anywhere in the file, not necessarily at the end; when you add bytes in the middle of the file, all subsequent bytes will be shifted down to give room to the new bytes. It all works like a txt file editor! To toggle between Insert/Overwrite mode, use the <b><i>Insert</i></b> key on the keyboard (NOTE that it is <b>very</b> important that you know in which mode you are typing at all times. Hex Editing wrong any Diablo 2 file will surely produce some nasty crashes. Always know what you're doing). You can check at the Status Bar at the bottom of the XVI32 screen whether you are in Overwrite or Insert mode.</p>
+
+<p>To select a block of several bytes, you can use <b>Shift+(arrow keys)</b> for example, just like in a txt editor. Alternatively, you can mark a block like this: click on the first byte of the block you want to select, press <b>CTRL+B</b>; then, click on the last byte of the block you want to select, and press <b>CTRL+B</b> again; the block you specified will then be selected. Another <i>very</i> useful way of selecting bytes is like this: let's say you want to select a certain block with 40 bytes in your file. Click on the first byte of this block you want to select. Then, go to the <b>Edit</b> menu, and select the <b><i>Block <<i>n</i>> chars...</i></b> option. This will bring up a window where you can select the size of the block to be selected, in decimal or hexadecimal. In this example, you would select the <i>decimal</i> option, and put 40 in the block size to be selected. Click the OK button, the 40-byte block will be selected.</p>
+
+<p>Copying a block to be pasted inside the file is done with <b>CTRL+C</b> (if you want to paste a block outside the file. like in notepad or something, use <b>CTRL+H</b> instead). Deleting a block is done with <b>CTRL+D</b>.
+
+<p>In order to accomplish the modifications in the files to be discussed later in a fast and efficient way, it is required a good amount of block selecting and copying/pasting or deleting, so pay attention not to make mistakes.</p>
+
+<h4><i><u>5.2 About .COF Files, and How to Edit Them :</u></i></h4>
+
+<p>As mentioned already in Chapter 2, inside the folder of a monster token there is always a subfolder entitled <b>COF</b>. The COF folder contains files with a <i>.cof</i> extension; also mentioned in Chapter 2 is that these cof files tell the Diablo II graphics engine how to <i>'glue'</i> all the pieces of a monster together during the game.</p>
+
+<p>First thing to do is extract the Quill Rat's COF files. The quill rat is a monster from D2 Classic, that means you will find its animations and COF files inside <b>d2data.mpq</b>. The quill rat's <i>token</i> is <b>SI</b>, so you will find the COF files for the quill rat in the <b><i>data\global\monsters\SI\COF</i></b> folder. There is one COF file for each animation mode, and their filenames are coded in a very similar way than the .dcc filenames, you should have no problems identifying the structure in the COF filenames by now.</p>
+
+<p>The following is a list of the Quill Rat's COF files:</p>
+
+<ul>
+  <li>si<b>a1</b>hth.cof</li>
+  <li>si<b>a2</b>hth.cof</li>
+  <li>si<b>dd</b>hth.cof</li>
+  <li>si<b>dt</b>hth.cof</li>
+  <li>si<b>gh</b>hth.cof</li>
+  <li>si<b>nu</b>hth.cof</li>
+  <li>si<b>wl</b>hth.cof</li>
+</ul>
+
+<p>Now it is time to open one of these files and see how they are structured. Open the XVI32 hex editor; then, open the file <b>sia1hth.cof</b>. This is what you will see:</p>
+
+<p align="center"><a href="images/chapter5/step21.jpg"><img src="images/chapter5/ministep21.jpg" width="255" height="181" border="0"></a></p>
+<p>&nbsp;</p>
+
+<p>sia1hth.cof is basically the following bytes:</p>
+
+<table border bgcolor = 191970>
+<td><font color=white>
+01 10 08 14 01 00 13 00 BF FF FF FF 2D 00 00 00 D0 FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font></td>
+</table>
+
+<p>This byte sequence is structured, and you must learn to recognize the structures upon seeing the cof file. For the purposes of framecount editing, here's how you will see this file after some practice:</p>
+
+<table border bgcolor = 191970>
+<td><font color=yellow>01</font> <font color=red>10</font> <font color=violet>08</font> <font color=white>14 01 00 13 00 BF FF FF FF 2D 00 00 00 D0 FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font> <font color=orange>00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00</font> <font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font></td></table>
+
+<p>An explanation of what each of these colored sections represent is in order:</p>
+
+<ul>
+  <li>The first byte, marked <font color=yellow>yellow</font> above, contains the number of <b>layers</b> this animation mode has, <b><i>in hexadecimal</i></b>. This number will be very important for calculating the size of the blue section later;</li>
+  <li>The second byte, marked <font color=red>red</font> above, contains the number of frames per direction of this animation mode, <b><i>in hexadecimal</i></b>. In the example above, we have a <font color=red>10</font> in this section, which means the attack 1 animation of the quill rat contains 16 frames per direction;</li>
+  <li>The third byte, marked <font color=violet>violet</font> above, indicate the number of directions of this animation mode, again in hexadecimal. Usually you will see monsters with 8 directions, and playable characters with 16 directions;</li>
+  <li>The <font color=cyan>blue section</font> contains layer information, we don't need to know how it works, only how to identify it: it is a repetitive pattern of bytes (in the example above, a repetitive pattern of the <b>01</b> byte). It goes all the way to the end of the file. As a way to identify this section, follow it backwards from the end of the file, until you see the pattern is broken; that will be the start of the blue section. The size in bytes of the blue section is <b>(number of frames per direction)*(number of directions)*(number of layers)</b>;</li>
+  <li>The <font color=orange>orange section</font> contains <i>event</i> information; or in other words it tells the game exactly when to calculate or display an effect during the animation play, like display a missile, play a sound, do a skill, or simply do an attack. This section is easy to identify, once you know how to identify the blue section: it ends right before the beginning of the blue section, and its size in bytes is equal to the number of frames per direction of the animation (the value you find on the second byte). In our example, the orange section is consisted of the 16 bytes preceeding the blue section. <b>NOTE:</b> there is only one exception to this rule, that occurs in a cof file with 1 layer and 1 frame per direction, with only 1 direction, and a total COF file size of 42 bytes; in this case, the orange section is <b>4</b> bytes in size, and not 1 as expected.</li>  
+</ul>
+
+<p>The original quill rat attack1 animation has 128 frames (16 frames per direction, 8 directions). The attack1 mode of the quill rat uses only the torso layer, thus we have a blue section with a size of 16*8*1=128 bytes.</p>
+<p>The goblin attack1 animation we are going to replace the quill rat with has 120 frames, that's 8 frames less than the original animation. We need to modify the COF file accordingly to avoid crashes. The modification is quite logical:</p>
+
+<ul>
+  <li>120 frames in 8 directions means 15 frames per direction. So, we need to put <font color=red>0F</font> (15 in hexadecimal) in the <font color=red>red</font> byte;</i>
+  <li>before, the <font color=orange>orange</font> section was 16 bytes in size because the original animation had 16 frames per direction. The new animation has 15 frames per direction, therefore we need to remove one byte from this section, leaving it with only 15 bytes. You can remove any <b>00</b> byte in this section, but <i>never</i> remove a byte with a value other than 00 in the orange section;</li>
+  <li>the <font color=cyan>blue</font> section had originally 128 bytes. Now we want it to have 15*8*1 = 120 bytes, hence we need to remove 8 bytes from this section, leaving it with only 120 bytes.</li> 
+</ul>
+
+<p>The modified COF with the changes mentioned above will look like this:</p>
+
+<table border bgcolor = 191970>
+<td><font color=yellow>01</font> <font color=red>0F</font> <font color=violet>08</font> <font color=white>14 01 00 13 00 BF FF FF FF 2D 00 00 00 D0 FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font> <font color=orange>00 00 00 00 00 00 00 00 00 00 01 00 00 00 00</font> <font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font></td></table>
+
+<p>You can save this file. Now, you have to modify the COF files for the other animation modes. To make the job faster, do a list of the framecounts (together with the number of frames per direction, in decimal and hexadecimal characters) of all the new animations you're going to use. In our Goblin conversion, the listing is as follows (notice the <b>DD</b> (corpse) token wasn't included, since it always contains 1 frame per direction and, as such, we don't have to edit it):</p>
+
+<ul>
+  <li><b>A1</b> = 120 - 15 - <font color=red>0F</font></li>
+  <li><b>A2</b> = 120 - 15 - <font color=red>0F</font></li>
+  <li><b>DT</b> = 144 - 18 - <font color=red>12</font></li>
+  <li><b>GH</b> = 104 - 13 - <font color=red>0D</font></li>
+  <li><b>NU</b> = 96 - 12 - <font color=red>0C</font></li>
+  <li><b>WL</b> = 128 - 16 - <font color=red>10</font></li>
+</ul>
+
+<p>This is the original <b>sia2hth.cof</b>:</p>
+<table border bgcolor = 191970>
+<td align=center><font color=white>sia2hth.cof - ORIGINAL</font></td><td><font color=yellow>01</font> <font color=red>0D</font> <font color=violet>08</font> <font color=white>14 01 F0 FD 7F B2 FF FF FF 3A 00 00 00 C5 FF FF FF 16 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font color> <font color=orange>00 00 00 00 00 02 00 00 00 00 00 00 00</font> <font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font></td></table>
+
+<p>The new animation has 15 frames per direction, therefore we must have <font color=red>0F</font> in the red byte, an orange section with 15 bytes in size, and a blue section with 15*8*1 = 120 bytes in size; here's the modified sia2hth.cof for reference:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sia2hth.cof - MODIFIED</font></td><td><font color=yellow>01</font> <font color=red>0F</font> <font color=violet>08</font> <font color=white>14 01 F0 FD 7F B2 FF FF FF 3A 00 00 00 C5 FF FF FF 16 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font color> <font color=orange>00 00 00 00 00 02 00 00 00 00 00 00 00 00 00</font> <font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font></td></table>
+
+<p>You can save this file. Next, we will edit the COF for the death mode. Open <b>sidthth.cof</b>, this is what you'll see:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sidthth.cof - ORIGINAL</font></td><td><font color=yellow>02</font> <font color=red>0E</font> <font color=violet>08</font><font color=white> 14 00 FC 12 00 D0 FF FF FF 30 00 00 00 DF FF FF FF 16 00 00 00 00 01 00 00 0F 01 01 00 05 68 74 68 00 01 01 01 00 05 68 74 68 00</font> <font color=orange>00 00 00 00 00 00 00 00 00 00 00 00 00 00</font> <font color=cyan>0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01</font></td></table>
+
+<p>This cof file is a bit different than what we saw so far. The blue section has a different pattern, composed of a repetitive sequence of the <b>0F 01</b> bytes. Each one of these two bytes refer to a different layer of this animation mode (notice the <font color=yellow>yellow</font> byte, we have a 02 in there, indicating this animation mode uses 2 layers as expected).</p>
+<p>The changes are processed in much the same way as before. The goblin death mode has 18 frames per direction, therefore we must have <font color=red>12</font> in the red byte, an orange section with 18 bytes in size, and a blue section with 18*8*2 = 288 bytes in size. Remember to <b>mantain the layer structure</b> (the repetitive pattern of bytes 0F 01) when adding or removing bytes in the blue section. For example:</p>
+
+<table border bgcolor = 191970>
+	<td align=center><font color=white>CORRECT</font></td>
+	<td><font color=cyan>0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01</font></td>
+<tr>
+	<td align=center><font color=red>WRONG</font></td>
+	<td><font color=cyan>0F 01 0F 01 0F 01 0F 01 0F</font> <font color=red>01 01</font><font color=cyan> 0F 01 0F 01 0F 01 0F 01 0F</font></td>
+</tr>
+<tr>
+	<td align=center><font color=red>WRONG</font></td>
+	<td><font color=cyan>0F 01 0F 01 0F 01 0F 01</font><font color=red> 0F 0F</font><font color=cyan> 01 0F 01 0F 01 0F 01 0F 01 0F</font></td>
+</tr>
+
+</table>
+
+<p>To be more precise, the blue section does <i>not</i> need to have a regular pattern of bytes. In the example above, you could have 0F 01 01 0F for example. As I said, the 0F byte refers to one layer of the animation, and the 01 byte refers to another layer. Since the animation has two layers, <i>each set of 2 bytes in the blue section refers to one single frame in the animation</i>. So, for every frame you can choose wether you put 0F 01 or 01 0F in there. The order of the bytes tells the game which layer of the animation must be drawn first in the game screen. First byte is drawn first, second byte goes right after, and so on if there are more layers. What you <b>cannot</b> have is the same layer bytes for a single frame (for example, in the example we are looking you could not have 01 01 or 0F 0F as the layer information for a single frame; that would be redundant and cause graphical glitches).</p>
+
+<p>The modified file will look like this:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sidthth.cof - MODIFIED</font></td><td>
+<font color=yellow>02</font><font color=red> 12</font><font color=violet> 08</font><font color=white> 14 00 FC 12 00 D0 FF FF FF 30 00 00 00 DF FF FF FF 16 00 00 00 00 01 00 00 0F 01 01 00 05 68 74 68 00 01 01 01 00 05 68 74 68 00</font><font color=orange> 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</font><font color=cyan> 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01 0F 01</font>
+</td></table>
+
+<p>You can save this file. Next on the list is the GetHit mode; open <b>sighhth.cof</b>, this is what you will see:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sighhth.cof - ORIGINAL</font></td><td>
+<font color=yellow>01</font><font color=red> 06</font><font color=violet> 08</font> <font color=white>14 01 F0 FD 7F BF FF FF FF 2C 00 00 00 D6 FF FF FF 17 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font> <font color=orange>00 00 00 00 00 00</font> <font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font>
+</td></table>
+
+<p>Checking the list we made before, we see the new gethit animation has 13 frames per direction. Therefore, we need to have   <font color=red>0D</font> in the red byte, an orange section with 13 bytes in size, and a blue section with 13*8*1 = 104 bytes in size. After the changes, the file will look like this:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sighhth.cof - MODIFIED</font></td><td>
+<font color=yellow>01</font><font color=red> 0D</font><font color=violet> 08</font><font color=white> 14 01 F0 FD 7F BF FF FF FF 2C 00 00 00 D6 FF FF FF 17 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00 </font><font color=orange>00 00 00 00 00 00 00 00 00 00 00 00 00</font><font color=cyan> 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font>
+</td></table>
+
+<p>Now, the Neutral mode; open <b>sinuhth.cof</b>, this is the original file you will see:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sinuhth.cof - ORIGINAL</font></td><td>
+<font color=yellow>01</font><font color=red> 08</font><font color=violet> 08</font><font color=white> 14 01 F0 FD 7F C4 FF FF FF 2C 00 00 00 DD FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font><font color=orange> 00 00 00 00 00 00 00 00</font><font color=cyan> 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 0101 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font> 
+</td></table>
+
+<p>The goblin's neutral mode animation has 12 frames per direction, as our listing indicates. By now you should have mastered the concept of COF editing already: <font color=red>0C</font> in the red byte, an orange section with a size of 12 bytes, and a blue section with a size of 12*8*1 = 96 bytes is what we need in this case. Here's the modified file:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>sinuhth.cof - MODIFIED</font></td><td>
+<font color=yellow>01</font><font color=red> 0C</font><font color=violet> 08</font><font color=white> 14 01 F0 FD 7F C4 FF FF FF 2C 00 00 00 DD FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font><font color=orange> 00 00 00 00 00 00 00 00 00 00 00 00</font><font color=cyan> 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 0101 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font> 
+</td></table>
+
+<p>The Walk mode is the last in our list; open <b>siwlhth.cof</b>, this is the original file you will see:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>siwlhth.cof - ORIGINAL</font></td><td>
+<font color=yellow>01</font><font color=red> 09</font><font color=violet> 08</font><font color=white> 14 01 F0 FD 7F C4 FF FF FF 2C 00 00 00 E0 FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font><font color=orange> 00 00 00 00 00 00 00 00 00 </font><font color=cyan>01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font>
+</td></table>
+
+<p>The new walk animation has 16 frames per direction, therefore the changes will consist of putting a <font color=red>10</font> in the red byte, making an orange section with 16 bytes in size, and a blue section with size of 16*8*1 =  128 bytes. As usual, here follows the modified file for reference:</p>
+
+<table border bgcolor = 191970>
+<td align=center><font color=white>siwlhth.cof - MODIFIED</font></td><td>
+<font color=yellow>01</font><font color=red> 10</font><font color=violet> 08</font><font color=white> 14 01 F0 FD 7F C4 FF FF FF 2C 00 00 00 E0 FF FF FF 14 00 00 00 00 01 00 00 01 01 01 00 00 68 74 68 00</font><font color=orange> 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00</font><font color=cyan> 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01</font>
+</td></table>
+
+<p>This finishes all the modifications that had to be made in the COF files. Your conversion is <i>almost</i> ready; before, we need to introduce a new file, and some modifications will have to be made in it as well. This is the subject of the next section; but, before we go there, a VERY important step that will make all your animation conversions work in your mod: download <a href="files/chapter5/speciald2.zip">this file</a>, and extract its contents to your mod's <b>data\global</b> folder. This step is VERY IMPORTANT!! If you don't do this, the editing you've done in the COF files will not work. <b>Note:</b> These files simply allow you to make ANY converted animation work in the game by editing the cof files and animdata.d2 only, nothing more.</p>
+
+<h4><i><u>5.3 The Animdata.D2 file, and How to Edit It :</u></i></h4>
+
+<p>The last file to be edited is <b>Animdata.D2</b>. This file contains information on all animations, but the only information we are interested in is in how to modify the framecount of the animation modes. This modification is a lot easier than editing the COF files, you'll only have to overwrite at most <b>one</b> byte for each animation mode of your token.</p>
+
+<p>Animdata.d2 can be found inside <b>d2exp.mpq</b>, in the <b><i>data\global</i></b> folder (or, if you are modding Diablo 2 Classic, without the Expansion Set, you have to use the Animdata.d2 found inside <b>d2data.mpq</b>, in the <b><i>data\global</i></b> folder. Once it is extracted, open it with XVI32. The following screenshot shows what you should know about the structure of this file:</p>
+
+<p align="center"><a href="images/chapter5/step531.jpg"><img src="images/chapter5/mini531.jpg" width="255" height="75" border="0"></a></p>
+<p>&nbsp;</p>
+
+<p>You will see the filenames of several COF files inscribed in this file; for example, the filename of the COF <b>F3NUHTH.cof</b> is marked in <font color=red>red</font> in the screenshot above (note that the filename is listed in animdata.d2 in capital letters, and <b>without</b> the .cof extention). Two bytes after the filename, there is a byte that tells how many frames per direction (in hexadecimal) the animation mode corresponding to that COF file has. This byte is marked <font color=cyan>blue</font> in the screenshot above.</p>
+
+<p>The task now consists in finding where the cof files of the quill rat animation modes are listed in Animdata.d2, and change their framecounts to match the new animations that are going to be used in this token. Finding the cof filenames in here is easy, you just have to use the <b>Find</b> option. Go to the <b>Search</b> menu, and select the <b><i>Find...</i></b> option (or simply hit CTRL+F on the keyboard). This will bring up the <i>Find</i> window:</p>
+
+<p align="center"><a href="images/chapter5/step532.jpg"><img src="images/chapter5/mini532.jpg" width="255" height="177" border="0"></a></p>
+<p>&nbsp;</p>
+
+<p>First, let's find where to change the framecount of the attack1 animation mode of the quill rat. The COF file related to this animation mode is <b>sia1hth.cof</b>; therefore, in the <i>Text String</i> field put <b>SIA1HTH</b> (all in CAPS and without the .cof extention, this is very important), see how it is done in the screenshot above. Then, press the <b>Text->Hex</b> button. Make sure all options marked in the screenshot are selected correctly (options - <b>case sensitive</b>, direction - <b>down</b>, scope from - <b>begin</b>), and then press the <b>OK</b> button. XVI32 will automatically bring you to the place where the entry you want is stored:</p>
+
+<p align="center"><a href="images/chapter5/step533.jpg"><img src="images/chapter5/mini533.jpg" width="255" height="27" border="0"></a></p>
+<p>&nbsp;</p>
+
+<p>Notice the <font color=cyan>blue</font> byte has <b>10</b> in it. That's the original framecount per direction for the attack1 animation mode of the quill rat token. The new attack1 animation going to be used has 15 frames per direction, therefore put <b>0F</b> in the blue byte here (remember to check if XVI32 is in <b>overwrite mode</b> when you do this).
+
+<p>Easy, isn't it? Just repeat the process to all other animation modes of the quill rat, and you are done with all the animation work!</p>
+
+<p>The final touches to make the Goblin behave properly in the game are not covered here, since they are not related to the animation stage of the conversion; basically you will need to edit the tbl files to change the name of the quill rat to <i>Goblin</i>, and do the proper changes in monstats.txt, to make it behave like a melee monster. You can find more information on this in the <a href="http://dynamic2.gamespy.com/~phrozenkeep/site/pktut-monster_2.php">Advanced Monster Modding Tutorial</a>, by FoxBat and Jbouley. You may also want to replace the quill rat sounds with other sounds more appropriate to the Goblin, using sounds.txt or directly replacing the wav files.</p>
+
+<p>You can now proceed to <a href="chapter6.html">Chapter 6 - Errors and Tips</a>.

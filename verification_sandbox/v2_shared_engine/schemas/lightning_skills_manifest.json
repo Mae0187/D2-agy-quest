@@ -1,0 +1,183 @@
+{
+  "$schema": "./skill_manifest.schema.json",
+  "version": "1.2.0",
+  "skills": {
+    "38": {
+      "skillId": "38",
+      "name": "Charged Bolt",
+      "category": "lightning",
+      "template": "erratic_wave",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 90,
+        "releaseFrame": 7
+      },
+      "parameters": {
+        "velocity": 9.5,
+        "range": 90,
+        "boltCount": 7,
+        "spreadAngle": 0.58,
+        "hitboxRadius": 24
+      },
+      "direction": {
+        "count": 16,
+        "preset": "sequential_16"
+      },
+      "layers": [
+        {
+          "layerId": "projectile_main",
+          "role": "projectile",
+          "atlasFile": "assets/atlases/chargedbolt.png",
+          "cellW": 87,
+          "cellH": 80,
+          "pivotX": 42,
+          "pivotY": 44,
+          "frames": 10,
+          "dirs": 16,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "48": {
+      "skillId": "48",
+      "name": "Nova",
+      "category": "lightning",
+      "template": "radial_wave",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 13,
+        "releaseFrame": 7
+      },
+      "parameters": {
+        "velocity": 24,
+        "range": 13,
+        "hitboxRadius": 28,
+        "maxRadius": 312
+      },
+      "direction": {
+        "count": 16,
+        "preset": "sequential_16"
+      },
+      "layers": [
+        {
+          "layerId": "wave_body",
+          "role": "wave_body",
+          "atlasFile": "assets/atlases/electricnova.png",
+          "cellW": 72,
+          "cellH": 50,
+          "pivotX": 36,
+          "pivotY": 26,
+          "frames": 13,
+          "dirs": 16,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "53": {
+      "skillId": "53",
+      "name": "Chain Lightning",
+      "category": "lightning",
+      "template": "chain_lightning",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 12,
+        "releaseFrame": 7
+      },
+      "parameters": {
+        "velocity": 30,
+        "maxBounces": 5,
+        "bounceRadius": 260,
+        "hitboxRadius": 26
+      },
+      "direction": {
+        "count": 32,
+        "preset": "standard_32"
+      },
+      "layers": [
+        {
+          "layerId": "lightning_beam",
+          "role": "lightning_beam",
+          "atlasFile": "assets/atlases/lightningstrike.png",
+          "cellW": 150,
+          "cellH": 108,
+          "pivotX": 75,
+          "pivotY": 43,
+          "frames": 8,
+          "dirs": 32,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "lightning_hit",
+          "role": "lightning_hit",
+          "atlasFile": "assets/atlases/shockhit_sm.png",
+          "cellW": 63,
+          "cellH": 66,
+          "pivotX": 31,
+          "pivotY": 33,
+          "frames": 20,
+          "dirs": 1,
+          "blendMode": "lighter"
+        }
+      ]
+    },
+    "57": {
+      "skillId": "57",
+      "name": "Thunder Storm",
+      "category": "lightning",
+      "template": "periodic_strike",
+      "timing": {
+        "stepHz": 25,
+        "tickMs": 40,
+        "durationTicks": 300,
+        "releaseFrame": 7
+      },
+      "parameters": {
+        "strikeInterval": 26,
+        "strikeRange": 450,
+        "hitboxRadius": 32
+      },
+      "layers": [
+        {
+          "layerId": "thunder_aura",
+          "role": "body_aura",
+          "atlasFile": "assets/skills/sorceress/ThunderstormCast_operate.png",
+          "cellW": 82,
+          "cellH": 60,
+          "pivotX": 41,
+          "pivotY": 22,
+          "frames": 19,
+          "dirs": 1,
+          "blendMode": "lighter",
+          "preDraw": 1
+        },
+        {
+          "layerId": "sky_strike",
+          "role": "sky_strike",
+          "atlasFile": "assets/atlases/thunderstorm.png",
+          "cellW": 38,
+          "cellH": 115,
+          "pivotX": 19,
+          "pivotY": 108,
+          "frames": 8,
+          "dirs": 1,
+          "blendMode": "lighter"
+        },
+        {
+          "layerId": "lightning_hit",
+          "role": "lightning_hit",
+          "atlasFile": "assets/atlases/shockhit_sm.png",
+          "cellW": 63,
+          "cellH": 66,
+          "pivotX": 31,
+          "pivotY": 33,
+          "frames": 20,
+          "dirs": 1,
+          "blendMode": "lighter"
+        }
+      ]
+    }
+  }
+}

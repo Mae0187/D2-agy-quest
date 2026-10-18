@@ -1,0 +1,38 @@
+{
+  "id": "poisonexplosion",
+  "name": "Poison Explosion",
+  "class": "necromancer",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "PoisonSparks",
+    "celFile": "PoisonSparks",
+    "speed": 20.0,
+    "range": 60.0,
+    "size": 2,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 10,
+    "max": 26,
+    "level": 1,
+    "formula": "8 + 2x7 + 4x8 + 6x4",
+    "maxFormula": "24 + 2x7 + 4x8 + 6x4",
+    "type": "pois"
+  },
+  "cost": {
+    "mana": 8
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "necromancer_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/PoisonSparks.png",
+    "numbers": "assets/skills/data/poisonexplosion.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,85 @@
+window.NECROMANCER_MANIFEST = {
+  "character": "necromancer",
+  "armor_tier": "light",
+  "description": "Diablo II Necromancer (Light Armor) 16-direction action sprite set",
+  "directions_order": [
+    "South",
+    "South-Southeast",
+    "Southeast",
+    "East-Southeast",
+    "East",
+    "East-Northeast",
+    "Northeast",
+    "North-Northeast",
+    "North",
+    "North-Northwest",
+    "Northwest",
+    "West-Northwest",
+    "West",
+    "West-Southwest",
+    "Southwest",
+    "South-Southwest"
+  ],
+  "actions": {
+    "idle": {
+      "name": "idle",
+      "file": "necromancer_idle.png",
+      "directions": 16,
+      "frames": 16,
+      "cell_width": 90,
+      "cell_height": 90,
+      "anchor_x": 45,
+      "anchor_y": 80,
+      "fps": 12,
+      "loop": true
+    },
+    "walk": {
+      "name": "walk",
+      "file": "necromancer_walk.png",
+      "directions": 16,
+      "frames": 8,
+      "cell_width": 90,
+      "cell_height": 90,
+      "anchor_x": 45,
+      "anchor_y": 80,
+      "fps": 14,
+      "loop": true
+    },
+    "run": {
+      "name": "run",
+      "file": "necromancer_run.png",
+      "directions": 16,
+      "frames": 8,
+      "cell_width": 90,
+      "cell_height": 90,
+      "anchor_x": 45,
+      "anchor_y": 80,
+      "fps": 18,
+      "loop": true
+    },
+    "attack": {
+      "name": "attack",
+      "file": "necromancer_attack.png",
+      "directions": 16,
+      "frames": 19,
+      "cell_width": 150,
+      "cell_height": 104,
+      "anchor_x": 75,
+      "anchor_y": 85,
+      "fps": 20,
+      "loop": false
+    },
+    "cast": {
+      "name": "cast",
+      "file": "necromancer_cast.png",
+      "directions": 16,
+      "frames": 16,
+      "cell_width": 120,
+      "cell_height": 100,
+      "anchor_x": 60,
+      "anchor_y": 90,
+      "fps": 16,
+      "loop": false
+    }
+  }
+};

@@ -1,0 +1,38 @@
+{
+  "id": "holyfire",
+  "name": "Holy Fire",
+  "class": "paladin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "AuraHolyFireHit",
+    "celFile": "AuraHolyFireHit",
+    "speed": 20.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 3,
+    "max": 7,
+    "level": 1,
+    "formula": "2 + 1x7 + 2x8 + 3x4",
+    "maxFormula": "6 + 1x7 + 2x8 + 3x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 0
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "paladin_light_cast",
+    "frameRate": 25.0,
+    "frames": 16
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/AuraHolyFireHit.png",
+    "numbers": "assets/skills/data/holyfire.json（Skills.txt / Missiles.txt）"
+  }
+}

@@ -1,0 +1,31 @@
+agyy --conversation=43918b90-ea51-478f-88a5-aa7df4e46170
+
+行為家族
+
+d2-engine
+agyy --conversation=ebf17fd2-e239-4fc5-98c5-007b325807fc
+
+
+只需在專案資料夾打開終端機（PowerShell 或 CMD），輸入以下其中一種方式即可：
+
+  1. 最簡單方式（自動啟動並開啟瀏覽器）：
+  輸入 python run_app.py
+  啟動後會自動開啟預設瀏覽器，您只要在網址後方加上 /v2_sandbox.html 即可。
+  2. 背景伺服器模式：
+  輸入 python run_app.py --mode server
+法師  終端機會常駐作為伺服器，接著您手動在瀏覽器開啟 http://localhost:8765/v2_sandbox.html 即可。
+
+
+
+
+聖騎士  python run_app.py --mode server --port 8766
+ ### 一、 版本檢查點建立資訊
+
+  • 提交雜湊識別碼：5885cca6
+  • 提交訊息：checkpoint: 聖騎士技能完成 (Paladin skills completed - authentic skills & 10 auras fully verified)
+  • 專案規格版本：升級至 v2.9.58（最後同步時間：台北時間 2026-10-18 12:10 UTC+8）
+  • 關聯文檔規範：同步更新 README.md 與歷史歸檔 ARCHIVE.md，符合 README_SPEC 規範動態維護最新 10 筆變更日誌。
+
+
+
+

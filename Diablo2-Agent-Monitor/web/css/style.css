@@ -1,0 +1,652 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body {
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    color: #fff;
+    font-family: "Palatino", "Georgia", "Times New Roman", serif;
+}
+
+/* 遊戲容器維持 D2 經典 1024x768 放大比例 */
+#game-container {
+    position: relative;
+    width: 1024px;
+    height: 768px;
+    background-color: #0b0d11;
+    overflow: hidden;
+    box-shadow: 0 0 35px rgba(0, 0, 0, 0.95);
+    border: 2px solid #2e261a;
+}
+
+/* 乾淨無假字/無鬼影的暗黑哥德營火夜晚背景 */
+#background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('../assets/stitched_bg.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    z-index: 1;
+}
+
+/* 中央營火容器 (嚴格固定在原地，不受選角影響；比例等比放大以適配 1024x768) */
+#campfire {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) scale(1.25);
+    transform-origin: center bottom;
+    width: 140px;
+    height: 150px;
+    z-index: 15;
+    pointer-events: none;
+}
+
+#campfire-flame {
+    width: 100%;
+    height: 100%;
+    background-size: auto; /* 保持原生 1:1 像素，嚴禁 contain 導致每幀縮放 */
+    background-repeat: no-repeat;
+    background-position: center bottom;
+    image-rendering: pixelated;
+    filter: none;
+}
+
+/* 營火固定柔和光暈 (維持常態穩定暖光，無閃爍動畫) */
+#campfire-glow {
+    position: absolute;
+    bottom: 35px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 330px;
+    height: 110px;
+    background: radial-gradient(ellipse at center, rgba(255, 140, 40, 0.40) 0%, rgba(200, 70, 10, 0.15) 40%, rgba(0,0,0,0) 70%);
+    pointer-events: none;
+}
+
+/* 英雄專屬技能特效層 */
+.char-fx {
+    pointer-events: none;
+}
+
+/* 法師掌心閃電電球與高頻電弧 (原版暗黑2真實雷電) */
+.fx-lightning {
+    position: absolute;
+    top: 2px;
+    right: 8px;
+    width: 65px;
+    height: 65px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center center;
+    image-rendering: pixelated;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 10px #55aaff) drop-shadow(0 0 20px #ffffff);
+    z-index: 6;
+    display: none;
+}
+
+/* 聖騎士腳下神聖狂熱靈氣光環 (真實原版暗黑2地面等距立體光環，100% 正中角色雙腳) */
+.fx-aura {
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 180px;
+    height: 100px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center center;
+    image-rendering: pixelated;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 16px rgba(255, 180, 40, 0.95)) drop-shadow(0 0 30px rgba(255, 120, 10, 0.6));
+    z-index: 1;
+    pointer-events: none;
+    display: none;
+}
+
+/* 死靈法師白骨手杖幽冥綠火 */
+.fx-curse {
+    position: absolute;
+    top: 22px;
+    left: 32px;
+    width: 45px;
+    height: 45px;
+    background: radial-gradient(circle, rgba(120, 255, 100, 0.9) 0%, rgba(40, 180, 40, 0.45) 45%, rgba(0,0,0,0) 70%);
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 12px #33ff33);
+    animation: cursePulse 0.3s infinite alternate ease-in-out;
+    z-index: 6;
+    display: none;
+}
+
+@keyframes cursePulse {
+    0% { opacity: 0.65; transform: translateX(-50%) scale(0.9); }
+    100% { opacity: 1.0; transform: translateX(-50%) scale(1.15); }
+}
+
+@keyframes ghostPulse {
+    0% { opacity: 0.65; transform: scale(0.9); }
+    100% { opacity: 1.0; transform: scale(1.15); }
+}
+
+/* 野蠻人捶胸長嘯戰吼震波 (純光影波紋，無任何生硬邊框) */
+.fx-warcry {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 85px;
+    height: 85px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 220, 100, 0.4) 0%, rgba(255, 160, 40, 0.15) 55%, rgba(0,0,0,0) 75%);
+    animation: warcryPulse 0.8s infinite ease-out;
+    z-index: 6;
+    display: none;
+}
+
+@keyframes warcryPulse {
+    0% { transform: translateX(-50%) scale(0.6); opacity: 0.9; }
+    100% { transform: translateX(-50%) scale(1.4); opacity: 0.0; }
+}
+
+/* 亞馬遜與刺客遵照原版暗黑2官方素材庫設計：還原純粹邁步動作，移除自製多餘光斑 */
+.fx-spear,
+.fx-martial {
+    display: none !important;
+}
+
+/* 德魯伊遵照原版暗黑2素材庫設計：純粹英雄割喉挑釁動作與狼嚎環境音，無多餘非官方光斑 */
+.fx-druid {
+    display: none !important;
+}
+
+/* 角色站位容器 (參與頂層堆疊，允許選中角色凌駕營火) */
+#character-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* 單個英雄槽位 (以腳底中心為基準點，解除方框約束，依 1.webp 比例 1.25x 放大) */
+.char-slot {
+    position: absolute;
+    width: 80px;
+    height: 260px;
+    margin-left: -40px;
+    pointer-events: auto;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    transform: scale(1.25);
+    transform-origin: center bottom;
+    transition: z-index 0.1s;
+    overflow: visible;
+    z-index: 10;
+}
+
+.char-slot:hover {
+    z-index: 50 !important;
+}
+
+/* 地面立體陰影 (自然橢圓，貼合腳底) */
+.char-shadow {
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 20px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 75%);
+    z-index: 1;
+    pointer-events: none;
+    transition: left 2.2s ease-out, bottom 2.2s ease-out, width 0.4s ease, height 0.4s ease;
+}
+
+/* 角色精靈圖 (320x320 統一畫布，待命腳底對齊 Y=265，bottom: -55px 完美落於地面) */
+.char-sprite {
+    position: absolute;
+    bottom: -55px;
+    left: 50%;
+    transform: translateX(-50%) translateZ(0);
+    width: 320px;
+    height: 320px;
+    background-position: 0 0;
+    background-repeat: no-repeat;
+    background-size: 320px 320px;
+    image-rendering: pixelated;
+    pointer-events: none; /* 點擊穿透至槽位，防止超大尺寸阻擋鄰近角色 */
+    overflow: visible;
+    z-index: 2;
+    will-change: background-image;
+    filter: none !important;
+}
+
+/* 懸停狀態 (維持原生清晰，不加假邊框與頻閃濾鏡) */
+.char-slot:hover .char-sprite {
+    filter: none !important;
+}
+
+/* 選中狀態 (由 DC6 原生動畫真實呈現邁步與體型透視；最高層級 999 絕對防覆蓋) */
+.char-slot.selected {
+    z-index: 999 !important;
+}
+
+.char-slot.selected .char-sprite {
+    filter: none !important;
+    z-index: 999 !important;
+}
+
+.char-slot.selected .char-shadow {
+    width: 95px;
+    height: 22px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0) 75%);
+}
+
+/* --- 選中英雄專屬：陰影與技能特效 100% 精準跟隨角色邁步位移至前排定位 --- */
+/* 聖騎士：邁步向前 +45px, 向左 -61px (神聖靈氣光環放大並 100% 精準套於踏出後的雙靴正下方，z-index: 1000 絕對穿透) */
+#slot-paladin.selected .char-shadow {
+    left: calc(50% - 61px);
+    bottom: -45px;
+}
+#slot-paladin.selected #paladin-aura {
+    left: calc(50% - 61px);
+    bottom: -95px;
+    z-index: 1000 !important;
+}
+
+/* 德魯伊：邁步向前 +29px, 向左 -28.5px (自然微光以雙足為幾何中心籠罩，陰影同步貼地) */
+#slot-druid.selected .char-shadow {
+    left: calc(50% - 28px);
+    bottom: -29px;
+}
+
+/* 魔法使：邁步向前 +21px, 向右 +18px (掌心閃電精準托於高舉的左手掌心) */
+#slot-sorceress.selected .char-shadow {
+    left: calc(50% + 18px);
+    bottom: -21px;
+}
+#slot-sorceress.selected #sorceress-lightning {
+    top: 60px;
+    right: auto;
+    left: calc(50% + 50px);
+    transform: translateX(-50%);
+    z-index: 1000 !important;
+}
+
+/* 死靈法師：邁步向前 +38px, 向右 +15px (幽冥綠火貼合白骨手杖頂部) */
+#slot-necromancer.selected .char-shadow {
+    left: calc(50% + 15px);
+    bottom: -38px;
+}
+#slot-necromancer.selected .fx-curse {
+    top: 44px;
+    left: calc(50% - 10px);
+    transform: translateX(-50%);
+    z-index: 1000 !important;
+}
+
+/* 亞馬遜：邁步向前 +26px, 向右 +26.5px */
+#slot-amazon.selected .char-shadow {
+    left: calc(50% + 26px);
+    bottom: -26px;
+}
+
+/* 野蠻人：邁步向前 +15px, 橫向 -1px */
+#slot-barbarian.selected .char-shadow {
+    left: calc(50% - 1px);
+    bottom: -15px;
+}
+#slot-barbarian.selected .fx-warcry {
+    top: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000 !important;
+}
+
+/* 刺客：邁步向前 +12px, 向右 +60px */
+#slot-assassin.selected .char-shadow {
+    left: calc(50% + 60px);
+    bottom: -12px;
+}
+
+/* 圍繞營火的初始站位 (依 1024x768 放大畫布與 1.webp 經典半圓弧度，野蠻人居中後方，兩翼自然展開) */
+#slot-amazon      { bottom: 190px; left: 19%;   z-index: 12; }
+#slot-assassin    { bottom: 206px; left: 29.5%; z-index: 13; }
+#slot-necromancer { bottom: 222px; left: 40%;   z-index: 11; }
+#slot-barbarian   { bottom: 232px; left: 50%;   z-index: 11; }
+#slot-paladin     { bottom: 222px; left: 60%;   z-index: 12; }
+#slot-sorceress   { bottom: 206px; left: 70.5%; z-index: 13; }
+#slot-druid       { bottom: 190px; left: 81%;   z-index: 12; }
+
+/* 頂部動態資訊面板 (置中且不與右上方快速切換按鈕重疊) */
+#header-ui {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 480px;
+    text-align: center;
+    z-index: 30;
+    pointer-events: none;
+}
+
+#screen-title {
+    font-size: 26px;
+    color: #e5c378;
+    letter-spacing: 3px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 4px #000;
+    font-weight: normal;
+    text-transform: uppercase;
+}
+
+#hero-class-name {
+    font-size: 28px;
+    color: #ffd276;
+    letter-spacing: 4px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9), 0 0 6px rgba(229,195,120,0.5);
+    margin-bottom: 6px;
+}
+
+#hero-description {
+    font-size: 15px;
+    color: #c4b998;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    max-width: 580px;
+    margin: 0 auto;
+    line-height: 1.4;
+}
+
+/* 底部操作 UI */
+#footer-ui {
+    position: absolute;
+    bottom: 25px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 30;
+    gap: 15px;
+}
+
+#name-input-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(10, 10, 14, 0.85);
+    border: 1px solid #4a3e2a;
+    padding: 6px 18px;
+    box-shadow: 0 0 12px rgba(0,0,0,0.8);
+}
+
+.input-label {
+    font-size: 13px;
+    color: #9a8866;
+    letter-spacing: 1px;
+}
+
+.name-box {
+    font-size: 16px;
+    color: #e5c378;
+    letter-spacing: 2px;
+    font-weight: bold;
+}
+
+.blinking-cursor {
+    animation: blink 0.8s infinite;
+    color: #f5d388;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.button-bar {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    width: 100%;
+}
+
+.d2-btn {
+    background: linear-gradient(180deg, #1c1f28 0%, #0c0e14 100%);
+    border: 1px solid #5a4b33;
+    color: #c9aa69;
+    font-family: serif;
+    font-size: 16px;
+    padding: 6px 28px;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px black;
+    letter-spacing: 1px;
+    box-shadow: inset 0 0 4px rgba(255,200,100,0.1), 0 2px 6px rgba(0,0,0,0.8);
+    transition: all 0.2s;
+}
+
+.d2-btn:hover {
+    color: #fff;
+    border-color: #c9aa69;
+    background: linear-gradient(180deg, #32384a 0%, #171b26 100%);
+    box-shadow: 0 0 10px rgba(201, 170, 105, 0.4);
+}
+
+.active-btn {
+    border-color: #d4a755;
+    color: #f7d58a;
+    box-shadow: 0 0 8px rgba(212, 167, 85, 0.3);
+}
+
+/* --- 2.5D 地牢戰鬥沙盒視圖專屬樣式 (第 2 階段核心) --- */
+#quick-toggle-bar {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+#quick-toggle-bar .d2-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    letter-spacing: 0.5px;
+    background: rgba(18, 20, 26, 0.85);
+}
+
+#dungeon-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1024px;
+    height: 768px;
+    background-color: #08080c;
+    z-index: 2000;
+}
+
+#dungeon-canvas {
+    display: block;
+    width: 1024px;
+    height: 768px;
+    cursor: crosshair;
+}
+
+/* 實時 HUD 頂部狀態列 */
+#dungeon-hud {
+    position: absolute;
+    top: 12px;
+    left: 15px;
+    right: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 70;
+}
+
+.hud-panel {
+    background: rgba(14, 16, 22, 0.88);
+    border: 1px solid #4a3e2a;
+    padding: 8px 14px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+    border-radius: 2px;
+}
+
+.hud-left {
+    min-width: 220px;
+}
+
+.hud-center {
+    min-width: 250px;
+    text-align: center;
+}
+
+.hud-right {
+    pointer-events: auto;
+}
+
+.hud-title {
+    font-size: 11px;
+    color: #e5c378;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid #3d3322;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+.hud-row {
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 3px;
+    align-items: center;
+}
+
+.hud-label {
+    color: #8f8570;
+}
+
+.hud-val {
+    color: #dfd8c8;
+    font-family: monospace;
+}
+
+.hud-highlight {
+    color: #ffd276;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+/* 狀態標籤徽章 */
+.state-badge {
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.badge-idle {
+    background: rgba(70, 70, 90, 0.8);
+    color: #ddd;
+    border: 1px solid #778;
+}
+
+.badge-walk {
+    background: rgba(40, 110, 60, 0.8);
+    color: #9f9;
+    border: 1px solid #4a7;
+}
+
+.badge-run {
+    background: rgba(130, 90, 20, 0.8);
+    color: #fd8;
+    border: 1px solid #d93;
+}
+
+.badge-attack {
+    background: rgba(140, 30, 30, 0.8);
+    color: #faa;
+    border: 1px solid #d44;
+}
+
+.badge-cast {
+    background: rgba(70, 30, 140, 0.8);
+    color: #daf;
+    border: 1px solid #95f;
+}
+
+/* 底部動作快捷列 */
+#dungeon-controls {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 70;
+}
+
+.action-btn-group {
+    display: flex;
+    gap: 8px;
+}
+
+.d2-action-btn {
+    background: linear-gradient(180deg, #242934 0%, #10141c 100%);
+    border: 1px solid #4a3e2a;
+    color: #c9aa69;
+    font-family: serif;
+    font-size: 13px;
+    padding: 5px 14px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    transition: all 0.15s;
+}
+
+.d2-action-btn:hover {
+    color: #fff;
+    border-color: #ffd276;
+    background: linear-gradient(180deg, #3a4254 0%, #18202d 100%);
+}
+
+.d2-action-btn.active-action-btn {
+    color: #ffd276;
+    border-color: #ffd276;
+    background: linear-gradient(180deg, #443216 0%, #20170a 100%);
+    box-shadow: 0 0 8px rgba(255, 210, 118, 0.4);
+}
+
+.control-hints {
+    font-size: 12px;
+    color: #8c826e;
+    background: rgba(8, 10, 14, 0.85);
+    padding: 4px 14px;
+    border: 1px solid #332b1e;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+

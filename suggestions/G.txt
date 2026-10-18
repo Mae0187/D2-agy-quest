@@ -1,0 +1,104 @@
+**以下是針對你五個核心問題的引擎還原思路**，基於 Phrozen Keep 社群文件、OpenDiablo2 原始碼與逆向工程共識整理。這些機制在 D2 原版與多數開源重製中高度一致。
+
+### 問題一：等距視角地圖 (Isometric Map) 的渲染邏輯
+
+D2 的地圖單位是 **Tile**（約 160×80 像素的等距菱形），每個 Tile 再分成 **5×5 = 25 個 Sub-tile**。
+
+- **座標換算**（OpenDiablo2 與多數實作採用）：
+  - 正交 Sub-tile 寬高：`orthoSubTileWidth = 16`、`orthoSubTileHeight = 8`
+  - 一個完整 Tile：`80 × 40` 像素（等距投影後）
+  - 世界座標 → 螢幕座標的核心公式大致為：
+    ```
+    screenX = (tileX - tileY) * 16 + subX 偏移
+    screenY = (tileX + tileY) * 8  + subY 偏移
+    ```
+  - Sub-tile 旗標（`SubTileFlags`）決定該格子是否可行走、是否阻擋視線等。DT1 的 Block Header 裡有 `Grid X / Grid Y`（0–4），專門標記 Floor 的 Sub-tile 位置。
+
+- **圖層排序（Z-order / Painter’s Algorithm）**：
+  原版與 OpenDiablo2 都採用**多遍渲染（multi-pass）**，而不是單純一個 Z-index 值。典型四遍流程：
+
+  1. **Pass 1**：Floor + Lower Wall + Shadow（地面與低牆）
+  2. **Pass 2**：位於牆壁「下方」的實體（玩家、怪物、物件）
+  3. **Pass 3**：Upper Wall + 位於牆壁「上方」的實體
+  4. **Pass 4**：Roof（屋頂）
+
+  同一遍內再依 `Prop1`（高度優先級）與世界座標 `(X + Y)` 或螢幕 Y 排序。Floor 永遠最先畫，Roof 永遠最後畫。牆壁依 Orientation（0 = Floor、13 = Shadow、14 = 特殊物件、其他 = 普通牆）再細分。
+
+實作建議：先把 DS1 的各層（Floor / Wall / Shadow / Roof）解成二維陣列，再用 viewport 把可見範圍的 Tile 轉成螢幕座標，依上述四遍畫。Canvas 2D 可用 `drawImage` 加上手動排序；WebGL 則可用 depth buffer 或手動排序後一次畫。
+
+### 問題二：實機戰鬥動畫 (.DCC) 與方向映射
+
+- **方向索引計算**：
+  D2 動畫通常有 8 或 16 個方向（少數 32）。方向編號習慣從「正南」開始，順時針或逆時針（OpenDiablo2 有 `Dir64ToDcc()` 把 0–63 的精細角度映射到實際 DCC 方向）。
+
+  最常見做法：
+  ```js
+  // 移動向量 (dx, dy)
+  let angle = Math.atan2(dy, dx);           // 弧度
+  // 轉成 0–360°，再映射到 8 或 16 方向
+  let dirIndex = Math.floor(((angle + Math.PI) / (2 * Math.PI)) * numDirs) % numDirs;
+  ```
+  或直接用 64 方向系統再查表轉換。角色面向永遠對應「移動向量」或「目標方向」。
+
+- **幀率基準**：
+  原版遊戲邏輯時鐘是 **25 FPS**（每幀 40 ms）。`AnimData.d2` 裡每個動畫有 `AnimationSpeed`（通常 0–255），實際播放速度計算為：
+  ```
+  speed = (AnimationSpeed / 256) * 25 FPS
+  ```
+  COF 也有自己的 Speed 值可再調整。前端建議用固定 25 Hz 的 game tick 推進幀，再依實際顯示器幀率插值或重複畫同一幀。
+
+DCC 本身不含調色盤，只存像素索引；方向與幀數在檔頭與各 Direction Header 中。
+
+### 問題三：技能特效與光影疊加 (Skill Effects & Blending)
+
+原版技能特效（火球、閃電、暴風雪等）大量使用 **additive / screen / luminance** 混合，而不是單純 alpha 透明。
+
+根據 COF 與 Phrozen Keep 文件，常見混合模式對應：
+
+| 模式值 | 效果 | 建議 Canvas / WebGL |
+|--------|------|---------------------|
+| 03 | Screen / Alpha blending | `globalCompositeOperation = 'screen'` |
+| 04 | Luminance | `'lighter'` 或自訂 shader |
+| 06 | Bright alpha / Additive | `'lighter'` 或 `'plus-lighter'` |
+| 00–02 | 不同透明度 | `'source-over'` + alpha |
+
+實作建議：
+- Canvas 2D：對技能層單獨 `save()` → 設定 `globalCompositeOperation` → `drawImage` → `restore()`。
+- WebGL：用 fragment shader 實作 `outColor = src + dst * (1 - src.a)` 或 `src + dst`（additive），並注意 premultiplied alpha。
+
+原版還會透過 `.pl2` 的 colormap 做額外亮度調整，前端可用 lookup table 模擬。
+
+### 問題四：裝備變色與環境光 (PalShift 機制)
+
+核心是 **調色盤重映射（palette remapping）**，不是直接改 PNG。
+
+1. **基礎調色盤**：DCC/DC6 解出的是 8-bit 索引圖，必須搭配對應的 `.dat` 或 `.pal`（256 色）。
+2. **PalShift.dat**：每個怪物 token 資料夾下常有一份，裡面有多組 256-byte 的索引重映射表。`monstats.txt` 的 `TransLvl` 決定用第幾組。
+3. **裝備變色**：物品用 `colors.txt` + 一組固定的 transform 檔（`grey.dat`、`gold.dat`… 等），每個 transform 含 21 個子調色盤（對應不同色調）。`chrtransform` / `invtransform` 欄位指定要用哪一個。
+4. **環境光 / 陰暗**：通常再套一層全域 light table 或額外 colormap（`.pl2`），把亮度往下壓。
+
+前端正確流程：
+```
+索引像素 → 套用 PalShift / Item Transform → 得到新索引 → 查基礎調色盤 → RGB
+```
+絕對不要在轉 PNG 後再做色彩調整，否則容易出現「全黑」或顏色錯亂。把最終 RGB 快取成 WebGL 紋理或 Canvas ImageData 即可。
+
+### 問題五：前端選角畫面的精確拼接
+
+- **背景碎片**：`sceneL1.DC6`、`sceneR.DC6`、`fire.DC6` 等是固定位置的 UI 資產。OpenDiablo2 與原版硬編碼了座標（例如背景左上角、營火位置、各職業站立點）。這些偏移可以從逆向或 OpenDiablo2 的 `resource_paths.go` + 實際渲染程式碼直接抄，不需要人工猜測。
+- **待命動畫（AMNU1.DC6 等）全黑問題**：這些 DC6 使用特殊調色盤或需要營火光照。原版會套用 fire light table 或額外 colormap，把索引映射到暖色調。前端做法：
+  1. 先用正確的基礎調色盤解碼。
+  2. 再套一層「營火光照」lookup（可用 `.pl2` 的 light 區段或自己做暖色漸層）。
+  3. 若仍全黑，檢查是否忘了套用 `Trans` 或 `PalShift` 模式（COF 的某些 layer 會標記是否使用 PalShift）。
+
+實作時建議先把所有選角相關 DC6 用同一套解碼器 + 正確調色盤輸出一次，確認顏色正確後再定位偏移。
+
+---
+
+**實作優先順序建議**：
+1. 先把 Sub-tile 座標與四遍渲染跑通（地圖最基礎）。
+2. 再處理 DCC 方向與 25 FPS 計時。
+3. 接著做技能的 `lighter`/`screen` 混合。
+4. 最後補上完整的 palette pipeline（這一步最容易讓畫面「壞掉」）。
+
+OpenDiablo2 的 `d2maprenderer`、`d2asset` 與 Phrozen Keep 的 DT1/DS1/DCC 文件是目前最完整的參考實作。若需要特定檔案格式的二進位結構細節，可以再針對單一格式深入。祝你的「Diablo 2 Agent Monitor」專案順利！

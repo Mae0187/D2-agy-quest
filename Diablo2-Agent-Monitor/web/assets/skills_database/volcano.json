@@ -1,0 +1,38 @@
+{
+  "id": "volcano",
+  "name": "Volcano",
+  "class": "druid",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "volcanoBase",
+    "celFile": "volcano_Base",
+    "speed": 20.0,
+    "range": 150.0,
+    "size": 3,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 10,
+    "max": 12,
+    "level": 1,
+    "formula": "8 + 2x7 + 4x8 + 6x4",
+    "maxFormula": "10 + 2x7 + 4x8 + 6x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 25
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "druid_light_cast",
+    "frameRate": 25.0,
+    "frames": 15
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/volcanoBase.png",
+    "numbers": "assets/skills/data/volcano.json（Skills.txt / Missiles.txt）"
+  }
+}

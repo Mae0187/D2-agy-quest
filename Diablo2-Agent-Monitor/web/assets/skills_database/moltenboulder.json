@@ -1,0 +1,38 @@
+{
+  "id": "moltenboulder",
+  "name": "Molten Boulder",
+  "class": "druid",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "MoltenBoulderRoll",
+    "celFile": "MoltenBoulderRoll",
+    "speed": 3.0,
+    "range": 5.0,
+    "size": 2,
+    "collideType": 8
+  },
+  "impact": null,
+  "damage": {
+    "min": 10,
+    "max": 17,
+    "level": 1,
+    "formula": "6 + 4x7 + 7x8 + 10x4",
+    "maxFormula": "12 + 5x7 + 8x8 + 11x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 20
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "druid_light_cast",
+    "frameRate": 25.0,
+    "frames": 15
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/MoltenBoulderRoll.png",
+    "numbers": "assets/skills/data/moltenboulder.json（Skills.txt / Missiles.txt）"
+  }
+}

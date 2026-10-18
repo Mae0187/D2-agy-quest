@@ -1,0 +1,42 @@
+{
+  "id": "coldarrow",
+  "name": "Cold Arrow",
+  "class": "amazon",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "Icearrow",
+    "celFile": "Icearrow",
+    "speed": 24.0,
+    "range": 20.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": {
+    "asset": "IceArrowExplode",
+    "celFile": "IceArrowExplode",
+    "blend": "lighter"
+  },
+  "damage": {
+    "min": 10,
+    "max": 12,
+    "level": 1,
+    "formula": "6 + 4x7 + 5x8 + 8x4",
+    "maxFormula": "8 + 4x7 + 5x8 + 9x4",
+    "type": "cold"
+  },
+  "cost": {
+    "mana": 28
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "amazon_light_cast",
+    "frameRate": 25.0,
+    "frames": 20
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/Icearrow.png",
+    "numbers": "assets/skills/data/coldarrow.json（Skills.txt / Missiles.txt）"
+  }
+}

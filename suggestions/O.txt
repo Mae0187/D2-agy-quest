@@ -1,0 +1,1787 @@
+可以，而且以你這個專案的目的來看，**不需要一開始就完整重寫《暗黑破壞神 II》遊戲引擎**。
+
+你真正要做的是：
+
+> **建立一個「D2 風格的即時視覺化 runtime」，再逐步把它提升到 D2 資產與渲染邏輯的真實重現。**
+
+你提供的兩個網站，剛好可以分成兩種用途。Fandom 的 `D2 Skill Images` 頁面目前列有約 315 個技能相關圖片，包含 Fire Ball、Whirlwind、Meteor、Lightning 等；The Spriters Resource 的 D2/LoD 頁面則有 453 個遊戲素材項目，並且分類了 Amazon、Assassin、Barbarian、Druid、Necromancer、Paladin、Sorceress，以及大量 NPC 等。([暗黑破壞神百科][1])
+
+但有一個非常重要的區別：
+
+**這兩個網站適合拿來做「視覺資產參考、UI 素材、角色/技能素材整理」，不適合取代你手上的 1.13c MPQ 作為真正的 D2 runtime asset source。**
+
+---
+
+# 一、先確定你要做的「遊戲畫面」是哪一種
+
+你描述的目標，其實不是：
+
+```text
+「做一個可以玩的 Diablo 2」
+```
+
+而是：
+
+```text
+CLI / AI Agent
+       ↓
+   Event Parser
+       ↓
+   Agent State Machine
+       ↓
+ D2 Visual Runtime
+       ↓
+┌─────────────────────────────┐
+│       Diablo 2 戰鬥畫面      │
+│                             │
+│   Sorceress                 │
+│       ↓                     │
+│   Blizzard                  │
+│       ↓                     │
+│   Monster Wave              │
+│       ↓                     │
+│   Boss Fight                │
+│                             │
+│  HP Orb            Mana Orb │
+└─────────────────────────────┘
+```
+
+所以你不需要先解決：
+
+* D2 角色碰撞
+* 真正的 pathfinding
+* 真正 AI
+* 物品掉落
+* Multiplayer protocol
+* Battle.net
+* 完整遊戲規則
+
+你只需要讓：
+
+> **AI 的狀態 → 看起來像 D2 的遊戲世界正在發生事情。**
+
+這個差異會讓工程量從「幾乎重寫整個遊戲」降到一個可以實際完成的專案。
+
+---
+
+# 二、我會把你的專案分成兩個 Rendering Mode
+
+這是我最建議你採用的架構。
+
+## MODE A：Monitor Mode
+
+這是第一階段。
+
+不要求真的產生：
+
+```text
+DS1 → DT1 → 完整地圖
+```
+
+而是：
+
+```text
+固定 D2 地圖場景
++
+DCC 角色
++
+DCC 怪物
++
+DCC Missile
++
+Skill Overlay
++
+D2 UI
+```
+
+例如：
+
+```text
+Act I / Dark Wood
+```
+
+固定選一張場景。
+
+然後讓：
+
+```text
+AI THINKING
+```
+
+對應：
+
+```text
+Sorceress 在地圖中待命
+```
+
+```text
+AI EXECUTING
+```
+
+變成：
+
+```text
+Sorceress → Blizzard
+```
+
+```text
+AI ERROR
+```
+
+變成：
+
+```text
+Monster / Elite Spawn
+```
+
+```text
+AI RETRY
+```
+
+變成：
+
+```text
+Boss Fight
+```
+
+這個模式就已經能非常接近你想要的「CLI → D2」。
+
+---
+
+# 三、MODE B：True D2 Map Mode
+
+第二階段才開始：
+
+```text
+DS1
+ ↓
+DT1
+ ↓
+Isometric Map
+ ↓
+Floor / Wall / Roof
+ ↓
+Entity Position
+ ↓
+DCC / COF
+```
+
+這時候你才是在做真正的 D2 renderer。
+
+Phrozen Keep 的資料格式整理把 D2 資產的角色分工講得很清楚：
+
+| 格式     | 用途                       |
+| ------ | ------------------------ |
+| `.COF` | 動畫控制                     |
+| `.DC6` | UI、面板、部分動畫               |
+| `.DCC` | 角色、怪物、物件、特效動畫            |
+| `.DS1` | 地圖資料                     |
+| `.DT1` | Floor / Wall / Roof tile |
+| `.DAT` | Palette / Colormap       |
+| `.WAV` | 音效與語音                    |
+
+([Phrozen Keep][2])
+
+而現成的 D2 開源實作也把 `DS1/DT1`、`DCC/COF`、palette、world、render 分開處理；`libd2` 目前甚至把 DS1/DT1 與 DCC/COF parser、world、render 明確拆成獨立模組。([GitHub][3])
+
+---
+
+# 四、你現在下載的兩個網站素材應該怎麼分
+
+## 1. Diablo Fandom：拿來做技能與 UI 表現
+
+你找到的：
+
+> `Category:D2_Skill_Images`
+
+非常適合你的：
+
+```text
+Skill Database
+```
+
+例如：
+
+```text
+fireball.png
+blizzard.gif
+whirlwind.gif
+meteor.gif
+...
+```
+
+可以建立：
+
+```javascript
+const skills = {
+    blizzard: {
+        icon: "...",
+        class: "Sorceress",
+        effect: "blizzard",
+        sound: "..."
+    },
+
+    whirlwind: {
+        icon: "...",
+        class: "Barbarian",
+        effect: "whirlwind"
+    }
+};
+```
+
+這樣 CLI 發生：
+
+```text
+Agent executing search
+```
+
+你可以觸發：
+
+```javascript
+castSkill("blizzard");
+```
+
+而不是讓畫面只是跳出：
+
+```text
+> Searching...
+```
+
+Fandom 目前這個分類頁確實包含 Fire Ball、Whirlwind、Meteor、Lightning、各職業技能等大量圖片。([暗黑破壞神百科][1])
+
+---
+
+# 五、但不要把 Fandom 的 GIF 當成真正的 D2 Skill Runtime
+
+這是另一個很容易踩的坑。
+
+例如：
+
+```text
+Blizzard.gif
+```
+
+與 D2 原始：
+
+```text
+data/global/missiles/
+data/global/overlays/
+```
+
+不是同一層級的東西。
+
+Fandom 上的圖片比較像：
+
+```text
+「展示技能效果」
+```
+
+而 D2 原始資產是：
+
+```text
+「遊戲引擎實際組裝技能」
+```
+
+真正要做：
+
+```text
+Blizzard
+```
+
+你應該從自己的 MPQ 找：
+
+```text
+Missile DCC
+Overlay DCC
+Skill configuration
+COF / animation information
+Palette
+SFX
+```
+
+D2 的資料目錄本身就把：
+
+```text
+chars
+monsters
+missiles
+objects
+overlays
+tiles
+ui
+palette
+music
+sfx
+```
+
+分開。([暗黑Mod资讯网][4])
+
+所以我會把 Fandom 圖片定位成：
+
+> **Skill UI / fallback visualization / prototype reference**
+
+而不是 renderer 的最底層 source。
+
+---
+
+# 六、Spriters Resource 更適合拿來建立角色資產庫
+
+這個網站對你的用途反而很實際。
+
+目前 D2 LoD 頁面本身就已經整理成：
+
+```text
+Amazon
+Assassin
+Barbarian
+Druid
+Necromancer
+Paladin
+Sorceress
+```
+
+以及 NPC、物件等大量分類。([Spriters Resource][5])
+
+所以可以先建立：
+
+```text
+assets/
+│
+├─ characters/
+│   ├─ amazon/
+│   ├─ assassin/
+│   ├─ barbarian/
+│   ├─ druid/
+│   ├─ necromancer/
+│   ├─ paladin/
+│   └─ sorceress/
+│
+├─ monsters/
+│
+├─ skills/
+│
+├─ ui/
+│
+└─ effects/
+```
+
+不過：
+
+**如果你已經能從自己的 1.13c MPQ 解出 DCC / DC6，那麼長期應以 MPQ 解出的原始格式為主。**
+
+Spriters Resource 的角色圖比較適合：
+
+```text
+快速建立 prototype
+```
+
+MPQ 則適合：
+
+```text
+正式 Runtime
+```
+
+---
+
+# 七、你真正需要建立的是「D2 Actor System」
+
+這會是整個專案最重要的核心。
+
+不要寫：
+
+```javascript
+showBarbarian();
+showSorceress();
+```
+
+這種死的程式。
+
+要建立：
+
+```javascript
+class Actor {
+    id;
+    type;
+    position;
+    direction;
+    animation;
+    skill;
+    hp;
+    maxHp;
+}
+```
+
+例如：
+
+```javascript
+const player = {
+    type: "player",
+    class: "sorceress",
+
+    x: 42,
+    y: 35,
+
+    mode: "SC",
+
+    direction: 7,
+
+    animation: {
+        name: "cast",
+        frame: 3
+    }
+};
+```
+
+這樣 CLI 完全不用知道 DCC 是什麼。
+
+CLI 只需要：
+
+```text
+EVENT = CAST_SKILL
+```
+
+Renderer 才負責：
+
+```text
+CAST_SKILL
+    ↓
+Sorceress
+    ↓
+SC / skill animation
+    ↓
+DCC
+    ↓
+direction
+    ↓
+frame
+```
+
+OpenD2 的 player animation mode 本身就有：
+
+```text
+NU
+WL
+RN
+A1
+A2
+BL
+SC
+TH
+KK
+S1
+S2
+S3
+S4
+DT
+...
+```
+
+這種狀態概念非常適合直接映射到你的 Agent 狀態機。([GitHub][6])
+
+---
+
+# 八、你的 Agent State Machine 可以直接變成 D2「遊戲邏輯」
+
+例如：
+
+| CLI / Agent 狀態 | D2 表現          |
+| -------------- | -------------- |
+| Idle           | 城鎮待機           |
+| Thinking       | 角色站立、頭上狀態提示    |
+| Reading        | 巡邏             |
+| Searching      | 移動 / 尋找怪群      |
+| Executing      | 正常攻擊           |
+| Tool Call      | 使用技能           |
+| Coding         | 持續施法 / 戰鬥      |
+| Error          | 被擊中            |
+| Retry          | 狂暴攻擊 / 技能連發    |
+| Success        | 精英死亡           |
+| Major Task     | Boss Encounter |
+| Fatal Error    | Death          |
+| Finished       | 回城 / Town Idle |
+
+這樣你的 CLI：
+
+```text
+Searching filesystem...
+```
+
+不需要顯示成：
+
+```text
+SEARCHING...
+```
+
+而是：
+
+```text
+Sorceress
+    ↓
+進入地圖
+    ↓
+走位
+    ↓
+發現 Fallen
+    ↓
+施放 Fire Ball
+    ↓
+擊殺
+```
+
+使用者看到的就不再是「日誌」。
+
+而是一個：
+
+> **AI 正在玩 D2 的視覺語言。**
+
+---
+
+# 九、Token / Context Window 不要直接做成普通進度條
+
+你的這個創意其實很適合 D2 UI。
+
+你可以直接建立：
+
+```text
+                 ┌──────────────┐
+                 │ AGENT STATUS │
+                 └──────────────┘
+
+        HP / Agent Stability
+
+             ◉████████░░
+
+                    ╲
+                     ╲
+
+Mana / Context
+             ◉██████░░░░
+
+─────────────────────────────────
+
+ LEVEL 83 SORCERESS
+
+ Blizzard   Frozen Orb   Teleport
+```
+
+例如：
+
+```javascript
+manaPercent =
+    contextUsed / contextLimit;
+```
+
+這直接變成：
+
+```text
+Mana Orb = Context Usage
+```
+
+而：
+
+```javascript
+healthPercent =
+    1 - fatalErrorRate;
+```
+
+或你自己定義：
+
+```text
+Agent Stability
+```
+
+則變成：
+
+```text
+Health Orb
+```
+
+---
+
+# 十、你說的「每小時用量 / 每週護盾」可以做成額外 HUD
+
+不要把所有數據硬塞進血球。
+
+可以增加：
+
+```text
+             D2 STATUS
+
+ ┌──────────────────────────────┐
+ │ TOKENS / HOUR     68%        │
+ │ WEEKLY BUDGET     41%        │
+ │ CONTEXT           73%        │
+ │ RETRIES           05         │
+ └──────────────────────────────┘
+```
+
+然後：
+
+```text
+Hourly Tokens
+    ↓
+Red Orb
+
+Context
+    ↓
+Blue Orb
+
+Weekly Budget
+    ↓
+Shield / Buff icon
+
+Error Count
+    ↓
+Debuff icons
+
+Successful Tasks
+    ↓
+Experience bar
+```
+
+這樣所有「AI 指標」都會被理解成 D2 UI。
+
+---
+
+# 十一、Skill Engine 不要直接等 CLI 寫「施放 Blizzard」
+
+你的 parser 最好把 CLI 轉換成標準事件。
+
+例如：
+
+```json
+{
+    "type": "tool_call",
+    "tool": "python",
+    "status": "running",
+    "timestamp": 1780000000
+}
+```
+
+再由：
+
+```text
+Event → Agent Director
+```
+
+決定技能。
+
+例如：
+
+```text
+tool_call
+    ↓
+角色當前狀態
+    ↓
+隨機/權重 Skill Selector
+    ↓
+Blizzard
+```
+
+---
+
+# 十二、建立一個「D2 Combat Director」
+
+這會讓你的畫面活起來。
+
+例如：
+
+```javascript
+class CombatDirector {
+    onAgentEvent(event) {
+
+        switch (event.type) {
+
+            case "thinking":
+                this.enterThinking();
+
+                break;
+
+            case "tool_call":
+                this.castRandomSkill();
+
+                break;
+
+            case "error":
+                this.spawnElite();
+
+                break;
+
+            case "retry":
+                this.startBossPhase();
+
+                break;
+
+            case "success":
+                this.completeWave();
+
+                break;
+        }
+    }
+}
+```
+
+然後：
+
+```text
+CLI Event
+ ↓
+Director
+ ↓
+World Simulation
+ ↓
+Actors
+ ↓
+Renderer
+```
+
+這個中間層非常重要。
+
+---
+
+# 十三、角色不要每次都從頭載圖片
+
+你的 Renderer 應該建立：
+
+```text
+Asset Manager
+```
+
+例如：
+
+```text
+DCCAnimation
+     ↓
+Decode
+     ↓
+Texture Atlas
+     ↓
+GPU Texture
+```
+
+然後：
+
+```text
+Sorceress
+Barbarian
+Paladin
+```
+
+共用同一套 runtime。
+
+---
+
+# 十四、PixiJS 很適合你的專案
+
+你的需求：
+
+```text
+大量 sprite
+動畫
+alpha
+filters
+particles
+WebGL
+UI
+```
+
+其實比原生 Canvas 更適合 PixiJS。
+
+目前 PixiJS v8 已經有：
+
+* Filters
+* ColorMatrix
+* Blur
+* Noise
+* Custom Shader
+* Advanced Blend Modes
+
+而且可以直接建立 custom GPU filter。([PixiJS][7])
+
+所以我會建議：
+
+```text
+PixiJS
+   ↓
+WebGL renderer
+```
+
+而不是：
+
+```text
+Canvas 2D
+   ↓
+大量 drawImage()
+```
+
+---
+
+# 十五、PixiJS Renderer 我會這樣拆
+
+```text
+D2Renderer
+│
+├── MapLayer
+│
+├── ShadowLayer
+│
+├── GroundLayer
+│
+├── EntityLayer
+│
+├── WallLayer
+│
+├── MissileLayer
+│
+├── OverlayLayer
+│
+├── EffectLayer
+│
+├── UILayer
+│
+└── DebugLayer
+```
+
+例如：
+
+```text
+Map
+ ↓
+Ground
+ ↓
+Shadow
+ ↓
+Actors
+ ↓
+Missiles
+ ↓
+Effects
+ ↓
+UI
+```
+
+這會讓你之後做：
+
+```text
+Blizzard
+Meteor
+Lightning
+Whirlwind
+Corpse Explosion
+```
+
+變得容易很多。
+
+---
+
+# 十六、技能效果要做成「多 Layer」
+
+不要：
+
+```text
+Blizzard = 一張 GIF
+```
+
+應該：
+
+```text
+Blizzard
+│
+├── Cast Animation
+├── Missile / Projectile
+├── Ground Overlay
+├── Impact
+├── Particles
+└── Sound
+```
+
+例如：
+
+```text
+Sorceress
+      ↓
+Cast animation
+
+     ❄ ❄ ❄
+
+Ground Overlay
+     ↓
+
+     ☁☁☁
+   ❄❄❄❄❄
+
+Monster
+     ↓
+
+Hit Effect
+```
+
+這樣才能有真正「施法」的感覺。
+
+---
+
+# 十七、你甚至可以讓技能分成 4 個時間軸
+
+例如 Blizzard：
+
+```text
+T=0
+角色開始施法
+
+T=100ms
+Cast FX
+
+T=250ms
+Meteorological overlay 啟動
+
+T=400ms
+第一波冰雨
+
+T=700ms
+第二波
+
+T=1000ms
+第三波
+
+T=1500ms
+Effect fade out
+```
+
+所以每一個 Skill 可以定義：
+
+```javascript
+{
+    id: "blizzard",
+
+    castAnimation: "...",
+
+    events: [
+        {
+            at: 0,
+            action: "cast"
+        },
+
+        {
+            at: 350,
+            action: "spawn_overlay"
+        },
+
+        {
+            at: 500,
+            action: "spawn_particles"
+        },
+
+        {
+            at: 1300,
+            action: "fade"
+        }
+    ]
+}
+```
+
+這對你的 Agent Monitor 特別有用。
+
+因為你不是在模擬真正的 D2 combat rules。
+
+你是在：
+
+> **根據 Agent event 製造高回饋的視覺事件。**
+
+---
+
+# 十八、真正的 D2 素材 pipeline
+
+你目前已經可以解：
+
+```text
+DC6
+DCC
+DS1
+DT1
+```
+
+那我建議不要停在：
+
+```text
+DCC → PNG
+```
+
+而是：
+
+```text
+MPQ
+ │
+ ├─ DCC
+ │    ↓
+ │   Decode
+ │    ↓
+ │   Indexed pixels
+ │
+ ├─ COF
+ │    ↓
+ │   Animation metadata
+ │
+ ├─ Palette
+ │    ↓
+ │   256-color LUT
+ │
+ ├─ DS1
+ │    ↓
+ │   World layout
+ │
+ └─ DT1
+      ↓
+     Tile graphics
+```
+
+最後：
+
+```text
+GPU
+ ↓
+Palette transform
+ ↓
+Light transform
+ ↓
+Blend
+ ↓
+Screen
+```
+
+這才是你真正想要的 D2 renderer。
+
+OpenDiablo2 的 API 本身也把 palette、animation direction、frame rate、token mode、armor level 等概念放在 renderer / animation layer 中，這跟你的設計方向非常接近。([GitHub][6])
+
+---
+
+# 十九、你其實可以分「真實度等級」
+
+我建議你的專案不要只有「完成 / 未完成」。
+
+而是：
+
+```text
+D2 Visual Fidelity
+```
+
+### Level 1
+
+```text
+D2 UI
++
+角色 PNG
++
+怪物 PNG
++
+技能 GIF
+```
+
+看起來像 D2。
+
+---
+
+### Level 2
+
+```text
+DCC Animation
++
+COF
++
+D2 palette
++
+D2 UI
+```
+
+角色動起來開始像真正的 D2。
+
+---
+
+### Level 3
+
+```text
+DS1
++
+DT1
++
+Isometric projection
++
+DCC
++
+COF
++
+Palette
+```
+
+這時已經是：
+
+> **真正 D2 世界渲染器的雛形。**
+
+---
+
+### Level 4
+
+```text
+DS1
+DT1
+DCC
+COF
+Palette
+PL2
+Missiles
+Overlays
+Collision
+Lighting
+Animation timing
+```
+
+這時才接近：
+
+> **D2 engine reimplementation**
+
+---
+
+# 二十、最適合你現在的工程路線
+
+我會直接定成：
+
+```text
+PHASE 1
+────────────────────────
+CLI Event Parser
+        ↓
+Agent State Machine
+        ↓
+Combat Director
+        ↓
+PixiJS Scene
+        ↓
+D2 characters + skill visuals
+```
+
+先做到：
+
+```text
+CLI:
+Searching...
+
+畫面:
+Sorceress 移動
+        ↓
+遇敵
+        ↓
+施放 Blizzard
+        ↓
+怪物死亡
+        ↓
+掉落物
+```
+
+---
+
+```text
+PHASE 2
+────────────────────────
+DCC Decoder
+COF Decoder
+Palette
+Animation System
+```
+
+開始把：
+
+```text
+PNG
+```
+
+換成：
+
+```text
+DCC
+```
+
+---
+
+```text
+PHASE 3
+────────────────────────
+DS1 Parser
+DT1 Parser
+Isometric Renderer
+```
+
+把固定背景換成：
+
+```text
+真正 D2 地圖
+```
+
+---
+
+```text
+PHASE 4
+────────────────────────
+PL2
+Light
+Blend
+Missile
+Overlay
+Particle
+Sound
+```
+
+---
+
+```text
+PHASE 5
+────────────────────────
+Desktop Runtime
+```
+
+最後才做：
+
+```text
+┌─────────────────────┐
+│ Diablo 2 Agent      │
+│ Monitor             │
+│                     │
+│       D2 World      │
+│                     │
+└─────────────────────┘
+```
+
+---
+
+# 二十一、CLI 端不要直接跟 Renderer 綁死
+
+這是整個系統最重要的架構決策之一：
+
+```text
+               ┌──────────────┐
+               │    CLI       │
+               └──────┬───────┘
+                      │
+                      ▼
+               ┌──────────────┐
+               │ Event Parser │
+               └──────┬───────┘
+                      │
+                   JSON Event
+                      │
+                      ▼
+              ┌─────────────────┐
+              │ Agent State      │
+              │ Machine          │
+              └───────┬─────────┘
+                      │
+                      ▼
+              ┌─────────────────┐
+              │ Combat Director │
+              └───────┬─────────┘
+                      │
+                      ▼
+              ┌─────────────────┐
+              │ D2 World        │
+              └───────┬─────────┘
+                      │
+                      ▼
+              ┌─────────────────┐
+              │ PixiJS Renderer │
+              └─────────────────┘
+```
+
+這樣未來你把 CLI 換成：
+
+```text
+Claude Code
+Cursor
+Codex
+Gemini CLI
+自己的 Python Agent
+```
+
+Renderer 完全不用改。
+
+---
+
+# 二十二、CLI 與 Web 怎麼溝通
+
+如果你真的想做：
+
+> 「非侵入式監聽 CLI」
+
+不要讓瀏覽器直接去讀 CLI 的 stdout 或任意 log file。
+
+比較好的做法是：
+
+```text
+CLI
+ ↓
+Local watcher
+ ↓
+WebSocket
+ ↓
+Browser / PixiJS
+```
+
+例如：
+
+```text
+localhost:8765
+```
+
+傳：
+
+```json
+{
+    "event": "tool_call",
+    "tool": "python",
+    "status": "running",
+    "tokens": 4218,
+    "context": {
+        "used": 71342,
+        "limit": 128000
+    }
+}
+```
+
+前端收到之後：
+
+```javascript
+socket.onmessage = (message) => {
+
+    const event = JSON.parse(message.data);
+
+    agentDirector.handle(event);
+};
+```
+
+---
+
+# 二十三、如果你要做 VS Code 版本
+
+這條路其實很合理。
+
+VS Code 的 Webview API 本身就是用來建立自訂 HTML/UI 的，extension 與 webview 可以透過 message passing 溝通；本地資源則需要透過 `asWebviewUri()` 等方式提供給 webview。([Visual Studio Code][8])
+
+所以可以：
+
+```text
+VS Code Extension
+│
+├── CLI Monitor
+│
+├── Event Parser
+│
+└── Webview
+       │
+       └── PixiJS
+              │
+              └── D2 Renderer
+```
+
+最後：
+
+```text
+┌─────────────────────────────┐
+│ VS CODE                     │
+│                             │
+│ ┌──────────────┬──────────┐ │
+│ │ Code         │ D2       │ │
+│ │              │ Monitor  │ │
+│ │              │          │ │
+│ │              │ Sorc ❄  │ │
+│ │              │          │ │
+│ └──────────────┴──────────┘ │
+└─────────────────────────────┘
+```
+
+---
+
+# 二十四、桌面常駐版則可以走 Tauri
+
+如果你最後希望：
+
+> 「右下角常駐、半透明、Always on Top」
+
+那就不必把自己限制在普通瀏覽器。
+
+Tauri 目前的 Webview Window API 支援 `alwaysOnTop` 等視窗控制；官方設定中也有 `decorations`、`skipTaskbar` 等視窗選項。([Tauri][9])
+
+可以做成：
+
+```text
+Windows Desktop
+       │
+       ▼
+     Tauri
+       │
+       ▼
+   WebView
+       │
+       ▼
+    PixiJS
+       │
+       ▼
+D2 Agent Monitor
+```
+
+這會比「拿 Chrome 開一個網頁」更接近你最後想要的產品形態。
+
+---
+
+# 二十五、我會怎麼處理你的「原版 D2 畫面」
+
+如果你的目標是：
+
+> 「使用者一看就知道這是 Diablo 2，而不是一個做成 D2 風格的網頁」
+
+我會優先還原這幾件東西：
+
+```text
+① 640×480 / 原始比例感
+② D2 UI
+③ 紅血球
+④ 藍法力球
+⑤ 技能快捷列
+⑥ D2 字體
+⑦ 等距地圖
+⑧ 角色 DCC
+⑨ 怪物 DCC
+⑩ D2 palette
+⑪ D2 音效
+⑫ D2 技能效果
+```
+
+而：
+
+```text
+真正的遊戲規則
+```
+
+反而放後面。
+
+因為對你的 Agent Monitor 來說：
+
+```text
+「像 D2」
+```
+
+比：
+
+```text
+「真的能玩 D2」
+```
+
+重要得多。
+
+---
+
+# 二十六、我甚至建議你不要第一版就做「7 職業全部完整」
+
+第一個可用版本，我會固定：
+
+```text
+Sorceress
+```
+
+＋
+
+```text
+Act I
+```
+
+＋
+
+```text
+3~5 種怪物
+```
+
+＋
+
+```text
+Fire Ball
+Blizzard
+Teleport
+Lightning
+```
+
+＋
+
+```text
+一個 Elite
++
+一個 Boss
+```
+
+就夠了。
+
+因為只要這一條 pipeline 跑通：
+
+```text
+CLI
+ ↓
+Agent Event
+ ↓
+Sorceress
+ ↓
+Animation
+ ↓
+Skill
+ ↓
+Monster
+ ↓
+Damage
+ ↓
+Death
+ ↓
+Loot
+ ↓
+HUD
+```
+
+之後：
+
+```text
+Sorceress
+→ Barbarian
+→ Paladin
+→ Amazon
+→ Assassin
+→ Necromancer
+→ Druid
+```
+
+只是增加 asset / animation data。
+
+---
+
+# 二十七、你目前手上的素材，建議重新整理成這個結構
+
+```text
+D2AgentMonitor/
+│
+├─ assets/
+│  │
+│  ├─ d2/
+│  │  ├─ chars/
+│  │  ├─ monsters/
+│  │  ├─ missiles/
+│  │  ├─ overlays/
+│  │  ├─ tiles/
+│  │  ├─ ui/
+│  │  ├─ palette/
+│  │  └─ sfx/
+│  │
+│  ├─ wiki/
+│  │  └─ skills/
+│  │
+│  └─ sprites/
+│     ├─ characters/
+│     ├─ monsters/
+│     └─ npcs/
+│
+├─ engine/
+│  ├─ renderer/
+│  ├─ animation/
+│  ├─ palette/
+│  ├─ map/
+│  ├─ effects/
+│  └─ audio/
+│
+├─ agent/
+│  ├─ parser/
+│  ├─ state/
+│  └─ director/
+│
+└─ ui/
+   ├─ hud/
+   ├─ character/
+   ├─ skillbar/
+   └─ overlay/
+```
+
+這個結構會讓你後面非常好擴充。
+
+---
+
+# 二十八、還有一個法律 / 發布上的實務問題
+
+你現在使用：
+
+```text
+Diablo II MPQ
+Fandom 圖片
+Spriters Resource 素材
+```
+
+最好把：
+
+```text
+Engine code
+```
+
+與：
+
+```text
+Game assets
+```
+
+分開。
+
+尤其不要把完整 Blizzard MPQ 資產直接打包進 GitHub repository 或公開安裝包。
+
+OpenD2 自己也採用「engine 使用原始遊戲檔，但不隨專案重新分發遊戲內容」的模式，而且其 README 明確提到這樣做也是為了降低法律問題。([GitHub][10])
+
+另外，Fandom 該分類頁標示社群內容一般採 CC-BY-SA、但「除非另有註明」；這不等於 Diablo II 原始遊戲資產本身因此取得與遊戲內容相同的再發布權利，所以兩者不要混為一談。([暗黑破壞神百科][1])
+
+---
+
+# 最後，我會把你的專案定義成這個
+
+```text
+┌──────────────────────────────────────────┐
+│          DIABLO 2 AGENT MONITOR          │
+├──────────────────────────────────────────┤
+│                                          │
+│  CLI / AI                                │
+│      │                                   │
+│      ▼                                   │
+│  Event Parser                            │
+│      │                                   │
+│      ▼                                   │
+│  Agent State Machine                     │
+│      │                                   │
+│      ▼                                   │
+│  Combat Director                         │
+│      │                                   │
+│      ├──────────────┐                    │
+│      ▼              ▼                    │
+│   World State     Agent Stats            │
+│      │              │                    │
+│      ▼              ▼                    │
+│   D2 Renderer     D2 HUD                 │
+│      │                                   │
+│      ├── DS1 / DT1                       │
+│      ├── DCC / COF                       │
+│      ├── Palette / PL2                   │
+│      ├── Missile / Overlay               │
+│      └── Sound                            │
+│      │                                   │
+│      ▼                                   │
+│     PIXI / WEBGL                         │
+│                                          │
+└──────────────────────────────────────────┘
+```
+
+### 而你的第一個真正 MVP，我會定成：
+
+```text
+「Sorceress — Act I — Blizzard Monitor」
+
+CLI：
+Thinking
+    ↓
+Searching
+    ↓
+Tool Call
+    ↓
+Error
+    ↓
+Retry
+    ↓
+Success
+
+畫面：
+
+Sorceress 待機
+→ 巡邏
+→ 發現 Fallen
+→ Fire Ball
+→ Blizzard
+→ 精英出現
+→ Boss Phase
+→ 擊殺
+→ 經驗增加
+→ 回城
+```
+
+**這個版本一旦完成，你的專案就已經成立。**
+
+之後才把：
+
+```text
+「固定 D2 場景」
+```
+
+換成：
+
+```text
+DS1 + DT1 真正地圖
+```
+
+把：
+
+```text
+「預先做好的角色 Sprite」
+```
+
+換成：
+
+```text
+DCC + COF + Palette
+```
+
+最後再補：
+
+```text
+PL2
+Lighting
+Missile
+Overlay
+Audio
+```
+
+就會從「D2 風格的 AI dashboard」逐步變成真正具有 **D2 runtime rendering 特徵的 Agent Monitor**。
+
+### 我建議的下一個實作目標
+
+不要再先研究更多零散素材。
+
+直接做第一個 **`D2 Renderer Core v0.1`**：
+
+```text
+PixiJS
++
+固定 640×480 viewport
++
+D2 UI
++
+一張 Act I 地圖背景
++
+Sorceress
++
+DCC 動畫
++
+4 個技能
++
+3 種怪物
++
+事件驅動 Combat Director
++
+HP / Mana / Context / Token HUD
++
+WebSocket CLI event input
+```
+
+這一版完成後，你再把 `DS1 + DT1` renderer 接進去。這樣工程不會一開始就掉進 D2 格式逆向的無底洞，而且架構本身仍然能一路升級到真正的 D2 資產渲染。
+
+[1]: https://diablo.fandom.com/wiki/Category%3AD2_Skill_Images?utm_source=chatgpt.com "Category:D2 Skill Images | Diablo Wiki | Fandom"
+[2]: https://phrozenkeep.blob.core.windows.net/public/files/resources/BeginnerGuide-v14.pdf?utm_source=chatgpt.com "Getting Started"
+[3]: https://github.com/jaenster/libd2?utm_source=chatgpt.com "GitHub - jaenster/libd2: Clean-room Zig reimplementation of the deterministic Diablo II 1.14d engine core (map gen, item gen, runtime sim) · GitHub"
+[4]: https://d2sf.cn/article/1681.html?utm_source=chatgpt.com "客户端文件介绍及修改和发布-暗黑Mod资讯网"
+[5]: https://www.spriters-resource.com/pc_computer/diablo2diablo2lordofdestruction/page-1/?utm_source=chatgpt.com "Diablo 2 / Diablo 2: Lord of Destruction - PC / Computer - The Spriters Resource"
+[6]: https://github.com/eezstreet/OpenD2/blob/master/Shared/D2Shared.hpp?utm_source=chatgpt.com "OpenD2/Shared/D2Shared.hpp at master · eezstreet/OpenD2 · GitHub"
+[7]: https://pixijs.com/8.x/guides/components/filters?utm_source=chatgpt.com "Filters / Blend Modes | PixiJS"
+[8]: https://code.visualstudio.com/api/extension-guides/webview?utm_source=chatgpt.com "Webview API | Visual Studio Code Extension API"
+[9]: https://v2.tauri.app/zh-cn/reference/javascript/api/namespacewebviewwindow/?utm_source=chatgpt.com "webviewWindow | Tauri"
+[10]: https://github.com/eezstreet/OpenD2?utm_source=chatgpt.com "GitHub - eezstreet/OpenD2: A project to open source Diablo 2. · GitHub"

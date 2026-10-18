@@ -1,0 +1,996 @@
+以下是 3-C2 的完整內容。我看不到 3-A/3-B 的原始碼，所以所有**假設的欄位與路徑**都集中列在這裡，其餘程式碼不再逐一重複說明：
+
+| 假設 | 位置 | 對接方式 |
+|---|---|---|
+| `./manager`、`./blend` 路徑 | debug / 兩份測試 | 改 import（`render.test.ts` 的 `vi.mock('./blend')` 路徑須與 `render.ts` 的 import 完全一致） |
+| 碰撞半徑為 `m.radius`（地面像素） | debug | 傳入 `getRadius` |
+| `highWater` 在 `manager` 或 `manager.pool` 上；命中數在 `manager.stats.hits` | debug | 傳入 `getHighWater`、`getHits` |
+| 目標座標需由 `targetId` 查表 | debug | 傳入 `resolveTarget`（預設不畫線） |
+| `phi` 為壓縮前的地面角，螢幕向量為 `(cosφ, sinφ·0.5)` | debug、螺旋指引 | 調整 `ySquash`，或改投影函式 |
+| Tick 計數器 | debug | 內建計數，掛在 `loop.onTick` |
+
+## debug.ts
+
+```ts
+// debug.ts — 除錯視覺覆蓋層
+import type { MissileManager, MissileRuntime } from './manager'; // ← 依實際路徑調整
+
+export interface DebugOptions {
+  /** 碰撞半徑（地面像素）。預設讀 m.radius */
+  getRadius?: (m: MissileRuntime) => number;
+  /** 由 m（通常讀 m.targetId）解析目標螢幕座標；回傳 null 表示無目標。預設不畫線 */
+  resolveTarget?: (m: MissileRuntime) => { x: number; y: number } | null;
+  getHighWater?: () => number;
+  getHits?: () => number;
+  /** 邏輯 Tick 數；預設使用內建計數器（需在 loop.onTick 呼叫 noteTick()） */
+  getTick?: () => number;
+  /** 2:1 等距投影的 Y 壓縮比，預設 0.5 */
+  ySquash?: number;
+  /** 速度箭頭放大倍數（單位：Tick），預設 6 */
+  velocityScale?: number;
+  /** 朝向箭頭長度（螢幕像素），預設 24 */
+  headingLength?: number;
+  hudCorner?: 'tl' | 'tr' | 'bl' | 'br';
+}
+
+type Num = { [k: string]: unknown };
+const readNum = (o: unknown, key: string): number | undefined => {
+  const v = o && (o as Num)[key];
+  return typeof v === 'number' ? v : undefined;
+};
+
+export class MissileDebugOverlay {
+  public enabled = true;
+  private ticks = 0;
+  private readonly o: Required<Pick<DebugOptions,
+    'ySquash' | 'velocityScale' | 'headingLength' | 'hudCorner'>> & DebugOptions;
+
+  constructor(
+    private readonly ctx: CanvasRenderingContext2D,
+    private readonly manager: MissileManager,
+    opt: DebugOptions = {},
+  ) {
+    this.o = {
+      ySquash: 0.5,
+      velocityScale: 6,
+      headingLength: 24,
+      hudCorner: 'tl',
+      ...opt,
+    };
+  }
+
+  toggle(): void { this.enabled = !this.enabled; }
+
+  /** 掛在 MissileLoop.onTick */
+  noteTick(): void { this.ticks++; }
+
+  get tick(): number { return this.o.getTick ? this.o.getTick() : this.ticks; }
+
+  /** 世界層 + HUD。若世界座標有相機變換，請分別呼叫 drawWorld / drawHud */
+  draw(alpha: number): void {
+    this.drawWorld(alpha);
+    this.drawHud(alpha);
+  }
+
+  /** 碰撞圈、朝向、速度、目標連線（使用目前 ctx 變換，與 renderer 同座標系） */
+  drawWorld(alpha: number): void {
+    if (!this.enabled || this.manager.liveCount === 0) return;
+
+    const { ctx } = this;
+    const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
+    const inv = 1 - a;
+    const { ySquash, velocityScale, headingLength } = this.o;
+    const pool = this.manager.pool;
+
+    ctx.save();
+    try {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
+
+      for (let i = 0; i < pool.length; i++) {
+        const m = pool[i];
+        if (!m.active) continue;
+
+        // 與 renderer 相同的插值規則；+0.5 讓 1px 線條落在像素中心
+        const px = m.teleported ? Math.round(m.x) : Math.round(m.prevX * inv + m.x * a);
+        const py = m.teleported ? Math.round(m.y) : Math.round(m.prevY * inv + m.y * a);
+        const cx = px + 0.5;
+        const cy = py + 0.5;
+
+        // 1) 碰撞圈：地面圓在 2:1 投影下為橢圓
+        const r = this.o.getRadius
+          ? this.o.getRadius(m)
+          : readNum(m, 'radius') ?? 0;
+        if (r > 0) {
+          ctx.strokeStyle = 'rgba(0,255,255,0.9)';
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * ySquash, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // 中心十字
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 3, cy); ctx.lineTo(cx + 3, cy);
+        ctx.moveTo(cx, cy - 3); ctx.lineTo(cx, cy + 3);
+        ctx.stroke();
+
+        // 2) 朝向箭頭（phi：地面角 → 螢幕）
+        ctx.strokeStyle = 'rgba(255,220,0,0.95)';
+        ctx.fillStyle = 'rgba(255,220,0,0.95)';
+        arrow(
+          ctx, cx, cy,
+          cx + Math.cos(m.phi) * headingLength,
+          cy + Math.sin(m.phi) * headingLength * ySquash,
+        );
+
+        // 3) 速度向量（每 Tick 螢幕位移 × scale）；瞬移幀位移無意義，略過
+        if (!m.teleported) {
+          const vx = (m.x - m.prevX) * velocityScale;
+          const vy = (m.y - m.prevY) * velocityScale;
+          if (vx !== 0 || vy !== 0) {
+            ctx.strokeStyle = 'rgba(255,0,255,0.95)';
+            ctx.fillStyle = 'rgba(255,0,255,0.95)';
+            arrow(ctx, cx, cy, cx + vx, cy + vy);
+          }
+        }
+
+        // 4) 目標鎖定連線
+        const t = this.o.resolveTarget ? this.o.resolveTarget(m) : null;
+        if (t) {
+          ctx.strokeStyle = 'rgba(255,60,60,0.9)';
+          ctx.setLineDash([4, 3]);
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(Math.round(t.x) + 0.5, Math.round(t.y) + 0.5);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    } finally {
+      ctx.restore(); // 還原 lineDash / 樣式，不污染後續繪製
+    }
+  }
+
+  /** 角落 HUD。請在「螢幕空間」（無相機變換）呼叫 */
+  drawHud(alpha: number): void {
+    if (!this.enabled) return;
+
+    const m = this.manager;
+    const highWater = this.o.getHighWater
+      ? this.o.getHighWater()
+      : readNum(m, 'highWater') ?? readNum(m.pool, 'highWater') ?? 0;
+    const hits = this.o.getHits
+      ? this.o.getHits()
+      : readNum((m as unknown as Num).stats, 'hits') ?? 0;
+
+    const lines = [
+      `live   ${m.liveCount}`,
+      `pool^  ${highWater}`,
+      `hits   ${hits}`,
+      `tick   ${this.tick}`,
+      `alpha  ${alpha.toFixed(2)}`,
+    ];
+
+    const { ctx } = this;
+    const lh = 14, pad = 6;
+    ctx.save();
+    try {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.font = '12px monospace';
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+
+      let w = 0;
+      for (const l of lines) w = Math.max(w, ctx.measureText(l).width);
+      const boxW = Math.ceil(w) + pad * 2;
+      const boxH = lines.length * lh + pad * 2;
+
+      const margin = 8;
+      const cw = ctx.canvas.width;
+      const ch = ctx.canvas.height;
+      const c = this.o.hudCorner;
+      const bx = c === 'tl' || c === 'bl' ? margin : cw - boxW - margin;
+      const by = c === 'tl' || c === 'tr' ? margin : ch - boxH - margin;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(bx, by, boxW, boxH);
+      ctx.fillStyle = '#7CFC00';
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], bx + pad, by + pad + i * lh);
+      }
+    } finally {
+      ctx.restore();
+    }
+  }
+}
+
+function arrow(
+  ctx: CanvasRenderingContext2D,
+  x0: number, y0: number, x1: number, y1: number,
+  head = 5,
+): void {
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  const ang = Math.atan2(y1 - y0, x1 - x0);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - head * Math.cos(ang - 0.45), y1 - head * Math.sin(ang - 0.45));
+  ctx.lineTo(x1 - head * Math.cos(ang + 0.45), y1 - head * Math.sin(ang + 0.45));
+  ctx.closePath();
+  ctx.fill();
+}
+```
+
+接線：
+
+```ts
+const debug = new MissileDebugOverlay(ctx, manager, {
+  resolveTarget: (m) => lookupEntity((m as any).targetId) ?? null,
+});
+const loop = new MissileLoop(manager, {
+  onTick: () => { renderer.tickAnimations(); debug.noteTick(); },
+  onRender: (alpha) => {
+    /* ...clear / 地圖 / 角色... */
+    renderer.render(alpha);
+    debug.draw(alpha);
+  },
+});
+```
+
+## loop.test.ts
+
+```ts
+// loop.test.ts — 純 Node 環境（不需 jsdom）；document/window 以 EventTarget 偽造
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { MissileManager } from './manager'; // ← 依實際路徑調整
+import { MissileLoop, type MissileLoopOptions } from './loop';
+
+// ───────── 測試工具 ─────────
+
+let focused = true;
+function makeDoc() {
+  return Object.assign(new EventTarget(), { hidden: false, hasFocus: () => focused });
+}
+let doc: ReturnType<typeof makeDoc>;
+let win: EventTarget;
+
+function makeRaf() {
+  let next = 1;
+  const q = new Map<number, (t: number) => void>();
+  return {
+    raf: (cb: (t: number) => void) => { const id = next++; q.set(id, cb); return id; },
+    caf: (id: number) => { q.delete(id); },
+    get pending() { return q.size; },
+    /** 以指定時間戳觸發目前排程中的那一個 rAF 回呼 */
+    fire(t: number) {
+      const first = q.entries().next().value;
+      if (!first) throw new Error('no pending rAF');
+      q.delete(first[0]);
+      first[1](t);
+    },
+  };
+}
+
+function setup(extra: Partial<MissileLoopOptions> = {}) {
+  const h = makeRaf();
+  const step = vi.fn();
+  const alphas: number[] = [];
+  const manager = { step } as unknown as MissileManager;
+  const loop = new MissileLoop(manager, {
+    onRender: (a) => { alphas.push(a); },
+    raf: h.raf,
+    caf: h.caf,
+    ...extra,
+  });
+  return { h, step, loop, alphas };
+}
+
+const fireHidden = (hidden: boolean) => {
+  doc.hidden = hidden;
+  doc.dispatchEvent(new Event('visibilitychange'));
+};
+
+beforeEach(() => {
+  focused = true;
+  doc = makeDoc();
+  win = new EventTarget();
+  vi.stubGlobal('document', doc);
+  vi.stubGlobal('window', win);
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+// ───────── 固定步長一致性 ─────────
+
+describe('25Hz 累加器：不同畫面更新率的邏輯推進一致', () => {
+  // 時長取 10020ms，使最後一幀的經過時間（≈10014~10017ms）遠離 40ms 邊界，避免浮點誤差造成 ±1
+  function simulate(hz: number, durationMs = 10020) {
+    const { h, step, loop, alphas } = setup();
+    loop.start();
+    const dt = 1000 / hz;
+    const t0 = 1000;
+    let frames = 0;
+    for (let k = 0; k * dt <= durationMs; k++) {
+      h.fire(t0 + k * dt);
+      frames++;
+    }
+    loop.stop();
+    return { ticks: step.mock.calls.length, frames, alphas };
+  }
+
+  it.each([60, 75, 144, 240])('%dHz：10 秒 = 250 個 Tick，每個畫面幀都渲染一次', (hz) => {
+    const r = simulate(hz);
+    expect(r.ticks).toBe(250);
+    expect(r.alphas.length).toBe(r.frames);
+  });
+
+  it('60Hz 與 144Hz 的 Tick 數完全相同', () => {
+    expect(simulate(60).ticks).toBe(simulate(144).ticks);
+  });
+
+  it('alpha 恆在 [0,1]', () => {
+    for (const hz of [60, 144]) {
+      for (const a of simulate(hz).alphas) {
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(a).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('第一幀只建立基準，不推進 Tick', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(123456);
+    expect(step).not.toHaveBeenCalled();
+    expect(loop.alpha).toBe(0);
+  });
+
+  it('alpha = 餘裕毫秒 / 40', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(1050); // 50ms → 1 Tick，餘 10ms
+    expect(step).toHaveBeenCalledTimes(1);
+    expect(loop.alpha).toBeCloseTo(0.25, 10);
+  });
+
+  it('時間戳倒退不會產生 Tick 或負 alpha', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(900);
+    expect(step).not.toHaveBeenCalled();
+    expect(loop.alpha).toBeGreaterThanOrEqual(0);
+  });
+
+  it('onTick 與 step 次數一致', () => {
+    const onTick = vi.fn();
+    const { h, step, loop } = setup({ onTick });
+    loop.start();
+    h.fire(1000);
+    h.fire(1130); // 3 Tick
+    expect(step).toHaveBeenCalledTimes(3);
+    expect(onTick).toHaveBeenCalledTimes(3);
+  });
+});
+
+// ───────── 防死亡螺旋 ─────────
+
+describe('防死亡螺旋', () => {
+  it('delta 199ms → 4 Tick；200ms → 5 Tick（未截斷）', () => {
+    let s = setup(); s.loop.start(); s.h.fire(1000); s.h.fire(1199);
+    expect(s.step).toHaveBeenCalledTimes(4);
+    expect(s.loop.alpha).toBeCloseTo(39 / 40, 10);
+
+    s = setup(); s.loop.start(); s.h.fire(1000); s.h.fire(1200);
+    expect(s.step).toHaveBeenCalledTimes(5);
+    expect(s.loop.alpha).toBe(0);
+  });
+
+  it('1000ms 卡頓：最多追 5 Tick，超額被捨棄', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(2000);
+    expect(step).toHaveBeenCalledTimes(5);
+    expect(loop.lastTicks).toBe(5);
+    expect(loop.alpha).toBe(0);
+  });
+
+  it('截斷後只保留相位餘數（alpha 不跳變）', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(2030); // 1030ms：5 Tick 後剩 830，取餘 30 → alpha 0.75
+    expect(step).toHaveBeenCalledTimes(5);
+    expect(loop.alpha).toBeCloseTo(0.75, 10);
+  });
+
+  it('截斷後不會爆衝補跑：下一個 40ms 只推進 1 Tick', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(2000);          // 5 Tick（截斷）
+    h.fire(2040);          // 僅 1 Tick
+    expect(step).toHaveBeenCalledTimes(6);
+  });
+
+  it('step 拋例外後迴圈仍持續排程', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    step.mockImplementationOnce(() => { throw new Error('boom'); });
+    expect(() => h.fire(1040)).toThrow('boom');
+    expect(h.pending).toBe(1);
+    expect(loop.running).toBe(true);
+    expect(() => h.fire(1080)).not.toThrow();
+  });
+});
+
+// ───────── 掛起 / 恢復 ─────────
+
+describe('可見性 / 失焦 掛起與恢復', () => {
+  it('document.hidden：取消排程，恢復後重新排程', () => {
+    const { h, loop } = setup();
+    loop.start();
+    expect(h.pending).toBe(1);
+
+    fireHidden(true);
+    expect(h.pending).toBe(0);
+    expect(loop.running).toBe(false);
+
+    fireHidden(false);
+    expect(h.pending).toBe(1);
+    expect(loop.running).toBe(true);
+  });
+
+  it('恢復後第一幀只建立基準，不補跑掛起期間', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(1040);
+    expect(step).toHaveBeenCalledTimes(1);
+
+    fireHidden(true);
+    fireHidden(false);
+    h.fire(60_000);            // 掛起了近一分鐘
+    expect(step).toHaveBeenCalledTimes(1);
+    h.fire(60_040);
+    expect(step).toHaveBeenCalledTimes(2);
+  });
+
+  it('恢復時清空累加器（掛起前的餘數不殘留）', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    h.fire(1020);              // acc = 20，尚無 Tick
+    fireHidden(true);
+    fireHidden(false);
+    h.fire(9000);              // 基準
+    h.fire(9020);              // 若 acc 殘留 20，這裡會湊滿 40 而誤推進
+    expect(step).not.toHaveBeenCalled();
+    h.fire(9040);
+    expect(step).toHaveBeenCalledTimes(1);
+  });
+
+  it('rAF 觸發時恰好已隱藏（事件尚未到）：不執行、不續排', () => {
+    const { h, step, loop } = setup();
+    loop.start();
+    h.fire(1000);
+    doc.hidden = true;         // 不派發事件
+    h.fire(1040);
+    expect(step).not.toHaveBeenCalled();
+    expect(h.pending).toBe(0);
+    expect(loop.running).toBe(false);
+    fireHidden(false);         // 之後事件到達 → 恢復
+    expect(h.pending).toBe(1);
+  });
+
+  it('視窗 blur / focus：掛起與恢復', () => {
+    const { h, loop } = setup();
+    loop.start();
+    win.dispatchEvent(new Event('blur'));
+    expect(h.pending).toBe(0);
+    win.dispatchEvent(new Event('focus'));
+    expect(h.pending).toBe(1);
+    expect(loop.running).toBe(true);
+  });
+
+  it('pauseOnBlur=false：失焦不掛起，但隱藏分頁仍掛起', () => {
+    const { h, loop } = setup({ pauseOnBlur: false });
+    loop.start();
+    win.dispatchEvent(new Event('blur'));
+    expect(h.pending).toBe(1);
+    fireHidden(true);
+    expect(h.pending).toBe(0);
+  });
+
+  it('建構時視窗已失焦：start() 不排程，focus 後才啟動', () => {
+    focused = false;
+    const { h, loop } = setup();
+    loop.start();
+    expect(h.pending).toBe(0);
+    win.dispatchEvent(new Event('focus'));
+    expect(h.pending).toBe(1);
+  });
+
+  it('stop() 之後，可見性事件不會讓迴圈復活', () => {
+    const { h, loop } = setup();
+    loop.start();
+    loop.stop();
+    fireHidden(true);
+    fireHidden(false);
+    expect(h.pending).toBe(0);
+    expect(loop.running).toBe(false);
+  });
+
+  it('start() 可重複呼叫，不會重複排程', () => {
+    const { h, loop } = setup();
+    loop.start();
+    loop.start();
+    expect(h.pending).toBe(1);
+  });
+
+  it('dispose() 移除全域監聽', () => {
+    const rmDoc = vi.spyOn(doc, 'removeEventListener');
+    const rmWin = vi.spyOn(win, 'removeEventListener');
+    const { h, loop } = setup();
+    loop.start();
+    loop.dispose();
+    expect(h.pending).toBe(0);
+    expect(rmDoc).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    expect(rmWin).toHaveBeenCalledWith('blur', expect.any(Function));
+    expect(rmWin).toHaveBeenCalledWith('focus', expect.any(Function));
+  });
+});
+```
+
+## render.test.ts
+
+```ts
+// render.test.ts — 輕量 Mock Context，不需 canvas / jsdom
+import { describe, it, expect, vi } from 'vitest';
+import type { MissileManager, MissileRuntime } from './manager'; // ← 依實際路徑調整
+import { MissileRenderer, advanceAnim, type SpriteInfo } from './render';
+
+// 以固定行為取代 applyBlend：只驗證「渲染器有無在繪製後重設狀態」，與具體混色表無關。
+// 路徑須與 render.ts 的 import 一致。
+vi.mock('./blend', () => ({
+  applyBlend: (
+    ctx: { globalCompositeOperation: string; globalAlpha: number },
+    mode: number,
+    alpha: number,
+  ) => {
+    ctx.globalCompositeOperation = mode === 0 ? 'source-over' : 'lighter';
+    ctx.globalAlpha = alpha;
+  },
+}));
+
+// ───────── 測試工具 ─────────
+
+interface DrawCall { args: unknown[]; op: string; alpha: number }
+
+class MockCtx {
+  imageSmoothingEnabled = true;
+  globalCompositeOperation = 'source-over';
+  globalAlpha = 1;
+  draws: DrawCall[] = [];
+  throwOnDraw = false;
+  drawImage(...args: unknown[]): void {
+    if (this.throwOnDraw) throw new Error('boom');
+    this.draws.push({ args, op: this.globalCompositeOperation, alpha: this.globalAlpha });
+  }
+}
+
+const IMG = {} as CanvasImageSource;
+
+function sprite(over: Partial<SpriteInfo> = {}): SpriteInfo {
+  return {
+    image: IMG, frameW: 32, frameH: 32, frameCount: 4, speed: 64,
+    anchorX: 0, anchorY: 0, ...over,
+  };
+}
+
+function mk(over: Partial<Record<string, unknown>> = {}): MissileRuntime {
+  return {
+    active: true, x: 0, y: 0, prevX: 0, prevY: 0, phi: 0,
+    teleported: false, blendMode: 0, animAcc: 0, animFrame: 0,
+    ...over,
+  } as unknown as MissileRuntime;
+}
+
+function setup(missiles: MissileRuntime[], s: SpriteInfo | null = sprite()) {
+  const ctx = new MockCtx();
+  const live = missiles.filter((m) => (m as unknown as { active: boolean }).active).length;
+  const manager = { pool: missiles, liveCount: live } as unknown as MissileManager;
+  const renderer = new MissileRenderer(
+    ctx as unknown as CanvasRenderingContext2D,
+    manager,
+    () => s,
+  );
+  return { ctx, renderer, manager };
+}
+
+/** drawImage 參數：[img, sx, sy, sw, sh, dx, dy, dw, dh] */
+const dest = (c: DrawCall) => [c.args[5], c.args[6]];
+
+// ───────── 位置插值 ─────────
+
+describe('位置插值與取整', () => {
+  it('alpha=0.5：(0,0)→(10,5) 得 (5, round(2.5)=3)', () => {
+    const { ctx, renderer } = setup([mk({ x: 10, y: 5 })]);
+    renderer.render(0.5);
+    expect(dest(ctx.draws[0])).toEqual([5, 3]);
+  });
+
+  it('alpha=0.26：以 Math.round 取整，不產生小數座標', () => {
+    const { ctx, renderer } = setup([mk({ x: 10, y: 5 })]);
+    renderer.render(0.26);
+    expect(dest(ctx.draws[0])).toEqual([3, 1]); // 2.6→3, 1.3→1
+    for (const v of dest(ctx.draws[0])) expect(Number.isInteger(v)).toBe(true);
+  });
+
+  it('alpha=0 取上幀位置，alpha=1 取當前位置', () => {
+    const m = mk({ prevX: 20, prevY: 10, x: 30, y: 16 });
+    const { ctx, renderer } = setup([m]);
+    renderer.render(0);
+    renderer.render(1);
+    expect(dest(ctx.draws[0])).toEqual([20, 10]);
+    expect(dest(ctx.draws[1])).toEqual([30, 16]);
+  });
+
+  it('alpha 超出範圍會被夾住', () => {
+    const { ctx, renderer } = setup([mk({ x: 10, y: 10 })]);
+    renderer.render(-3);
+    renderer.render(7);
+    expect(dest(ctx.draws[0])).toEqual([0, 0]);
+    expect(dest(ctx.draws[1])).toEqual([10, 10]);
+  });
+
+  it('負座標：Math.round(-2.5) === -2（記錄既有行為）', () => {
+    const { ctx, renderer } = setup([mk({ x: -5, y: 0 })]);
+    renderer.render(0.5);
+    expect(dest(ctx.draws[0])).toEqual([-2, 0]);
+  });
+
+  it('錨點偏移與圖集來源矩形', () => {
+    const m = mk({ x: 10, y: 5, animFrame: 2 });
+    const { ctx, renderer } = setup([m], sprite({ anchorX: 4, anchorY: 8, row: 3 }));
+    renderer.render(1);
+    expect(ctx.draws[0].args).toEqual([IMG, 64, 96, 32, 32, 6, -3, 32, 32]);
+  });
+
+  it('animFrame 超出 frameCount 時以取餘數繪製', () => {
+    const { ctx, renderer } = setup([mk({ animFrame: 5 })], sprite({ frameCount: 4 }));
+    renderer.render(0);
+    expect(ctx.draws[0].args[1]).toBe(32); // 5 % 4 = 1
+  });
+
+  it('每次 render 都設 imageSmoothingEnabled=false', () => {
+    const { ctx, renderer } = setup([mk()]);
+    ctx.imageSmoothingEnabled = true;
+    renderer.render(0);
+    expect(ctx.imageSmoothingEnabled).toBe(false);
+  });
+
+  it('略過非活躍實體；liveCount=0 時不繪製', () => {
+    const { ctx, renderer } = setup([mk({ active: false })]);
+    renderer.render(0.5);
+    expect(ctx.draws.length).toBe(0);
+  });
+});
+
+// ───────── 瞬移 ─────────
+
+describe('teleported 瞬移幀', () => {
+  it('當幀不插值，直接畫在當前位置', () => {
+    const { ctx, renderer } = setup([mk({ prevX: 0, prevY: 0, x: 100, y: 50, teleported: true })]);
+    renderer.render(0.5);
+    expect(dest(ctx.draws[0])).toEqual([100, 50]); // 非 (50, 25)
+  });
+
+  it('繪製後重設旗標，且 prev 對齊 current，之後的畫面幀不會滑動', () => {
+    const m = mk({ prevX: 0, prevY: 0, x: 100, y: 50, teleported: true });
+    const { ctx, renderer } = setup([m]);
+    renderer.render(0.3);
+    expect(m.teleported).toBe(false);
+    expect(m.prevX).toBe(100);
+    expect(m.prevY).toBe(50);
+    renderer.render(0.6); // 同一 Tick 內的下一個畫面幀
+    expect(dest(ctx.draws[1])).toEqual([100, 50]);
+  });
+
+  it('只影響瞬移的實體，其他實體照常插值', () => {
+    const a = mk({ x: 100, y: 50, teleported: true });
+    const b = mk({ x: 10, y: 10 });
+    const { ctx, renderer } = setup([a, b]);
+    renderer.render(0.5);
+    expect(dest(ctx.draws[0])).toEqual([100, 50]);
+    expect(dest(ctx.draws[1])).toEqual([5, 5]);
+    expect(b.teleported).toBe(false);
+  });
+
+  it('即使貼圖解析失敗（null），旗標仍會重設', () => {
+    const m = mk({ x: 9, y: 9, teleported: true });
+    const { ctx, renderer } = setup([m], null);
+    renderer.render(0.5);
+    expect(ctx.draws.length).toBe(0);
+    expect(m.teleported).toBe(false);
+  });
+});
+
+// ───────── 混色隔離 ─────────
+
+describe('混色模式隔離', () => {
+  it('繪製時套用混色，結束後無條件還原為 source-over / 1.0', () => {
+    const { ctx, renderer } = setup([mk({ blendMode: 1 })], sprite({ opacity: 0.5 }));
+    renderer.render(0);
+    expect(ctx.draws[0].op).toBe('lighter');
+    expect(ctx.draws[0].alpha).toBe(0.5);
+    expect(ctx.globalCompositeOperation).toBe('source-over');
+    expect(ctx.globalAlpha).toBe(1);
+  });
+
+  it('前一個實體的混色不會洩漏給下一個', () => {
+    const { ctx, renderer } = setup([mk({ blendMode: 1 }), mk({ blendMode: 0 })]);
+    renderer.render(0);
+    expect(ctx.draws[0].op).toBe('lighter');
+    expect(ctx.draws[1].op).toBe('source-over');
+    expect(ctx.draws[1].alpha).toBe(1);
+  });
+
+  it('drawImage 拋例外時狀態仍被重設', () => {
+    const { ctx, renderer } = setup([mk({ blendMode: 1 })], sprite({ opacity: 0.3 }));
+    ctx.throwOnDraw = true;
+    expect(() => renderer.render(0)).toThrow('boom');
+    expect(ctx.globalCompositeOperation).toBe('source-over');
+    expect(ctx.globalAlpha).toBe(1);
+  });
+});
+
+// ───────── 256 進位動畫 ─────────
+
+describe('advanceAnim：256 進位整數推進', () => {
+  const st = (animFrame = 0, animAcc = 0) => ({ animFrame, animAcc });
+
+  it('speed=64：每 4 Tick 進 1 幀，餘數歸零', () => {
+    const m = st();
+    for (let i = 0; i < 3; i++) advanceAnim(m, 64, 8);
+    expect(m).toEqual({ animFrame: 0, animAcc: 192 });
+    advanceAnim(m, 64, 8);
+    expect(m).toEqual({ animFrame: 1, animAcc: 0 });
+  });
+
+  it('speed=100：進位時保留餘數（100,200,44→幀1,144,244,88→幀2）', () => {
+    const m = st();
+    advanceAnim(m, 100, 8); advanceAnim(m, 100, 8);
+    expect(m).toEqual({ animFrame: 0, animAcc: 200 });
+    advanceAnim(m, 100, 8);
+    expect(m).toEqual({ animFrame: 1, animAcc: 44 });
+    advanceAnim(m, 100, 8); advanceAnim(m, 100, 8); advanceAnim(m, 100, 8);
+    expect(m).toEqual({ animFrame: 2, animAcc: 88 });
+  });
+
+  it('speed=256 每 Tick 進 1 幀；speed=512 每 Tick 進 2 幀', () => {
+    const a = st(); advanceAnim(a, 256, 8);
+    expect(a).toEqual({ animFrame: 1, animAcc: 0 });
+    const b = st(); advanceAnim(b, 512, 8);
+    expect(b).toEqual({ animFrame: 2, animAcc: 0 });
+  });
+
+  it('長時間無漂移：speed=85 跑 256 Tick 恰好 85 幀、餘數 0', () => {
+    const m = st();
+    for (let i = 0; i < 256; i++) advanceAnim(m, 85, 1000);
+    expect(m).toEqual({ animFrame: 85, animAcc: 0 });
+  });
+
+  it('循環：最後一幀進位後回到 0；非循環則停在最後一幀', () => {
+    const a = st(3, 0); advanceAnim(a, 256, 4, true);
+    expect(a.animFrame).toBe(0);
+    const b = st(3, 0); advanceAnim(b, 256, 4, false);
+    expect(b.animFrame).toBe(3);
+  });
+
+  it('speed=0 或 frameCount<=0：不變動', () => {
+    const a = st(2, 10); advanceAnim(a, 0, 8);
+    expect(a).toEqual({ animFrame: 2, animAcc: 10 });
+    const b = st(2, 10); advanceAnim(b, 100, 0);
+    expect(b).toEqual({ animFrame: 2, animAcc: 10 });
+  });
+});
+
+describe('動畫只跟 Tick 走，不跟畫面幀走', () => {
+  it('render 呼叫 10 次，動畫幀不變；tickAnimations 呼叫 4 次才進 1 幀', () => {
+    const m = mk();
+    const { renderer } = setup([m], sprite({ speed: 64 }));
+    for (let i = 0; i < 10; i++) renderer.render(0.5);
+    expect(m.animFrame).toBe(0);
+    for (let i = 0; i < 4; i++) renderer.tickAnimations();
+    expect(m.animFrame).toBe(1);
+  });
+
+  it('略過非活躍實體與無貼圖的實體', () => {
+    const dead = mk({ active: false });
+    const { renderer } = setup([dead], sprite({ speed: 256 }));
+    renderer.tickAnimations();
+    expect(dead.animFrame).toBe(0);
+
+    const m = mk();
+    const r2 = setup([m], null);
+    r2.renderer.tickAnimations();
+    expect(m.animFrame).toBe(0);
+  });
+});
+```
+
+執行：`vitest run`（預設 `environment: 'node'`，無需 jsdom）。
+
+## 附錄：F03 祝福之槌（阿基米德螺旋）擴展指引
+
+**前提聲明**：我沒有 3-B 的原始碼，無法確認私有狀態陣列的實際欄位名與行為原語註冊方式。下列以「每個投射物有一段可讀寫的數值槽（Float64Array 區段或 `number[]`）」為前提，**純運算核心與銜接點分開寫**。核心可獨立測試，只有 §3 的銜接需要依 3-B 實際介面改寫。螺旋參數是可調的設計值，**不是**從遊戲資料表擷取的原始數值。
+
+### 1. 數學設計
+
+螺旋定義在**地面空間**（壓縮前），再投影到螢幕。若直接在螢幕座標畫螺旋，地面軌跡會是橢圓而非圓。
+
+- 極座標：`r = r0 + b·Δθ`，Δθ 為累計角度
+- 地面座標：`(gx, gy) = (r·cosθ, r·sinθ)`
+- 螢幕座標：`(cx + gx, cy + gy·ySquash)`，`ySquash = 0.5`
+- **用絕對位置而非速度積分**：每 Tick 從 `(θ, r, 圓心)` 重算位置，無累積誤差，也不會和 manager 的位移積分疊加。
+- **等弧長速度**：定角速度的阿基米德螺旋，外圈切向速度會越來越快。要讓槌子看起來等速，取弧長微元 `ds = √(r²+b²)·dθ`，即 `dθ = speed / hypot(r, b)`，並以 `maxDTheta` 限制 `r≈0` 時的暴衝。
+- **朝向 `phi`**：取切線方向 `(b·cosθ − dir·r·sinθ, b·sinθ + dir·r·cosθ)` 的 `atan2`，`dir=±1` 表示順/逆時針。
+
+### 2. 純運算核心（spiral.ts）
+
+```ts
+// spiral.ts — 與 3-B 介面無關的純函式，可直接單元測試
+export const SP = { THETA: 0, R: 1, CX: 2, CY: 3, DIR: 4, SIZE: 5 } as const;
+
+export interface SpiralParams {
+  r0: number;         // 起始半徑（地面 px）
+  b: number;          // 每弧度徑向增量（地面 px/rad），須 > 0
+  speed: number;      // 沿弧線速度（地面 px/Tick）
+  rMax: number;       // 半徑達此值即結束
+  maxDTheta: number;  // 單 Tick 最大角增量（rad）
+  ySquash: number;    // 0.5
+}
+
+export interface SpiralOut { x: number; y: number; phi: number; done: boolean }
+
+/** 生成時呼叫一次。cx, cy 為圓心（通常 = 施法者/生成點，螢幕座標） */
+export function spiralInit(
+  s: ArrayLike<number> & { [i: number]: number }, o: number,
+  cx: number, cy: number, theta0: number, dir: 1 | -1, p: SpiralParams,
+): void {
+  s[o + SP.THETA] = theta0;
+  s[o + SP.R] = p.r0;
+  s[o + SP.CX] = cx;
+  s[o + SP.CY] = cy;
+  s[o + SP.DIR] = dir;
+}
+
+/** 每 Tick 呼叫一次；結果寫入 out（無配置） */
+export function spiralStep(
+  s: ArrayLike<number> & { [i: number]: number }, o: number,
+  p: SpiralParams, out: SpiralOut,
+): void {
+  const r = s[o + SP.R];
+  const dir = s[o + SP.DIR];
+  const dTheta = Math.min(p.speed / Math.hypot(r, p.b), p.maxDTheta);
+
+  const theta = s[o + SP.THETA] + dir * dTheta;
+  const nr = r + p.b * dTheta;
+  s[o + SP.THETA] = theta;
+  s[o + SP.R] = nr;
+
+  const c = Math.cos(theta), sn = Math.sin(theta);
+  out.x = s[o + SP.CX] + nr * c;
+  out.y = s[o + SP.CY] + nr * sn * p.ySquash;
+
+  out.phi = Math.atan2(p.b * sn + dir * nr * c, p.b * c - dir * nr * sn);
+  out.done = nr >= p.rMax;
+}
+```
+
+### 3. 銜接 3-B（需依實際介面調整）
+
+先對照 3-B 的三件事再動手：
+
+1. **狀態槽怎麼配置**：若每個投射物有固定長度的私有槽，確認長度 ≥ `SP.SIZE`（5）。若是共用大陣列加偏移，`o` 就是該投射物的起點。若槽數不足，先擴 `SIZE` 與物件池的重置邏輯，**回收時必須清零**，否則舊螺旋狀態會殘留給下一發。
+2. **原語簽名與註冊表**：新增一個與既有原語同形的 `spiralOut`，在 spec 中指定它與 `SpiralParams`。典型形狀如下（`[...]` 部分依 3-B 調整）：
+
+```ts
+// 在 3-B 的原語表中新增（示意）
+const out: SpiralOut = { x: 0, y: 0, phi: 0, done: false };
+
+function onSpawnSpiral(m: MissileRuntime, p: SpiralParams, dir: 1 | -1) {
+  spiralInit(/* m 的私有狀態槽 */, /* 偏移 */ 0, m.x, m.y, m.phi, dir, p);
+}
+
+function stepSpiral(m: MissileRuntime, p: SpiralParams) {
+  spiralStep(/* m 的私有狀態槽 */, 0, p, out);
+  m.x = out.x;
+  m.y = out.y;
+  m.phi = out.phi;
+  if (out.done) { /* 呼叫 3-B 既有的「到期/死亡」路徑 */ }
+}
+```
+
+3. **`prevX/prevY` 由誰設**：若 `manager.step()` 在行為執行前已做 `prev = cur`，原語內**不要再碰** `prevX/prevY`，否則插值失效。若原語自己負責，才在寫入新位置前 `m.prevX = m.x`。圓心若要跟隨移動中的施法者，改為每 Tick 傳入圓心，不存在槽內，並注意此時圓心位移會讓槌子位置突變，必要時改用「圓心增量」。
+
+另外注意：
+
+- **座標單位**：若 3-B 的 `x, y` 是定點數（例如 8.8），在 `spiralStep` 前後轉換，核心內部維持浮點。
+- **確定性**：若有回放/網路同步需求，`Math.cos/sin` 的跨平台差異不可忽略，改用 3-A 的整數角度表（如 `indexToPhi` 對應的查表）。
+- **碰撞掃掠**：外圈切向速度在 `speed` 固定時恆定，不會穿透。若調高 `speed`，請確認單 Tick 位移小於碰撞半徑。
+- **渲染**：槌子的自旋動畫用 `speed` 256 進位推進即可，與 `phi` 無關。`phi` 的用途是讓除錯層的朝向箭頭驗證切線方向（箭頭應始終與螺旋相切）。
+
+### 4. 螺旋核心的單元測試（不依賴 3-B）
+
+```ts
+// spiral.test.ts
+import { describe, it, expect } from 'vitest';
+import { SP, spiralInit, spiralStep, type SpiralParams, type SpiralOut } from './spiral';
+
+const P: SpiralParams = { r0: 8, b: 6, speed: 4, rMax: 200, maxDTheta: 0.5, ySquash: 0.5 };
+
+function run(ticks: number, dir: 1 | -1 = 1) {
+  const s = new Float64Array(SP.SIZE);
+  spiralInit(s, 0, 400, 300, 0, dir, P);
+  const out: SpiralOut = { x: 0, y: 0, phi: 0, done: false };
+  const pts: { x: number; y: number; r: number }[] = [];
+  for (let i = 0; i < ticks; i++) {
+    spiralStep(s, 0, P, out);
+    pts.push({ x: out.x, y: out.y, r: s[SP.R] });
+  }
+  return { pts, out };
+}
+
+describe('F03 阿基米德螺旋核心', () => {
+  it('半徑單調遞增', () => {
+    const { pts } = run(100);
+    for (let i = 1; i < pts.length; i++) expect(pts[i].r).toBeGreaterThan(pts[i - 1].r);
+  });
+
+  it('地面圓經 2:1 投影：((x-cx)/r)² + ((y-cy)/(r·0.5))² = 1', () => {
+    for (const p of run(80).pts) {
+      const u = (p.x - 400) / p.r;
+      const v = (p.y - 300) / (p.r * P.ySquash);
+      expect(u * u + v * v).toBeCloseTo(1, 9);
+    }
+  });
+
+  it('等弧長：地面空間相鄰兩點距離 ≈ speed（r 足夠大、未被 maxDTheta 限制時）', () => {
+    const { pts } = run(120);
+    for (let i = 60; i < 119; i++) {
+      const gx = pts[i + 1].x - pts[i].x;
+      const gy = (pts[i + 1].y - pts[i].y) / P.ySquash; // 還原到地面空間
+      expect(Math.hypot(gx, gy)).toBeGreaterThan(P.speed * 0.85);
+      expect(Math.hypot(gx, gy)).toBeLessThan(P.speed * 1.15);
+    }
+  });
+
+  it('dir=-1 與 dir=1 以圓心鏡像（x 相同、y 對圓心反向）', () => {
+    const a = run(30, 1).pts, b = run(30, -1).pts;
+    for (let i = 0; i < 30; i++) {
+      expect(b[i].x).toBeCloseTo(a[i].x, 9);
+      expect(b[i].y - 300).toBeCloseTo(-(a[i].y - 300), 9);
+    }
+  });
+
+  it('達到 rMax 時 done=true', () => {
+    expect(run(5).out.done).toBe(false);
+    expect(run(2000).out.done).toBe(true);
+  });
+});
+```
+
+這份測試只驗證數學核心。接上 3-B 後，建議再加一個整合測試：用 manager 跑 N 個 Tick，確認 `m.x/m.y` 與 `spiralStep` 單獨算出的軌跡一致，並確認 `prevX/prevY` 恰為上一 Tick 的位置。這樣可以抓到「prev 被重複設定」或「槽位未在回收時清零」這兩類最常見的接線錯誤。

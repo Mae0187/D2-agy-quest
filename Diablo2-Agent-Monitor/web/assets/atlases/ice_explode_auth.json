@@ -1,0 +1,18 @@
+{
+  "name": "ice_explode",
+  "atlas": "ice_explode_auth.png",
+  "cellW": 85,
+  "cellH": 163,
+  "pivotX": 44,
+  "pivotY": 124,
+  "frames": 16,
+  "dirs": 1,
+  "totalW": 1360,
+  "totalH": 163,
+  "unionBox": {
+    "minX": -43,
+    "maxX": 40,
+    "minY": -123,
+    "maxY": 38
+  }
+}

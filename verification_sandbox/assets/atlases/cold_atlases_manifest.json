@@ -1,0 +1,308 @@
+{
+  "icebolt": {
+    "name": "icebolt",
+    "atlas": "icebolt_auth.png",
+    "cellW": 94,
+    "cellH": 66,
+    "pivotX": 47,
+    "pivotY": 23,
+    "frames": 6,
+    "dirs": 16,
+    "totalW": 564,
+    "totalH": 1056,
+    "unionBox": {
+      "minX": -46,
+      "maxX": 46,
+      "minY": -22,
+      "maxY": 42
+    }
+  },
+  "ice_explode": {
+    "name": "ice_explode",
+    "atlas": "ice_explode_auth.png",
+    "cellW": 85,
+    "cellH": 163,
+    "pivotX": 44,
+    "pivotY": 124,
+    "frames": 16,
+    "dirs": 1,
+    "totalW": 1360,
+    "totalH": 163,
+    "unionBox": {
+      "minX": -43,
+      "maxX": 40,
+      "minY": -123,
+      "maxY": 38
+    }
+  },
+  "iceblast": {
+    "name": "iceblast",
+    "atlas": "iceblast_auth.png",
+    "cellW": 171,
+    "cellH": 108,
+    "pivotX": 86,
+    "pivotY": 82,
+    "frames": 5,
+    "dirs": 16,
+    "totalW": 855,
+    "totalH": 1728,
+    "unionBox": {
+      "minX": -85,
+      "maxX": 84,
+      "minY": -81,
+      "maxY": 25
+    }
+  },
+  "freeze_explode": {
+    "name": "freeze_explode",
+    "atlas": "freeze_explode_auth.png",
+    "cellW": 145,
+    "cellH": 142,
+    "pivotX": 76,
+    "pivotY": 142,
+    "frames": 15,
+    "dirs": 1,
+    "totalW": 2175,
+    "totalH": 142,
+    "unionBox": {
+      "minX": -75,
+      "maxX": 68,
+      "minY": -141,
+      "maxY": -1
+    }
+  },
+  "glacialspike": {
+    "name": "glacialspike",
+    "atlas": "glacialspike_auth.png",
+    "cellW": 182,
+    "cellH": 132,
+    "pivotX": 91,
+    "pivotY": 98,
+    "frames": 6,
+    "dirs": 16,
+    "totalW": 1092,
+    "totalH": 2112,
+    "unionBox": {
+      "minX": -90,
+      "maxX": 90,
+      "minY": -97,
+      "maxY": 33
+    }
+  },
+  "frostnova": {
+    "name": "frostnova",
+    "atlas": "frostnova_auth.png",
+    "cellW": 120,
+    "cellH": 87,
+    "pivotX": 60,
+    "pivotY": 89,
+    "frames": 14,
+    "dirs": 16,
+    "totalW": 1680,
+    "totalH": 1392,
+    "unionBox": {
+      "minX": -59,
+      "maxX": 59,
+      "minY": -88,
+      "maxY": -3
+    }
+  },
+  "blizzard_shard_main": {
+    "name": "blizzard_shard_main",
+    "atlas": "blizzard_shard_main_auth.png",
+    "cellW": 99,
+    "cellH": 155,
+    "pivotX": 72,
+    "pivotY": 153,
+    "frames": 8,
+    "dirs": 1,
+    "totalW": 792,
+    "totalH": 155,
+    "unionBox": {
+      "minX": -71,
+      "maxX": 26,
+      "minY": -152,
+      "maxY": 1
+    }
+  },
+  "blizzard_shard_v1": {
+    "name": "blizzard_shard_v1",
+    "atlas": "blizzard_shard_v1_auth.png",
+    "cellW": 58,
+    "cellH": 200,
+    "pivotX": 51,
+    "pivotY": 186,
+    "frames": 6,
+    "dirs": 1,
+    "totalW": 348,
+    "totalH": 200,
+    "unionBox": {
+      "minX": -50,
+      "maxX": 6,
+      "minY": -185,
+      "maxY": 13
+    }
+  },
+  "blizzard_shard_v2": {
+    "name": "blizzard_shard_v2",
+    "atlas": "blizzard_shard_v2_auth.png",
+    "cellW": 50,
+    "cellH": 199,
+    "pivotX": 47,
+    "pivotY": 183,
+    "frames": 6,
+    "dirs": 1,
+    "totalW": 300,
+    "totalH": 199,
+    "unionBox": {
+      "minX": -46,
+      "maxX": 2,
+      "minY": -182,
+      "maxY": 15
+    }
+  },
+  "blizzard_impact_v1": {
+    "name": "blizzard_impact_v1",
+    "atlas": "blizzard_impact_v1_auth.png",
+    "cellW": 115,
+    "cellH": 89,
+    "pivotX": 55,
+    "pivotY": 112,
+    "frames": 6,
+    "dirs": 1,
+    "totalW": 690,
+    "totalH": 89,
+    "unionBox": {
+      "minX": -54,
+      "maxX": 59,
+      "minY": -111,
+      "maxY": -24
+    }
+  },
+  "blizzard_impact_v2": {
+    "name": "blizzard_impact_v2",
+    "atlas": "blizzard_impact_v2_auth.png",
+    "cellW": 119,
+    "cellH": 87,
+    "pivotX": 56,
+    "pivotY": 110,
+    "frames": 6,
+    "dirs": 1,
+    "totalW": 714,
+    "totalH": 87,
+    "unionBox": {
+      "minX": -55,
+      "maxX": 62,
+      "minY": -109,
+      "maxY": -24
+    }
+  },
+  "ice_orb": {
+    "name": "ice_orb",
+    "atlas": "ice_orb_auth.png",
+    "cellW": 56,
+    "cellH": 58,
+    "pivotX": 28,
+    "pivotY": 35,
+    "frames": 16,
+    "dirs": 1,
+    "totalW": 896,
+    "totalH": 58,
+    "unionBox": {
+      "minX": -27,
+      "maxX": 27,
+      "minY": -34,
+      "maxY": 22
+    }
+  },
+  "ice_orb_explode": {
+    "name": "ice_orb_explode",
+    "atlas": "ice_orb_explode_auth.png",
+    "cellW": 232,
+    "cellH": 294,
+    "pivotX": 112,
+    "pivotY": 269,
+    "frames": 18,
+    "dirs": 1,
+    "totalW": 4176,
+    "totalH": 294,
+    "unionBox": {
+      "minX": -111,
+      "maxX": 119,
+      "minY": -268,
+      "maxY": 24
+    }
+  },
+  "frozen_armor_overlay": {
+    "name": "frozen_armor_overlay",
+    "atlas": "frozen_armor_overlay_auth.png",
+    "cellW": 74,
+    "cellH": 139,
+    "pivotX": 37,
+    "pivotY": 84,
+    "frames": 24,
+    "dirs": 1,
+    "totalW": 1776,
+    "totalH": 139,
+    "unionBox": {
+      "minX": -36,
+      "maxX": 36,
+      "minY": -83,
+      "maxY": 54
+    }
+  },
+  "ice_cast_1": {
+    "name": "ice_cast_1",
+    "atlas": "ice_cast_1_auth.png",
+    "cellW": 99,
+    "cellH": 73,
+    "pivotX": 50,
+    "pivotY": 16,
+    "frames": 15,
+    "dirs": 1,
+    "totalW": 1485,
+    "totalH": 73,
+    "unionBox": {
+      "minX": -49,
+      "maxX": 48,
+      "minY": -15,
+      "maxY": 56
+    }
+  },
+  "ice_cast_2": {
+    "name": "ice_cast_2",
+    "atlas": "ice_cast_2_auth.png",
+    "cellW": 117,
+    "cellH": 174,
+    "pivotX": 59,
+    "pivotY": 129,
+    "frames": 15,
+    "dirs": 1,
+    "totalW": 1755,
+    "totalH": 174,
+    "unionBox": {
+      "minX": -58,
+      "maxX": 57,
+      "minY": -128,
+      "maxY": 44
+    }
+  },
+  "ice_cast_3": {
+    "name": "ice_cast_3",
+    "atlas": "ice_cast_3_auth.png",
+    "cellW": 129,
+    "cellH": 197,
+    "pivotX": 64,
+    "pivotY": 125,
+    "frames": 16,
+    "dirs": 1,
+    "totalW": 2064,
+    "totalH": 197,
+    "unionBox": {
+      "minX": -63,
+      "maxX": 64,
+      "minY": -124,
+      "maxY": 71
+    }
+  }
+}

@@ -1,0 +1,381 @@
+# 暗黑破壞神2 CLI 監控系統 — 技術架構規劃
+
+## 0. 素材與法律定位（務必先確認）
+
+- 你需要**合法擁有一份 D2 LoD 1.13c**（光碟/戰網下載版皆可，Blizzard 目前在 battle.net 仍可下載舊版客戶端）
+- 素材擷取流程建議改成：**程式碼開源 + 執行時從使用者本機 MPQ 檔案動態擷取**，而不是把素材檔案打包發布
+- Spriters Resource / Fandom Wiki 的素材可以拿來**先做原型驗證美術效果**，但正式版建議換成自己從合法 MPQ 擷取的版本
+
+---
+
+## 1. 素材擷取管線 (MPQ → 可用資源)
+
+### 1.1 需要的工具
+
+| 用途 | 工具 |
+|---|---|
+| 讀取 MPQ 封包 | `StormLib`（C++函式庫，有 Python binding：`mpyq`, `stormlib-python`） |
+| 解析 DC6 精靈圖格式 | 需自寫 parser 或用開源的 `d2-dc6` / `PyD2` 系列工具 |
+| 解析 DCC 動畫格式 | 較複雜，Act 系列角色動畫用 DCC，UI 元件多為 DC6 |
+| 音效 (WAV) | MPQ 內大多已是標準 WAV，直接解出即可播放 |
+| 調色盤 PAL | D2 用 256 色調色盤，需要對應的 `.pal` 檔案配合 DC6/DCC 轉真彩色 |
+
+### 1.2 擷取重點目錄（在 d2data.mpq / d2exp.mpq 內）
+
+```
+data/global/ui/          → 血球、藍球、面板等 UI 素材 (DC6)
+data/global/monsters/    → 怪物精靈圖 (DCC)
+data/global/chars/       → 7 大職業角色動畫 (DCC)
+data/global/sfx/         → 音效
+data/global/excel/       → 遊戲數值表（技能、怪物屬性等 .txt/.bin，可拿來做映射參考）
+```
+
+### 1.3 建議做法
+寫一個**一次性的離線轉檔腳本**（Node.js 或 Python），把 DC6/DCC 轉成標準 PNG sprite sheet + JSON 座標描述檔（類似 TexturePacker 格式），這樣正式的 Web 前端就不用處理 D2 專有格式，只要讀 PNG + JSON。
+
+---
+
+## 2. 整體系統架構
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌───────────────────┐
+│  CLI 日誌來源     │ ───▶ │  日誌監聽/解析器    │ ───▶ │  狀態機 (State FSM) │
+│ (stdout/檔案tail) │      │  (Node.js/Python)  │      │  AI狀態→遊戲事件映射 │
+└─────────────────┘      └──────────────────┘      └─────────┬──────────┘
+                                                               │ WebSocket
+                                                               ▼
+                                                    ┌───────────────────────┐
+                                                    │  前端渲染引擎           │
+                                                    │  PixiJS + Canvas       │
+                                                    │  (桌面懸浮窗/VSCode側欄) │
+                                                    └───────────────────────┘
+```
+
+### 2.1 技術選型建議
+
+- **後端監聽層**：Node.js（跟前端共用 JS 生態，開發效率高）
+  - 使用 `chokidar` 監聽日誌檔案變化（非阻塞）
+  - 或直接 hook 進 CLI Agent 的 stdout pipe
+- **通訊層**：WebSocket（本機 localhost，低延遲即時推送事件）
+- **前端渲染**：PixiJS（比原生 Canvas API 省事很多，內建精靈批次渲染、動畫、粒子效果，效能好）
+- **常駐視窗**：
+  - 桌面懸浮窗 → Electron（transparent frameless window）或 Tauri（更輕量，Rust based，資源佔用更低）
+  - VS Code 側邊欄 → VS Code Extension API 的 WebView Panel
+
+---
+
+## 3. 狀態映射設計
+
+### 3.1 AI Agent 狀態 → D2 遊戲事件
+
+| AI 狀態 | D2 對應畫面 |
+|---|---|
+| 待命 (idle) | 角色原地巡邏動畫 / 城鎮閒置動作 |
+| 思考 (thinking) | 角色讀取卷軸 / 施法前搖動畫 |
+| 執行代碼 (executing) | 割草打怪動畫（小怪 = 一般 tool call） |
+| 報錯重試 (error/retry) | 被擊退/受傷動畫，重試 = 復活重新攻擊 |
+| 長任務/複雜任務 | 觸發 Boss 戰場景（Boss 血條 = 任務進度條）|
+| 任務完成 | 掉寶動畫 + 經驗值增加音效 |
+
+### 3.2 資源消耗映射
+
+| 遊戲元素 | 監控指標 |
+|---|---|
+| 生命球（紅） | 每小時 API 用量 / 每週額度剩餘（護盾疊加效果） |
+| 法力球（藍） | 當前 Context Window 佔用率（滿了=法力枯竭警示） |
+| 經驗條 | 累積 Token 用量進度 |
+| 金幣數 | 換算成本（$） |
+
+### 3.3 建議先做的 MVP 範圍
+不要一開始就做 7 職業 + 傭兵 + 連線開房，這樣範圍太大容易做不完。建議：
+
+**Phase 1（先驗證可行性）**
+- 1 個職業（建議野蠻人，動畫檔案相對單純）
+- 3 種狀態（待命/攻擊/受傷）
+- 血球 + 藍球兩個資源指標
+- 純 Canvas 靜態疊圖，不做完整城鎮場景
+
+**Phase 2**
+- 加入小怪戰鬥（tool call 視覺化）
+- 加入音效
+- Electron 懸浮窗封裝
+
+**Phase 3**
+- Boss 戰（長任務）
+- 多職業切換
+- VS Code Extension 版本
+
+---
+
+## 4. CLI 日誌解析注意事項
+
+- 大多數 Agent CLI（Claude Code, Cursor CLI 等）的日誌格式不固定，建議先寫一個**正則表達式規則表**，把常見的日誌 pattern（如 `[INFO] Executing tool: xxx`、`Error: retry attempt`）對應到事件類型
+- 非阻塞讀取用 `tail -f` 邏輯（Node.js 可用 `fs.watch` + 讀取檔案尾端 offset，避免整檔重讀）
+- 如果 CLI 有結構化輸出（JSON log），優先解析 JSON，比正則穩定很多
+
+---
+
+## 5. 效能注意事項（延續你先前拼貼程式的優化經驗）
+
+- **物件池 (Object Pooling)**：怪物/粒子特效物件重複利用，避免頻繁 GC
+- **精靈批次渲染**：PixiJS 的 `ParticleContainer` 適合大量同類型小怪
+- **音效節流**：同類音效在短時間內只播放一次，避免疊加爆音
+- **懸浮窗刷新率**：不需要 60fps 全速跑，可以做成事件驅動（有新日誌才重繪），idle 時降到 5-10fps 省電
+
+---
+
+## 下一步建議
+
+你想先從哪個部分開始？我建議的順序是：
+
+1. **先寫 MPQ 素材擷取腳本**，把角色待機/攻擊動畫轉成 PNG，確認素材可用
+2. **再寫一個最簡單的 CLI 日誌監聽 demo**，先能抓到「有新的一行日誌」就好
+3. **最後串接 PixiJS，把兩者接起來**
+
+要不要我先幫你寫 MPQ/DC6 素材擷取的部分？還是你比較想先確認 CLI 日誌監聽這塊的技術可行性？
+
+
+# 暗黑破壞神2 CLI 監控系統 — 技術架構規劃
+
+## 0. 素材與法律定位（務必先確認）
+
+- 你需要**合法擁有一份 D2 LoD 1.13c**（光碟/戰網下載版皆可，Blizzard 目前在 battle.net 仍可下載舊版客戶端）
+- 素材擷取流程建議改成：**程式碼開源 + 執行時從使用者本機 MPQ 檔案動態擷取**，而不是把素材檔案打包發布
+- Spriters Resource / Fandom Wiki 的素材可以拿來**先做原型驗證美術效果**，但正式版建議換成自己從合法 MPQ 擷取的版本
+
+---
+
+## 1. 素材擷取管線 (MPQ → 可用資源)
+
+### 1.1 需要的工具
+
+| 用途 | 工具 |
+|---|---|
+| 讀取 MPQ 封包 | `StormLib`（C++函式庫，有 Python binding：`mpyq`, `stormlib-python`） |
+| 解析 DC6 精靈圖格式 | 需自寫 parser 或用開源的 `d2-dc6` / `PyD2` 系列工具 |
+| 解析 DCC 動畫格式 | 較複雜，Act 系列角色動畫用 DCC，UI 元件多為 DC6 |
+| 音效 (WAV) | MPQ 內大多已是標準 WAV，直接解出即可播放 |
+| 調色盤 PAL | D2 用 256 色調色盤，需要對應的 `.pal` 檔案配合 DC6/DCC 轉真彩色 |
+
+### 1.2 擷取重點目錄（在 d2data.mpq / d2exp.mpq 內）
+
+```
+data/global/ui/          → 血球、藍球、面板等 UI 素材 (DC6)
+data/global/monsters/    → 怪物精靈圖 (DCC)
+data/global/chars/       → 7 大職業角色動畫 (DCC)
+data/global/sfx/         → 音效
+data/global/excel/       → 遊戲數值表（技能、怪物屬性等 .txt/.bin，可拿來做映射參考）
+```
+
+### 1.3 建議做法
+寫一個**一次性的離線轉檔腳本**（Node.js 或 Python），把 DC6/DCC 轉成標準 PNG sprite sheet + JSON 座標描述檔（類似 TexturePacker 格式），這樣正式的 Web 前端就不用處理 D2 專有格式，只要讀 PNG + JSON。
+
+---
+
+## 2. 整體系統架構
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌───────────────────┐
+│  CLI 日誌來源     │ ───▶ │  日誌監聽/解析器    │ ───▶ │  狀態機 (State FSM) │
+│ (stdout/檔案tail) │      │  (Node.js/Python)  │      │  AI狀態→遊戲事件映射 │
+└─────────────────┘      └──────────────────┘      └─────────┬──────────┘
+                                                               │ WebSocket
+                                                               ▼
+                                                    ┌───────────────────────┐
+                                                    │  前端渲染引擎           │
+                                                    │  PixiJS + Canvas       │
+                                                    │  (桌面懸浮窗/VSCode側欄) │
+                                                    └───────────────────────┘
+```
+
+### 2.1 技術選型建議
+
+- **後端監聽層**：Node.js（跟前端共用 JS 生態，開發效率高）
+  - 使用 `chokidar` 監聽日誌檔案變化（非阻塞）
+  - 或直接 hook 進 CLI Agent 的 stdout pipe
+- **通訊層**：WebSocket（本機 localhost，低延遲即時推送事件）
+- **前端渲染**：PixiJS（比原生 Canvas API 省事很多，內建精靈批次渲染、動畫、粒子效果，效能好）
+- **常駐視窗**：
+  - 桌面懸浮窗 → Electron（transparent frameless window）或 Tauri（更輕量，Rust based，資源佔用更低）
+  - VS Code 側邊欄 → VS Code Extension API 的 WebView Panel
+
+---
+
+## 3. 狀態映射設計
+
+### 3.1 AI Agent 狀態 → D2 遊戲事件
+
+| AI 狀態 | D2 對應畫面 |
+|---|---|
+| 待命 (idle) | 角色原地巡邏動畫 / 城鎮閒置動作 |
+| 思考 (thinking) | 角色讀取卷軸 / 施法前搖動畫 |
+| 執行代碼 (executing) | 割草打怪動畫（小怪 = 一般 tool call） |
+| 報錯重試 (error/retry) | 被擊退/受傷動畫，重試 = 復活重新攻擊 |
+| 長任務/複雜任務 | 觸發 Boss 戰場景（Boss 血條 = 任務進度條）|
+| 任務完成 | 掉寶動畫 + 經驗值增加音效 |
+
+### 3.2 資源消耗映射
+
+| 遊戲元素 | 監控指標 |
+|---|---|
+| 生命球（紅） | 每小時 API 用量 / 每週額度剩餘（護盾疊加效果） |
+| 法力球（藍） | 當前 Context Window 佔用率（滿了=法力枯竭警示） |
+| 經驗條 | 累積 Token 用量進度 |
+| 金幣數 | 換算成本（$） |
+
+### 3.3 建議先做的 MVP 範圍
+不要一開始就做 7 職業 + 傭兵 + 連線開房，這樣範圍太大容易做不完。建議：
+
+**Phase 1（先驗證可行性）**
+- 1 個職業（建議野蠻人，動畫檔案相對單純）
+- 3 種狀態（待命/攻擊/受傷）
+- 血球 + 藍球兩個資源指標
+- 純 Canvas 靜態疊圖，不做完整城鎮場景
+
+**Phase 2**
+- 加入小怪戰鬥（tool call 視覺化）
+- 加入音效
+- Electron 懸浮窗封裝
+
+**Phase 3**
+- Boss 戰（長任務）
+- 多職業切換
+- VS Code Extension 版本
+
+---
+
+## 4. CLI 日誌解析注意事項
+
+- 大多數 Agent CLI（Claude Code, Cursor CLI 等）的日誌格式不固定，建議先寫一個**正則表達式規則表**，把常見的日誌 pattern（如 `[INFO] Executing tool: xxx`、`Error: retry attempt`）對應到事件類型
+- 非阻塞讀取用 `tail -f` 邏輯（Node.js 可用 `fs.watch` + 讀取檔案尾端 offset，避免整檔重讀）
+- 如果 CLI 有結構化輸出（JSON log），優先解析 JSON，比正則穩定很多
+
+---
+
+## 5. 效能注意事項（延續你先前拼貼程式的優化經驗）
+
+- **物件池 (Object Pooling)**：怪物/粒子特效物件重複利用，避免頻繁 GC
+- **精靈批次渲染**：PixiJS 的 `ParticleContainer` 適合大量同類型小怪
+- **音效節流**：同類音效在短時間內只播放一次，避免疊加爆音
+- **懸浮窗刷新率**：不需要 60fps 全速跑，可以做成事件驅動（有新日誌才重繪），idle 時降到 5-10fps 省電
+
+---
+
+## 6. MPQ 素材擷取具體步驟（你已有正版 1.13c 全部 MPQ）
+
+### 6.1 環境準備
+
+```bash
+# Python 方案（推薦，跨平台）
+pip install stormlib-python   # StormLib 的 Python binding
+# 若該套件安裝有問題，備案是直接呼叫 StormLib 的 C API，
+# 或使用現成的命令列工具 CascLib / Ladiks MPQ Editor（僅 Windows）先手動驗證能不能讀
+```
+
+### 6.2 擷取流程
+
+1. **列出 MPQ 內容**：先用 StormLib 開啟 `d2data.mpq` / `d2exp.mpq` / `d2char.mpq`，列出檔案清單（D2 的 MPQ 沒有內建檔案列表，需要搭配社群整理好的 listfile，網路上有現成的 `(listfile)` 給 D2 用，一般跟 MPQ 工具一起流通）
+2. **擷取目標檔案**：
+   - 角色動畫：`data/global/chars/{職業代碼}/...`，每個動作(攻擊/待機/移動)是一組 `.dcc` 檔
+   - UI 素材：`data/global/ui/PANEL/...`、`data/global/ui/CURSOR/...` 等，多為 `.dc6`
+   - 調色盤：`data/global/palette/{act}/pal.dat`，DC6/DCC 轉真彩色時必須指定對應調色盤
+   - 音效：`data/global/sfx/...`，多為標準 WAV，直接複製出來即可用
+3. **格式轉換**（離線批次跑一次）：
+   - `.dc6` → PNG sprite sheet：格式相對單純（frame 表頭 + RLE 壓縮的 8bit 索引色資料），可以自己寫 parser，網路上也有現成 Python/JS 版本的 DC6 reader 可以參考邏輯
+   - `.dcc` → PNG：DCC 是進階壓縮格式（用了 delta 編碼），比 DC6 複雜很多，建議先**只處理 DC6**（UI、部分怪物），角色動作動畫如果 DCC 太難處理，Phase 1 可以先用靜態站立姿的 DC6 替代（部分角色在 `data/global/ui/CharacterSelect` 底下就有現成的 DC6 立繪）
+4. **輸出格式**：轉出 PNG + 一個描述檔（JSON），紀錄每個 frame 的座標、尺寸、動畫幀數、播放速度 —— 前端 PixiJS 直接吃這個 JSON 做成 AnimatedSprite
+
+> 建議 Phase 1 先鎖定「靠 DC6 就能做完」的範圍（UI 面板、血球藍球、部分怪物/角色靜態或簡單動畫），避開 DCC，這樣可以更快看到成果。
+
+---
+
+## 7. 通用日誌適配架構（核心原則：輸入多元化，事件標準化）
+
+### 7.1 分層設計
+
+```
+┌───────────────────────────────────────────────┐
+│  Layer 1: 輸入來源 (Source Adapters)             │
+│  - 檔案 tail (任何 .log)                         │
+│  - stdout pipe (直接接 CLI 的輸出流)              │
+│  - 結構化 JSON log (如有)                         │
+│  - VS Code API 事件 (如果是監聽 Copilot/擴充功能)  │
+└───────────────────┬───────────────────────────┘
+                     │ 統一轉成「原始文字行」
+                     ▼
+┌───────────────────────────────────────────────┐
+│  Layer 2: 解析器插件 (Parser Plugins)             │
+│  - 每種工具一個 parser：ClaudeCodeParser,        │
+│    CursorParser, GenericRegexParser...           │
+│  - 各自把原始文字/JSON 轉成「標準事件」              │
+└───────────────────┬───────────────────────────┘
+                     │
+                     ▼
+┌───────────────────────────────────────────────┐
+│  Layer 3: 標準事件 Schema (Canonical Event)      │
+│  { type, timestamp, payload }                    │
+└───────────────────┬───────────────────────────┘
+                     │ WebSocket
+                     ▼
+              前端渲染引擎（完全不用管來源是誰）
+```
+
+### 7.2 標準事件 Schema（建議設計）
+
+```json
+{
+  "type": "tool_execute",           // 事件類型，見下方列舉
+  "timestamp": 1732000000000,
+  "source": "claude-code",          // 來源工具識別
+  "payload": {
+    "detail": "Running: npm test",
+    "tokens_used": 1523,
+    "context_pct": 0.42,
+    "severity": "info"              // info | warning | error
+  }
+}
+```
+
+**事件類型列舉（對應第 3.1 節的映射表）：**
+
+| type | 說明 |
+|---|---|
+| `idle` | 待命 |
+| `thinking` | 思考/規劃中 |
+| `tool_execute` | 執行工具/代碼 |
+| `tool_success` | 執行成功 |
+| `error_retry` | 報錯重試 |
+| `task_start` | 長任務開始（觸發 Boss 戰） |
+| `task_complete` | 任務完成 |
+| `usage_update` | 用量數值更新（血球/藍球） |
+
+### 7.3 Parser 插件的介面設計
+
+每個 parser 只需要實作一個函式：
+
+```
+interface LogParser {
+  canHandle(rawLine: string): boolean       // 判斷這行是不是我能處理的格式
+  parse(rawLine: string): CanonicalEvent | null
+}
+```
+
+系統啟動時註冊所有 parser，每一行新日誌依序丟給每個 parser 的 `canHandle()` 判斷，第一個回傳 true 的就拿去 `parse()`。如果都不認得，就丟給一個 `GenericFallbackParser`（用一組通用關鍵字規則，如偵測到 `error`/`fail` 就標記 `error_retry`，偵測到 `running`/`executing` 就標記 `tool_execute`），確保「任何工具的日誌至少能映射到基本動畫」，這就是「輸入多元化、核心事件標準化」的實踐。
+
+### 7.4 這樣設計的好處
+
+- 之後要支援新工具，只要新增一個 parser 檔案，不用動核心邏輯
+- 前端渲染完全不需要知道日誌來源，只認標準事件
+- 使用者也可以自訂 parser（用簡單的 YAML/JSON 規則檔定義正則對應規則），不用寫程式碼就能適配自己的內部工具
+
+---
+
+## 8. 下一步建議
+
+兩條線可以並行，但建議**先做日誌適配層**，因為它不依賴素材，可以最快看到「文字 log 變成結構化事件」的效果，而且風險低、範圍明確：
+
+1. **Step 1**：先寫 `GenericFallbackParser` + 檔案 tail 監聽，丟到 console.log 印出標準事件（不做任何畫面）
+2. **Step 2**：寫 MPQ → DC6 → PNG 的轉檔腳本，先轉出血球/藍球 UI 素材
+3. **Step 3**：兩者串接，PixiJS 畫面 + WebSocket 接事件
+
+要不要我先幫你寫 **Step 1（通用日誌監聽 + Parser 架構）** 的程式碼？還是你想先確認 **DC6 轉 PNG** 這塊能不能順利解析你手上的 MPQ？

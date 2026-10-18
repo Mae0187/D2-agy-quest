@@ -1,0 +1,1589 @@
+# 第 2 輪交付:校準量測工具 `calibrate.ts`
+
+## 先說三個設計決策(與你的規格有出入,原因如下)
+
+| 項目 | 你的規格 | 我實際的做法 | 原因 |
+|---|---|---|---|
+| PCA 空間 | 螢幕 PCA 再把軸還原成 φ | **預設在「地面空間」(y×2 還原後)做 PCA**,另提供 `axisSpace: 'screen'` 選項 | 對有寬度的形狀,螢幕空間的主軸與投影後的軸有幾度偏差(形狀越寬越大)。我手算合成箭矢約 1~2°。地面空間 PCA 對地面平面物體是精確逆運算 |
+| 離心率 | 單一離心率 | **兩個值**:`eccScreen`(螢幕空間)判斷球形,`eccGround` 判斷該行的軸是否可信 | 螢幕上是圓的火球,在地面空間會變成 2:1 橢圓,若用地面離心率會被誤判為有方向。反過來,地面上的圓環在螢幕上是 2:1 橢圓,用螢幕值無法排除,但 `eccGround≈1` 會讓它被標為「軸不可信」,最終進 needs-review |
+| 頭尾判定 | 每行各自用偏態判定 | **每行只投票,全域做一次判定** | 軸向擬合(模 180°)先決定 `s` 與 `dir0 mod 180`,剩下只有一個 bit(`dir0` 或 `dir0+180`),由所有行的偏態加權投票決定。少數幾行判錯不會影響結果,也能量化「一致率」 |
+
+**離心率定義**:`eccentricity = √(λ1/λ2)`(標準差比,即長寬比)。我上一輪寫的是 `λ1/λ2`,門檻 1.3 以這個新定義為準。
+
+## 你必須知道的限制:偏態極性依素材而定
+
+偏態的方向是指向「質量稀疏、延伸較長」的一端。
+
+- 箭尖窄、箭尾羽翼寬的箭矢,偏態指向箭尖,這是預設的 `'skew-toward-head'`。
+- 如果某個素材的「前進端」反而是寬的(矛頭、骨矛、火焰彈拖尾等),偏態會指向相反方向,整組 `dir0` 會差 180°,但狀態仍是 `auto-pass`。
+- 因此提供 `headPolarity` 選項,可全域設定或每個 missile 單獨設定。測試中有一組專門演示這個現象。
+- 第一次對真實素材跑時,請拿一兩個**你確定朝向的素材**(例如亞馬遜箭矢)確認極性,再批次跑。我也提供了 `flipHead()` 讓 UI 一鍵修正。
+
+我沒有在這個環境實際執行這份程式碼。測試中的幾個數字是我手算過的估計值:合成箭矢偏態約 0.69,軸角誤差約 0.2°。測試門檻都留了數倍餘量,但仍請你跑一次,失敗的話貼給我。
+
+---
+
+## src/calibrate.ts
+
+```ts
+/**
+ * calibrate.ts — 投射物方向校準量測(純數學,無 DOM 依賴)
+ *
+ * 流程:
+ *   FrameInput[](各方向行的代表幀)
+ *     → analyzeFrame():alpha 加權 PCA、離心率、沿軸偏態
+ *     → fitDirections():φ_i = dir0 ± i·(360/N) 的擬合(先軸向、再全域頭尾投票)
+ *     → calibrateFromAnalyses():套用門檻,輸出 DirectionCalibration + 診斷資訊
+ *
+ * 座標約定與 geometry.ts 一致:φ = atan2(dy*2, dx),φ 遞增 = 視覺順時針。
+ *
+ * 重要限制:
+ *  - 頭尾判定依賴「偏態指向前進端」的假設,見 CalibrationOptions.headPolarity。
+ *  - 本模組只負責量測;不確定時一律標 needs-review,不輸出看似可信的錯誤結果。
+ */
+
+import {
+  DIR_COUNTS,
+  type CalibrationStatus,
+  type DirCount,
+  type DirectionCalibration,
+  type RotationMode,
+} from './direction.js';
+import { DEG2RAD, RAD2DEG, normalizeDeg, screenToPhi } from './geometry.js';
+
+// ───────────────────────── 輸入型別 ─────────────────────────
+
+/** 與 ImageData 結構相容(RGBA,每像素 4 個值,alpha 在第 4 個)。 */
+export interface RgbaImageLike {
+  readonly width: number;
+  readonly height: number;
+  readonly data: ArrayLike<number>;
+}
+
+/** 單通道 alpha 平面(列優先,長度 ≥ width*height,值域 0~255)。 */
+export interface AlphaImageLike {
+  readonly width: number;
+  readonly height: number;
+  readonly alpha: ArrayLike<number>;
+}
+
+/** 純像素矩陣:rows[y][x] = alpha(0~255)。每列長度必須相同。 */
+export type AlphaMatrix = ReadonlyArray<ArrayLike<number>>;
+
+export type FrameInput = RgbaImageLike | AlphaImageLike | AlphaMatrix;
+
+// ───────────────────────── 選項 ─────────────────────────
+
+export type HeadPolarity = 'skew-toward-head' | 'skew-away-from-head';
+export type AxisSpace = 'ground' | 'screen';
+
+export interface CalibrationOptions {
+  /** alpha 低於此值的像素視為背景(0~255)。可抑制雜訊與半透明光暈。 */
+  alphaThreshold: number;
+  /** 只保留最大的 8 連通分量,濾掉孤立雜點。 */
+  keepLargestComponent: boolean;
+  /** 有效像素數下限,低於此值視為空幀。 */
+  minPixels: number;
+  /** 螢幕離心率(√(λ1/λ2))低於此值判定為球形、無方向性。 */
+  roundEccentricity: number;
+  /** 地面離心率低於此值的行,其主軸不可信,不參與擬合。 */
+  minAxisEccentricity: number;
+  /** 主軸在哪個空間做 PCA。預設 'ground'(見檔頭說明)。 */
+  axisSpace: AxisSpace;
+  /**
+   * 偏態與前進端的關係。
+   *  'skew-toward-head':偏態指向前進端(尖端窄、尾部寬的箭矢)。
+   *  'skew-away-from-head':偏態背向前進端(前端寬、尾部細的素材)。
+   */
+  headPolarity: HeadPolarity;
+  /** |偏態| 低於此值的行棄權(不投票)。 */
+  minAbsSkew: number;
+  /** |偏態| 達到此值時投票權重為 1,以下線性縮放。 */
+  skewFull: number;
+  /** 可用行佔全部方向數的比例下限。 */
+  minUsableFraction: number;
+  /** 頭尾投票中,與最終結論一致的行所佔比例下限。 */
+  minHeadAgreement: number;
+  /** 順逆時針判定把握下限:1 − rms(最佳) / rms(另一方向)。 */
+  minDirectionConfidence: number;
+  /** 最大軸向殘差上限 = 此值 × (360/N)。0.5 即「半個離散格」。 */
+  maxResidualScale: number;
+}
+
+export const DEFAULT_CALIBRATION_OPTIONS: Readonly<CalibrationOptions> = {
+  alphaThreshold: 32,
+  keepLargestComponent: true,
+  minPixels: 12,
+  roundEccentricity: 1.3,
+  minAxisEccentricity: 1.3,
+  axisSpace: 'ground',
+  headPolarity: 'skew-toward-head',
+  minAbsSkew: 0.1,
+  skewFull: 0.5,
+  minUsableFraction: 0.75,
+  minHeadAgreement: 0.8,
+  minDirectionConfidence: 0.3,
+  maxResidualScale: 0.5,
+};
+
+export function resolveOptions(partial: Partial<CalibrationOptions> = {}): CalibrationOptions {
+  const merged: CalibrationOptions = { ...DEFAULT_CALIBRATION_OPTIONS };
+  for (const key of Object.keys(partial) as Array<keyof CalibrationOptions>) {
+    const v = partial[key];
+    if (v !== undefined) (merged as unknown as Record<string, unknown>)[key] = v;
+  }
+  if (!(merged.alphaThreshold >= 0 && merged.alphaThreshold <= 255))
+    throw new RangeError('alphaThreshold must be in [0, 255]');
+  if (!(merged.roundEccentricity > 1)) throw new RangeError('roundEccentricity must be > 1');
+  if (!(merged.minAxisEccentricity >= 1)) throw new RangeError('minAxisEccentricity must be >= 1');
+  if (!(merged.skewFull > 0)) throw new RangeError('skewFull must be > 0');
+  if (!(merged.minPixels >= 1)) throw new RangeError('minPixels must be >= 1');
+  return merged;
+}
+
+// ───────────────────────── 單幀分析 ─────────────────────────
+
+export interface FrameAnalysis {
+  /** 有足夠有效像素。false 時其餘欄位為預設值,不可使用。 */
+  readonly valid: boolean;
+  readonly pixelCount: number;
+  /** Σ alpha/255。 */
+  readonly mass: number;
+  /** 螢幕空間的質心(像素)。 */
+  readonly centroid: { readonly x: number; readonly y: number };
+  /** 主軸的 φ(度),範圍 [0, 180)。軸沒有頭尾,故只有 180° 週期。 */
+  readonly axisPhiDeg: number;
+  /** 螢幕空間離心率 √(λ1/λ2),上限 1000。用於球形判斷。 */
+  readonly eccScreen: number;
+  /** 地面空間(y×2)離心率,上限 1000。用於判斷主軸是否可信。 */
+  readonly eccGround: number;
+  /**
+   * 沿主軸單位向量 u = (cos a, sin a)(地面空間)的偏態係數 m3/m2^1.5。
+   * 正值 = 質量尾端延伸向 +u 方向。
+   */
+  readonly skew: number;
+}
+
+const ECC_CAP = 1000;
+const EPS = 1e-12;
+
+interface AlphaPlane {
+  readonly width: number;
+  readonly height: number;
+  readonly alpha: Float64Array;
+}
+
+function isMatrix(f: FrameInput): f is AlphaMatrix {
+  return Array.isArray(f);
+}
+
+function clampAlpha(v: number): number {
+  return v > 0 ? (v < 255 ? v : 255) : 0; // NaN → 0
+}
+
+function checkDims(width: number, height: number): void {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new RangeError(`invalid frame size ${width}x${height}`);
+  }
+}
+
+function toAlphaPlane(frame: FrameInput): AlphaPlane {
+  if (isMatrix(frame)) {
+    const height = frame.length;
+    const first = frame[0];
+    if (first === undefined) throw new RangeError('empty alpha matrix');
+    const width = first.length;
+    checkDims(width, height);
+    const alpha = new Float64Array(width * height);
+    for (let y = 0; y < height; y++) {
+      const row = frame[y]!;
+      if (row.length !== width) {
+        throw new RangeError(`matrix row ${y} has length ${row.length}, expected ${width}`);
+      }
+      for (let x = 0; x < width; x++) alpha[y * width + x] = clampAlpha(row[x]!);
+    }
+    return { width, height, alpha };
+  }
+
+  checkDims(frame.width, frame.height);
+  const n = frame.width * frame.height;
+  const alpha = new Float64Array(n);
+  if ('alpha' in frame) {
+    if (frame.alpha.length < n) throw new RangeError(`alpha length ${frame.alpha.length} < ${n}`);
+    for (let k = 0; k < n; k++) alpha[k] = clampAlpha(frame.alpha[k]!);
+  } else {
+    if (frame.data.length < n * 4) throw new RangeError(`data length ${frame.data.length} < ${n * 4}`);
+    for (let k = 0; k < n; k++) alpha[k] = clampAlpha(frame.data[k * 4 + 3]!);
+  }
+  return { width: frame.width, height: frame.height, alpha };
+}
+
+function largestComponent(
+  mask: Uint8Array,
+  w: number,
+  h: number,
+): { mask: Uint8Array; size: number } {
+  const n = w * h;
+  const label = new Int32Array(n);
+  const stack = new Int32Array(n); // 每個像素只會在上標時推入一次,容量足夠
+  let next = 0;
+  let best = 0;
+  let bestSize = 0;
+
+  for (let start = 0; start < n; start++) {
+    if (mask[start] !== 1 || label[start] !== 0) continue;
+    next++;
+    let sp = 0;
+    stack[sp++] = start;
+    label[start] = next;
+    let size = 0;
+    while (sp > 0) {
+      const p = stack[--sp]!;
+      size++;
+      const x = p % w;
+      const y = (p - x) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          const q = ny * w + nx;
+          if (mask[q] === 1 && label[q] === 0) {
+            label[q] = next;
+            stack[sp++] = q;
+          }
+        }
+      }
+    }
+    if (size > bestSize) {
+      bestSize = size;
+      best = next;
+    }
+  }
+
+  const out = new Uint8Array(n);
+  if (best > 0) {
+    for (let k = 0; k < n; k++) if (label[k] === best) out[k] = 1;
+  }
+  return { mask: out, size: bestSize };
+}
+
+function eigen2(xx: number, yy: number, xy: number): { l1: number; l2: number; theta: number } {
+  const mean = (xx + yy) / 2;
+  const r = Math.hypot((xx - yy) / 2, xy);
+  return {
+    l1: mean + r,
+    l2: Math.max(0, mean - r),
+    theta: 0.5 * Math.atan2(2 * xy, xx - yy), // 主軸方向(弧度),落在 (-π/2, π/2]
+  };
+}
+
+function eccentricityOf(l1: number, l2: number): number {
+  if (l1 <= EPS) return 1; // 退化成一個點
+  if (l2 <= l1 / (ECC_CAP * ECC_CAP)) return ECC_CAP;
+  return Math.sqrt(l1 / l2);
+}
+
+function mod180(x: number): number {
+  return ((x % 180) + 180) % 180;
+}
+
+function axialDistance(a: number, b: number): number {
+  const d = mod180(a - b);
+  return d > 90 ? 180 - d : d;
+}
+
+function invalidAnalysis(pixelCount: number): FrameAnalysis {
+  return {
+    valid: false,
+    pixelCount,
+    mass: 0,
+    centroid: { x: 0, y: 0 },
+    axisPhiDeg: 0,
+    eccScreen: 1,
+    eccGround: 1,
+    skew: 0,
+  };
+}
+
+/**
+ * 分析單一方向行的代表幀:alpha 加權質心 / 共變異數 / PCA 主軸 / 離心率 / 偏態。
+ */
+export function analyzeFrame(
+  frame: FrameInput,
+  options: Partial<CalibrationOptions> = {},
+): FrameAnalysis {
+  const o = resolveOptions(options);
+  const { width: w, height: h, alpha } = toAlphaPlane(frame);
+  const n = w * h;
+
+  let mask = new Uint8Array(n);
+  let count = 0;
+  for (let k = 0; k < n; k++) {
+    const a = alpha[k]!;
+    if (a > 0 && a >= o.alphaThreshold) {
+      mask[k] = 1;
+      count++;
+    }
+  }
+  if (o.keepLargestComponent && count > 0) {
+    const lc = largestComponent(mask, w, h);
+    mask = lc.mask;
+    count = lc.size;
+  }
+  if (count < o.minPixels) return invalidAnalysis(count);
+
+  // 第一遍:質心
+  let mass = 0;
+  let sx = 0;
+  let sy = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (mask[k] !== 1) continue;
+      const wt = alpha[k]! / 255;
+      mass += wt;
+      sx += wt * x;
+      sy += wt * y;
+    }
+  }
+  const cx = sx / mass;
+  const cy = sy / mass;
+
+  // 第二遍:螢幕空間共變異數
+  let cxx = 0;
+  let cyy = 0;
+  let cxy = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (mask[k] !== 1) continue;
+      const wt = alpha[k]! / 255;
+      const dx = x - cx;
+      const dy = y - cy;
+      cxx += wt * dx * dx;
+      cyy += wt * dy * dy;
+      cxy += wt * dx * dy;
+    }
+  }
+  cxx /= mass;
+  cyy /= mass;
+  cxy /= mass;
+
+  // 地面空間共變異數:y' = 2y ⇒ var(y') = 4 var(y),cov(x, y') = 2 cov(x, y)
+  const es = eigen2(cxx, cyy, cxy);
+  const eg = eigen2(cxx, 4 * cyy, 2 * cxy);
+
+  const axisPhiDeg =
+    o.axisSpace === 'ground'
+      ? mod180(eg.theta * RAD2DEG)
+      : mod180(screenToPhi(Math.cos(es.theta), Math.sin(es.theta)));
+
+  // 沿主軸(地面空間單位向量 u)的偏態
+  const ca = Math.cos(axisPhiDeg * DEG2RAD);
+  const sa = Math.sin(axisPhiDeg * DEG2RAD);
+  let m2 = 0;
+  let m3 = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (mask[k] !== 1) continue;
+      const wt = alpha[k]! / 255;
+      const t = (x - cx) * ca + (y - cy) * 2 * sa;
+      m2 += wt * t * t;
+      m3 += wt * t * t * t;
+    }
+  }
+  m2 /= mass;
+  m3 /= mass;
+  const skew = m2 > EPS ? m3 / Math.pow(m2, 1.5) : 0;
+
+  return {
+    valid: true,
+    pixelCount: count,
+    mass,
+    centroid: { x: cx, y: cy },
+    axisPhiDeg,
+    eccScreen: eccentricityOf(es.l1, es.l2),
+    eccGround: eccentricityOf(eg.l1, eg.l2),
+    skew,
+  };
+}
+
+// ───────────────────────── 方向擬合 ─────────────────────────
+
+export type HeadVote = 'agree' | 'disagree' | 'abstain';
+
+export interface RowFit {
+  readonly index: number;
+  readonly usable: boolean;
+  readonly axisPhiDeg: number | null;
+  /** 與擬合軸的夾角(度,[0, 90]);不可用的行為 null。與頭尾無關。 */
+  readonly residualDeg: number | null;
+  readonly headVote: HeadVote | null;
+}
+
+export interface DirectionFit {
+  /** false:可用行少於 3,沒有執行擬合,其餘欄位為預設值。 */
+  readonly ok: boolean;
+  readonly clockwise: boolean;
+  /** [0, 360)。已套用頭尾投票。 */
+  readonly dir0WorldAngle: number;
+  readonly rmsResidualDeg: number;
+  readonly residualMaxDeg: number;
+  /** 1 − rms(最佳)/rms(另一方向),0~1。 */
+  readonly clockwiseConfidence: number;
+  /** 投票行中與最終結論一致的比例(0~1)。沒有任何投票時為 0。 */
+  readonly headAgreement: number;
+  readonly headVoters: number;
+  /** |Σ w·dot| / Σ w,0~1。 */
+  readonly headStrength: number;
+  readonly usableCount: number;
+  readonly rows: readonly RowFit[];
+}
+
+function assertDirCountMatches(dirCount: number, rowCount: number): void {
+  if (!(DIR_COUNTS as readonly number[]).includes(dirCount)) {
+    throw new RangeError(`dirCount must be one of ${DIR_COUNTS.join(', ')}, got ${dirCount}`);
+  }
+  if (rowCount !== dirCount) {
+    throw new RangeError(`expected ${dirCount} direction rows, got ${rowCount}`);
+  }
+}
+
+interface Candidate {
+  readonly s: 1 | -1;
+  readonly d: number; // dir0 mod 180
+  readonly rms: number;
+  readonly max: number;
+}
+
+/**
+ * 擬合 φ_i = dir0 + s·i·step(s = ±1,step = 360/N)。
+ *  1. 軸向擬合:對 2·(a_i − s·i·step) 取圓形平均得 dir0 mod 180;s 取兩者中 RMS 殘差較小者。
+ *  2. 頭尾:各行以偏態符號投票(權重隨 |偏態| 增加),決定 dir0 或 dir0+180。
+ */
+export function fitDirections(
+  analyses: readonly FrameAnalysis[],
+  dirCount: DirCount,
+  options: Partial<CalibrationOptions> = {},
+): DirectionFit {
+  const o = resolveOptions(options);
+  assertDirCountMatches(dirCount, analyses.length);
+  const n = dirCount;
+  const step = 360 / n;
+
+  const usableIdx: number[] = [];
+  analyses.forEach((a, i) => {
+    if (a.valid && a.eccGround >= o.minAxisEccentricity) usableIdx.push(i);
+  });
+  const usableSet = new Set(usableIdx);
+
+  if (usableIdx.length < 3) {
+    return {
+      ok: false,
+      clockwise: true,
+      dir0WorldAngle: 0,
+      rmsResidualDeg: 90,
+      residualMaxDeg: 90,
+      clockwiseConfidence: 0,
+      headAgreement: 0,
+      headVoters: 0,
+      headStrength: 0,
+      usableCount: usableIdx.length,
+      rows: analyses.map((a, i) => ({
+        index: i,
+        usable: usableSet.has(i),
+        axisPhiDeg: a.valid ? a.axisPhiDeg : null,
+        residualDeg: null,
+        headVote: null,
+      })),
+    };
+  }
+
+  const evaluate = (s: 1 | -1): Candidate => {
+    let zr = 0;
+    let zi = 0;
+    for (const i of usableIdx) {
+      const ang = 2 * (analyses[i]!.axisPhiDeg - s * i * step) * DEG2RAD;
+      zr += Math.cos(ang);
+      zi += Math.sin(ang);
+    }
+    const d = mod180(0.5 * Math.atan2(zi, zr) * RAD2DEG);
+    let sumSq = 0;
+    let max = 0;
+    for (const i of usableIdx) {
+      const r = axialDistance(analyses[i]!.axisPhiDeg, d + s * i * step);
+      sumSq += r * r;
+      if (r > max) max = r;
+    }
+    return { s, d, rms: Math.sqrt(sumSq / usableIdx.length), max };
+  };
+
+  const plus = evaluate(1);
+  const minus = evaluate(-1);
+  const best = plus.rms <= minus.rms + 1e-9 ? plus : minus; // 平手偏向順時針
+  const other = best === plus ? minus : plus;
+  const clockwiseConfidence =
+    other.rms > 1e-9 ? Math.min(1, Math.max(0, 1 - best.rms / other.rms)) : 0;
+
+  // 頭尾投票
+  const polarity = o.headPolarity === 'skew-toward-head' ? 1 : -1;
+  const residuals = new Array<number | null>(n).fill(null);
+  const votes = new Array<HeadVote | null>(n).fill(null);
+  const dots = new Array<number>(n).fill(0);
+  let V = 0;
+  let Wsum = 0;
+  for (const i of usableIdx) {
+    const a = analyses[i]!;
+    const e = best.d + best.s * i * step;
+    residuals[i] = axialDistance(a.axisPhiDeg, e);
+    const absSk = Math.abs(a.skew);
+    if (absSk < o.minAbsSkew) {
+      votes[i] = 'abstain';
+      continue;
+    }
+    const w = Math.min(1, absSk / o.skewFull);
+    const headSign = (a.skew > 0 ? 1 : -1) * polarity;
+    // 該行判定的頭方向 = headSign · u(a);期望方向 = e。兩者內積 = headSign·cos(a − e)
+    const dot = headSign * Math.cos((a.axisPhiDeg - e) * DEG2RAD);
+    dots[i] = dot;
+    V += w * dot;
+    Wsum += w;
+  }
+  const flip = V < 0;
+  let voters = 0;
+  let agree = 0;
+  for (const i of usableIdx) {
+    if (votes[i] === 'abstain') continue;
+    voters++;
+    const ok = (flip ? -dots[i]! : dots[i]!) > 0;
+    votes[i] = ok ? 'agree' : 'disagree';
+    if (ok) agree++;
+  }
+
+  return {
+    ok: true,
+    clockwise: best.s === 1,
+    dir0WorldAngle: normalizeDeg(flip ? best.d + 180 : best.d),
+    rmsResidualDeg: best.rms,
+    residualMaxDeg: best.max,
+    clockwiseConfidence,
+    headAgreement: voters > 0 ? agree / voters : 0,
+    headVoters: voters,
+    headStrength: Wsum > 0 ? Math.abs(V) / Wsum : 0,
+    usableCount: usableIdx.length,
+    rows: analyses.map((a, i) => ({
+      index: i,
+      usable: usableSet.has(i),
+      axisPhiDeg: a.valid ? a.axisPhiDeg : null,
+      residualDeg: residuals[i] ?? null,
+      headVote: votes[i] ?? null,
+    })),
+  };
+}
+
+// ───────────────────────── 單一 missile 校準 ─────────────────────────
+
+export interface MissileMeta {
+  readonly missileId: string;
+  readonly celFile: string;
+  readonly dirCount: DirCount;
+}
+
+export interface MissileFrames extends MissileMeta {
+  /** 依方向索引排列的代表幀,長度必須等於 dirCount。 */
+  readonly frames: readonly FrameInput[];
+  /** 覆寫此 missile 的頭尾極性(預設用 options.headPolarity)。 */
+  readonly headPolarity?: HeadPolarity;
+}
+
+export interface RowDiagnostic {
+  readonly index: number;
+  readonly valid: boolean;
+  readonly pixelCount: number;
+  readonly axisPhiDeg: number | null;
+  readonly eccScreen: number;
+  readonly eccGround: number;
+  readonly skew: number;
+  readonly usable: boolean;
+  readonly residualDeg: number | null;
+  readonly headVote: HeadVote | null;
+}
+
+export interface CalibrationDiagnostics {
+  /** needs-review 的原因(auto-pass 時為空)。 */
+  readonly reasons: readonly string[];
+  readonly rows: readonly RowDiagnostic[];
+  readonly medianEccScreen: number;
+  readonly maxEccScreen: number;
+  readonly usableRows: number;
+  readonly rmsResidualDeg: number | null;
+  readonly clockwiseConfidence: number | null;
+  readonly headAgreement: number | null;
+  readonly headVoters: number | null;
+}
+
+export interface CalibrationResult {
+  readonly calibration: DirectionCalibration;
+  readonly diagnostics: CalibrationDiagnostics;
+}
+
+const round3 = (x: number): number => Math.round(x * 1000) / 1000 + 0; // +0 消除 -0
+const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+function median(values: readonly number[]): number {
+  const s = [...values].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 === 1 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+}
+
+interface Outcome {
+  rotationMode: RotationMode;
+  dir0: number;
+  clockwise: boolean;
+  residualMax: number;
+  eccentricity: number;
+  confidence: number;
+  status: CalibrationStatus;
+  reasons: string[];
+  rows: RowDiagnostic[];
+  medianEcc: number;
+  maxEcc: number;
+  usableRows: number;
+  rms: number | null;
+  cwConf: number | null;
+  headAgreement: number | null;
+  headVoters: number | null;
+}
+
+function finish(meta: MissileMeta, out: Outcome): CalibrationResult {
+  const notes = out.reasons.join('; ');
+  const calibration: DirectionCalibration = {
+    missileId: meta.missileId,
+    celFile: meta.celFile,
+    dirCount: meta.dirCount,
+    dir0WorldAngle: normalizeDeg(round3(out.dir0)),
+    clockwise: out.clockwise,
+    rotationMode: out.rotationMode,
+    measure: {
+      method: 'auto',
+      residualMaxDeg: round3(out.residualMax),
+      eccentricity: round3(out.eccentricity),
+      confidence: round3(clamp01(out.confidence)),
+    },
+    status: out.status,
+    ...(notes.length > 0 ? { notes } : {}),
+  };
+  return {
+    calibration,
+    diagnostics: {
+      reasons: out.reasons,
+      rows: out.rows,
+      medianEccScreen: round3(out.medianEcc),
+      maxEccScreen: round3(out.maxEcc),
+      usableRows: out.usableRows,
+      rmsResidualDeg: out.rms === null ? null : round3(out.rms),
+      clockwiseConfidence: out.cwConf === null ? null : round3(out.cwConf),
+      headAgreement: out.headAgreement === null ? null : round3(out.headAgreement),
+      headVoters: out.headVoters,
+    },
+  };
+}
+
+function rowDiagnostics(
+  analyses: readonly FrameAnalysis[],
+  fit?: DirectionFit,
+): RowDiagnostic[] {
+  return analyses.map((a, i) => {
+    const fr = fit?.rows[i];
+    return {
+      index: i,
+      valid: a.valid,
+      pixelCount: a.pixelCount,
+      axisPhiDeg: a.valid ? round3(a.axisPhiDeg) : null,
+      eccScreen: round3(a.eccScreen),
+      eccGround: round3(a.eccGround),
+      skew: round3(a.skew),
+      usable: fr?.usable ?? false,
+      residualDeg: fr?.residualDeg === null || fr?.residualDeg === undefined ? null : round3(fr.residualDeg),
+      headVote: fr?.headVote ?? null,
+    };
+  });
+}
+
+/**
+ * 從已分析好的各行資料產生校準結果。與影像無關,方便單獨測試擬合與判定邏輯。
+ */
+export function calibrateFromAnalyses(
+  meta: MissileMeta,
+  analyses: readonly FrameAnalysis[],
+  options: Partial<CalibrationOptions> = {},
+): CalibrationResult {
+  const o = resolveOptions(options);
+  assertDirCountMatches(meta.dirCount, analyses.length);
+  const n = meta.dirCount;
+  const step = 360 / n;
+  const reasons: string[] = [];
+
+  const validIdx: number[] = [];
+  const emptyIdx: number[] = [];
+  analyses.forEach((a, i) => (a.valid ? validIdx : emptyIdx).push(i));
+  if (emptyIdx.length > 0) {
+    reasons.push(`方向行 [${emptyIdx.join(', ')}] 沒有足夠的有效像素`);
+  }
+
+  const base = {
+    rows: rowDiagnostics(analyses),
+    rms: null,
+    cwConf: null,
+    headAgreement: null,
+    headVoters: null,
+  } as const;
+
+  if (validIdx.length === 0) {
+    return finish(meta, {
+      ...base,
+      rotationMode: 'discrete',
+      dir0: 0,
+      clockwise: true,
+      residualMax: 90,
+      eccentricity: 1,
+      confidence: 0,
+      status: 'needs-review',
+      reasons,
+      medianEcc: 1,
+      maxEcc: 1,
+      usableRows: 0,
+    });
+  }
+
+  const eccs = validIdx.map((i) => analyses[i]!.eccScreen);
+  const medianEcc = median(eccs);
+  const maxEcc = Math.max(...eccs);
+
+  // ── 球形:無方向性 ──
+  if (medianEcc < o.roundEccentricity) {
+    if (maxEcc >= o.roundEccentricity) {
+      reasons.push(
+        `部分方向行偏細長(最大離心率 ${maxEcc.toFixed(2)}),但中位數 ${medianEcc.toFixed(2)} 判定為球形`,
+      );
+    }
+    return finish(meta, {
+      ...base,
+      rotationMode: 'none',
+      dir0: 0,
+      clockwise: true,
+      residualMax: 0,
+      eccentricity: medianEcc,
+      confidence: 1 - (maxEcc - 1) / (o.roundEccentricity - 1),
+      status: reasons.length === 0 ? 'auto-pass' : 'needs-review',
+      reasons,
+      medianEcc,
+      maxEcc,
+      usableRows: validIdx.length,
+    });
+  }
+
+  // ── 單方向且細長:無法擬合順逆時針 ──
+  if (n === 1) {
+    const a = analyses[0]!;
+    const polarity = o.headPolarity === 'skew-toward-head' ? 1 : -1;
+    let dir0 = a.axisPhiDeg;
+    if (Math.abs(a.skew) >= o.minAbsSkew && (a.skew > 0 ? 1 : -1) * polarity < 0) dir0 += 180;
+    reasons.push(
+      'dirCount=1 且形狀細長,無法擬合順逆時針;已設為 none。若繪製端需要自由旋轉,請人工確認為 free(dir0 為量測得到的朝向)',
+    );
+    return finish(meta, {
+      ...base,
+      rotationMode: 'none',
+      dir0,
+      clockwise: true,
+      residualMax: 0,
+      eccentricity: medianEcc,
+      confidence: 0,
+      status: 'needs-review',
+      reasons,
+      medianEcc,
+      maxEcc,
+      usableRows: 1,
+    });
+  }
+
+  // ── 離散方向擬合 ──
+  const fit = fitDirections(analyses, meta.dirCount, o);
+  const rows = rowDiagnostics(analyses, fit);
+
+  if (!fit.ok) {
+    reasons.push(`可用於擬合的方向行僅 ${fit.usableCount}/${n}(需要至少 3 行且地面離心率 ≥ ${o.minAxisEccentricity})`);
+    return finish(meta, {
+      ...base,
+      rows,
+      rotationMode: 'discrete',
+      dir0: 0,
+      clockwise: true,
+      residualMax: 90,
+      eccentricity: medianEcc,
+      confidence: 0,
+      status: 'needs-review',
+      reasons,
+      medianEcc,
+      maxEcc,
+      usableRows: fit.usableCount,
+    });
+  }
+
+  const minUsable = Math.max(3, Math.ceil(o.minUsableFraction * n));
+  if (fit.usableCount < minUsable) {
+    reasons.push(`可用方向行 ${fit.usableCount}/${n},低於要求的 ${minUsable}`);
+  }
+  const residualLimit = o.maxResidualScale * step;
+  if (fit.residualMaxDeg > residualLimit) {
+    reasons.push(
+      `最大軸向殘差 ${fit.residualMaxDeg.toFixed(2)}° 超過上限 ${residualLimit.toFixed(2)}°(素材可能不是均勻旋轉,或軸不可信)`,
+    );
+  }
+  if (fit.clockwiseConfidence < o.minDirectionConfidence) {
+    reasons.push(`順逆時針判定把握不足(${fit.clockwiseConfidence.toFixed(2)} < ${o.minDirectionConfidence})`);
+  }
+  if (fit.headVoters < Math.ceil(fit.usableCount / 2)) {
+    reasons.push(`可判定頭尾的方向行過少(${fit.headVoters}/${fit.usableCount})`);
+  } else if (fit.headAgreement < o.minHeadAgreement) {
+    reasons.push(`頭尾投票一致率 ${fit.headAgreement.toFixed(2)} < ${o.minHeadAgreement}`);
+  }
+
+  const fitScore = clamp01(1 - fit.residualMaxDeg / (step / 2));
+  const headConf =
+    fit.headVoters > 0
+      ? clamp01(2 * fit.headAgreement - 1) * Math.min(1, fit.headVoters / fit.usableCount)
+      : 0;
+  const coverage = fit.usableCount / n;
+
+  return finish(meta, {
+    rows,
+    rotationMode: 'discrete',
+    dir0: fit.dir0WorldAngle,
+    clockwise: fit.clockwise,
+    residualMax: fit.residualMaxDeg,
+    eccentricity: medianEcc,
+    confidence: fitScore * fit.clockwiseConfidence * headConf * coverage,
+    status: reasons.length === 0 ? 'auto-pass' : 'needs-review',
+    reasons,
+    medianEcc,
+    maxEcc,
+    usableRows: fit.usableCount,
+    rms: fit.rmsResidualDeg,
+    cwConf: fit.clockwiseConfidence,
+    headAgreement: fit.headAgreement,
+    headVoters: fit.headVoters,
+  });
+}
+
+/** 對單一 missile 的各方向行代表幀做完整校準。 */
+export function calibrateMissile(
+  input: MissileFrames,
+  options: Partial<CalibrationOptions> = {},
+): CalibrationResult {
+  assertDirCountMatches(input.dirCount, input.frames.length);
+  const o = resolveOptions({
+    ...options,
+    ...(input.headPolarity !== undefined ? { headPolarity: input.headPolarity } : {}),
+  });
+  const analyses = input.frames.map((f) => analyzeFrame(f, o));
+  return calibrateFromAnalyses(input, analyses, o);
+}
+
+// ───────────────────────── 人工確認輔助 ─────────────────────────
+
+export interface ManualPatch {
+  readonly dir0WorldAngle?: number;
+  readonly clockwise?: boolean;
+  readonly rotationMode?: RotationMode;
+  readonly notes?: string;
+}
+
+/** UI 人工確認後存檔:套用修正並標為 manual-confirmed。 */
+export function confirmManually(
+  cal: DirectionCalibration,
+  patch: ManualPatch = {},
+): DirectionCalibration {
+  return {
+    ...cal,
+    dir0WorldAngle:
+      patch.dir0WorldAngle === undefined ? cal.dir0WorldAngle : normalizeDeg(patch.dir0WorldAngle),
+    clockwise: patch.clockwise ?? cal.clockwise,
+    rotationMode: patch.rotationMode ?? cal.rotationMode,
+    measure: { ...cal.measure, method: 'manual' },
+    status: 'manual-confirmed',
+    ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+  };
+}
+
+/** 一鍵翻轉頭尾(dir0 + 180°),並標為 manual-confirmed。 */
+export function flipHead(cal: DirectionCalibration): DirectionCalibration {
+  return confirmManually(cal, { dir0WorldAngle: cal.dir0WorldAngle + 180 });
+}
+
+// ───────────────────────── 批次報告 ─────────────────────────
+
+export type BatchEntry =
+  | { readonly ok: true; readonly result: CalibrationResult }
+  | { readonly ok: false; readonly missileId: string; readonly error: string };
+
+export interface BatchReport {
+  readonly total: number;
+  readonly autoPass: number;
+  readonly needsReview: number;
+  readonly failed: number;
+  readonly entries: readonly BatchEntry[];
+}
+
+/** 批次校準。單一 missile 的輸入錯誤(如幀數不符)不會中斷整批,而是記為 failed。 */
+export function calibrateBatch(
+  inputs: readonly MissileFrames[],
+  options: Partial<CalibrationOptions> = {},
+): BatchReport {
+  const entries: BatchEntry[] = inputs.map((input) => {
+    try {
+      return { ok: true, result: calibrateMissile(input, options) };
+    } catch (e) {
+      return {
+        ok: false,
+        missileId: input.missileId,
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
+  });
+  let autoPass = 0;
+  let needsReview = 0;
+  let failed = 0;
+  for (const e of entries) {
+    if (!e.ok) failed++;
+    else if (e.result.calibration.status === 'auto-pass') autoPass++;
+    else needsReview++;
+  }
+  return { total: entries.length, autoPass, needsReview, failed, entries };
+}
+
+export function reportToJson(report: BatchReport): string {
+  return JSON.stringify(report, null, 2);
+}
+
+function mdCell(s: string): string {
+  return s.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+/** Markdown 報告:失敗與 needs-review 排在最前面。 */
+export function reportToMarkdown(report: BatchReport): string {
+  const severity = (e: BatchEntry): number =>
+    !e.ok ? 0 : e.result.calibration.status === 'auto-pass' ? 2 : 1;
+  const idOf = (e: BatchEntry): string => (e.ok ? e.result.calibration.missileId : e.missileId);
+  const sorted = [...report.entries].sort(
+    (a, b) => severity(a) - severity(b) || idOf(a).localeCompare(idOf(b)),
+  );
+
+  const lines: string[] = [
+    '# 方向校準報告',
+    '',
+    `共 ${report.total} 筆:auto-pass ${report.autoPass}、needs-review ${report.needsReview}、失敗 ${report.failed}`,
+    '',
+    '| missile | cel | dirs | mode | dir0(°) | cw | 最大殘差(°) | 信心 | 狀態 | 備註 |',
+    '|---|---|---|---|---|---|---|---|---|---|',
+  ];
+  for (const e of sorted) {
+    if (!e.ok) {
+      lines.push(`| ${mdCell(e.missileId)} | - | - | - | - | - | - | - | **failed** | ${mdCell(e.error)} |`);
+      continue;
+    }
+    const c = e.result.calibration;
+    lines.push(
+      `| ${mdCell(c.missileId)} | ${mdCell(c.celFile)} | ${c.dirCount} | ${c.rotationMode} | ` +
+        `${c.dir0WorldAngle.toFixed(2)} | ${c.clockwise ? 'cw' : 'ccw'} | ` +
+        `${c.measure.residualMaxDeg.toFixed(2)} | ${c.measure.confidence.toFixed(2)} | ` +
+        `${c.status} | ${mdCell(c.notes ?? '')} |`,
+    );
+  }
+  return lines.join('\n') + '\n';
+}
+```
+
+---
+
+## src/calibrate.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  analyzeFrame,
+  calibrateBatch,
+  calibrateFromAnalyses,
+  calibrateMissile,
+  confirmManually,
+  fitDirections,
+  flipHead,
+  reportToJson,
+  reportToMarkdown,
+  type AlphaImageLike,
+  type CalibrationResult,
+  type FrameAnalysis,
+  type MissileFrames,
+} from './calibrate.js';
+import { dirIndex, validateCalibration, type DirCount } from './direction.js';
+import { DEG2RAD, angularDistance, normalizeDeg } from './geometry.js';
+
+// ───────────────────────── 合成素材產生器 ─────────────────────────
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function gaussian(rnd: () => number): number {
+  return Math.sqrt(-2 * Math.log(1 - rnd())) * Math.cos(2 * Math.PI * rnd());
+}
+
+/**
+ * 箭矢(地面空間定義,沿 +t 前進):
+ *   尾部羽翼(寬)→ 箭桿(細)→ 箭頭(三角,尖端窄)
+ * 質量集中在尾端,偏態指向箭尖。reversed=true 則左右鏡射(前進端變成寬的一端)。
+ */
+interface ArrowSpec {
+  length: number;
+  tailLen: number;
+  tailHalfW: number;
+  shaftHalfW: number;
+  headLen: number;
+  headHalfW: number;
+  reversed: boolean;
+}
+const ARROW: ArrowSpec = {
+  length: 40,
+  tailLen: 12,
+  tailHalfW: 4,
+  shaftHalfW: 1,
+  headLen: 8,
+  headHalfW: 3,
+  reversed: false,
+};
+
+function inArrow(t0: number, w: number, spec: ArrowSpec): boolean {
+  const t = spec.reversed ? -t0 : t0;
+  const L2 = spec.length / 2;
+  if (t < -L2 || t > L2) return false;
+  let half: number;
+  if (t < -L2 + spec.tailLen) half = spec.tailHalfW;
+  else if (t < L2 - spec.headLen) half = spec.shaftHalfW;
+  else half = (spec.headHalfW * (L2 - t)) / spec.headLen;
+  return Math.abs(w) <= half;
+}
+
+/** 在螢幕上畫出地面方向 φ 的箭矢:地面點 (gx, gy) ↔ 螢幕點 (gx, gy/2)。3×3 超取樣抗鋸齒。 */
+function renderArrow(
+  phiDeg: number,
+  size: number,
+  cx: number,
+  cy: number,
+  spec: ArrowSpec = ARROW,
+  ss = 3,
+): AlphaImageLike {
+  const c = Math.cos(phiDeg * DEG2RAD);
+  const s = Math.sin(phiDeg * DEG2RAD);
+  const alpha = new Uint8Array(size * size);
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let hit = 0;
+      for (let j = 0; j < ss; j++) {
+        for (let i = 0; i < ss; i++) {
+          const gx = px + (i + 0.5) / ss - cx;
+          const gy = (py + (j + 0.5) / ss - cy) * 2;
+          const t = gx * c + gy * s;
+          const w = -gx * s + gy * c;
+          if (inArrow(t, w, spec)) hit++;
+        }
+      }
+      alpha[py * size + px] = Math.round((255 * hit) / (ss * ss));
+    }
+  }
+  return { width: size, height: size, alpha };
+}
+
+/** 螢幕空間的橢圓(rx, ry);glow=true 時 alpha 由中心向外線性衰減。 */
+function renderEllipse(rx: number, ry: number, size: number, glow = false, ss = 3): AlphaImageLike {
+  const alpha = new Uint8Array(size * size);
+  const cx = size / 2;
+  const cy = size / 2;
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let acc = 0;
+      for (let j = 0; j < ss; j++) {
+        for (let i = 0; i < ss; i++) {
+          const x = (px + (i + 0.5) / ss - cx) / rx;
+          const y = (py + (j + 0.5) / ss - cy) / ry;
+          const r2 = x * x + y * y;
+          if (r2 <= 1) acc += glow ? 1 - Math.sqrt(r2) : 1;
+        }
+      }
+      alpha[py * size + px] = Math.round((255 * acc) / (ss * ss));
+    }
+  }
+  return { width: size, height: size, alpha };
+}
+
+function addNoise(img: AlphaImageLike, sigma: number, rnd: () => number): AlphaImageLike {
+  const out = new Uint8Array(img.alpha.length);
+  for (let k = 0; k < out.length; k++) {
+    const v = img.alpha[k]! + gaussian(rnd) * sigma;
+    out[k] = Math.round(Math.min(255, Math.max(0, v)));
+  }
+  return { width: img.width, height: img.height, alpha: out };
+}
+
+interface RowSetOpts {
+  size?: number;
+  jitter?: number;
+  noiseSigma?: number;
+  rnd?: () => number;
+  spec?: ArrowSpec;
+}
+
+/** 依已知 (dirCount, dir0, clockwise) 產生各方向行:φ_i = dir0 ± i·step。 */
+function makeArrowRows(
+  dirCount: DirCount,
+  dir0: number,
+  clockwise: boolean,
+  o: RowSetOpts = {},
+): AlphaImageLike[] {
+  const size = o.size ?? 64;
+  const rnd = o.rnd ?? (() => 0.5);
+  const jitter = o.jitter ?? 0;
+  const step = 360 / dirCount;
+  const sgn = clockwise ? 1 : -1;
+  const rows: AlphaImageLike[] = [];
+  for (let i = 0; i < dirCount; i++) {
+    const phi = normalizeDeg(dir0 + sgn * i * step);
+    const jx = (rnd() * 2 - 1) * jitter;
+    const jy = (rnd() * 2 - 1) * jitter;
+    let img = renderArrow(phi, size, size / 2 + jx, size / 2 + jy, o.spec ?? ARROW);
+    if (o.noiseSigma !== undefined) img = addNoise(img, o.noiseSigma, rnd);
+    rows.push(img);
+  }
+  return rows;
+}
+
+function meta(id: string, dirCount: DirCount) {
+  return { missileId: id, celFile: `${id}.dcc`, dirCount } as const;
+}
+
+function expectCorrect(r: CalibrationResult, dir0: number, cw: boolean, tolDeg: number): void {
+  expect(r.calibration.clockwise).toBe(cw);
+  expect(angularDistance(r.calibration.dir0WorldAngle, dir0)).toBeLessThan(tolDeg);
+}
+
+const COMBOS = ([8, 16, 32] as const).flatMap((n) =>
+  [true, false].flatMap((cw) => [0, 160, 33.3].map((d0) => ({ n, cw, d0 }))),
+);
+
+// ───────────────────────── 單幀分析 ─────────────────────────
+
+describe('analyzeFrame on synthetic arrows (every 5°)', () => {
+  const ANGLES = Array.from({ length: 72 }, (_, i) => i * 5);
+
+  it.each(ANGLES)('φ = %i°: axis within 1.5°, skew points to the tip, elongated', (phi) => {
+    const a = analyzeFrame(renderArrow(phi, 64, 32.3, 31.7));
+    expect(a.valid).toBe(true);
+    expect(angularDistance(a.axisPhiDeg * 2, normalizeDeg(phi) * 2)).toBeLessThan(3); // 軸向(模 180)
+    expect(a.eccScreen).toBeGreaterThan(1.3);
+    expect(a.eccGround).toBeGreaterThan(3);
+    // 軸在 [0,180);φ ≥ 180 時 u 與前進方向相反,偏態應為負
+    expect(Math.sign(a.skew)).toBe(phi < 180 ? 1 : -1);
+    expect(Math.abs(a.skew)).toBeGreaterThan(0.3);
+  });
+});
+
+describe('input formats', () => {
+  const img = renderArrow(70, 40, 20, 20);
+
+  it('RGBA (ImageData-like) and bare alpha matrix give identical analysis to the alpha plane', () => {
+    const data = new Uint8ClampedArray(img.width * img.height * 4);
+    const matrix: number[][] = [];
+    for (let y = 0; y < img.height; y++) {
+      const row: number[] = [];
+      for (let x = 0; x < img.width; x++) {
+        const k = y * img.width + x;
+        data[k * 4] = 255;
+        data[k * 4 + 1] = 128;
+        data[k * 4 + 2] = 0;
+        data[k * 4 + 3] = img.alpha[k]!;
+        row.push(img.alpha[k]!);
+      }
+      matrix.push(row);
+    }
+    const ref = analyzeFrame(img);
+    expect(analyzeFrame({ width: img.width, height: img.height, data })).toEqual(ref);
+    expect(analyzeFrame(matrix)).toEqual(ref);
+  });
+
+  it('rejects malformed input', () => {
+    expect(() => analyzeFrame({ width: 0, height: 4, alpha: [] })).toThrow(RangeError);
+    expect(() => analyzeFrame({ width: 4, height: 4, alpha: new Uint8Array(3) })).toThrow(RangeError);
+    expect(() => analyzeFrame({ width: 4, height: 4, data: new Uint8Array(10) })).toThrow(RangeError);
+    expect(() => analyzeFrame([])).toThrow(RangeError);
+    expect(() => analyzeFrame([[1, 2], [3]])).toThrow(RangeError);
+  });
+
+  it('empty and sub-threshold frames are invalid, not errors', () => {
+    expect(analyzeFrame({ width: 8, height: 8, alpha: new Uint8Array(64) }).valid).toBe(false);
+    expect(analyzeFrame({ width: 8, height: 8, alpha: new Uint8Array(64).fill(10) }).valid).toBe(false);
+  });
+
+  it('largest-component filter removes isolated speckle', () => {
+    const base = renderArrow(30, 64, 32, 32);
+    const speckled = new Uint8Array(base.alpha);
+    for (const [x, y] of [[2, 2], [61, 3], [3, 60], [60, 60], [5, 30]] as const) speckled[y * 64 + x] = 255;
+    const a = analyzeFrame({ width: 64, height: 64, alpha: speckled });
+    const b = analyzeFrame(base);
+    expect(a.pixelCount).toBe(b.pixelCount);
+    expect(a.axisPhiDeg).toBeCloseTo(b.axisPhiDeg, 9);
+  });
+});
+
+// ───────────────────────── 已知偏角與順逆時針 ─────────────────────────
+
+describe('known dirCount / dir0 / clockwise are recovered', () => {
+  it.each(COMBOS)('clean: n=$n cw=$cw dir0=$d0', ({ n, cw, d0 }) => {
+    const r = calibrateMissile({ ...meta('arrow', n), frames: makeArrowRows(n, d0, cw) });
+    expect(r.calibration.status).toBe('auto-pass');
+    expect(r.calibration.rotationMode).toBe('discrete');
+    expectCorrect(r, d0, cw, 2);
+    expect(r.calibration.measure.residualMaxDeg).toBeLessThan(3);
+    expect(r.calibration.measure.confidence).toBeGreaterThan(0.5);
+    expect(validateCalibration(r.calibration).ok).toBe(true);
+  });
+
+  it('result is consistent with dirIndex() from direction.ts (end-to-end)', () => {
+    for (const { n, cw, d0 } of COMBOS) {
+      const r = calibrateMissile({ ...meta('arrow', n), frames: makeArrowRows(n, d0, cw) });
+      const step = 360 / n;
+      for (let i = 0; i < n; i++) {
+        const truthPhi = normalizeDeg(d0 + (cw ? 1 : -1) * i * step);
+        expect(dirIndex(truthPhi, r.calibration)).toBe(i);
+      }
+    }
+  });
+
+  it("axisSpace 'screen' still works (looser tolerance: PCA bias on wide shapes)", () => {
+    const r = calibrateMissile(
+      { ...meta('arrow', 16), frames: makeArrowRows(16, 40, true) },
+      { axisSpace: 'screen' },
+    );
+    expectCorrect(r, 40, true, 6);
+  });
+});
+
+describe('headPolarity', () => {
+  it('a sprite whose wide end is the front is off by 180° under the default polarity', () => {
+    const frames = makeArrowRows(16, 100, true, { spec: { ...ARROW, reversed: true } });
+    const wrong = calibrateMissile({ ...meta('spear', 16), frames });
+    expect(angularDistance(wrong.calibration.dir0WorldAngle, 100)).toBeGreaterThan(170);
+
+    const ok = calibrateMissile({ ...meta('spear', 16), frames, headPolarity: 'skew-away-from-head' });
+    expectCorrect(ok, 100, true, 2);
+  });
+
+  it('flipHead() corrects a wrong polarity and marks the result manual-confirmed', () => {
+    const frames = makeArrowRows(16, 100, true, { spec: { ...ARROW, reversed: true } });
+    const wrong = calibrateMissile({ ...meta('spear', 16), frames }).calibration;
+    const fixed = flipHead(wrong);
+    expect(angularDistance(fixed.dir0WorldAngle, 100)).toBeLessThan(2);
+    expect(fixed.status).toBe('manual-confirmed');
+    expect(fixed.measure.method).toBe('manual');
+    expect(validateCalibration(fixed).ok).toBe(true);
+  });
+
+  it('confirmManually applies only the provided fields', () => {
+    const base = calibrateMissile({ ...meta('arrow', 8), frames: makeArrowRows(8, 10, true) }).calibration;
+    const c = confirmManually(base, { clockwise: false, notes: 'checked by eye' });
+    expect(c.clockwise).toBe(false);
+    expect(c.dir0WorldAngle).toBe(base.dir0WorldAngle);
+    expect(c.notes).toBe('checked by eye');
+    expect(c.status).toBe('manual-confirmed');
+  });
+});
+
+// ───────────────────────── 噪聲與裁切 ─────────────────────────
+
+describe('noise and cropping', () => {
+  it('gaussian alpha noise (σ=12): still correct', () => {
+    const rnd = mulberry32(7);
+    const rows = makeArrowRows(16, 200, false, { noiseSigma: 12, rnd });
+    const r = calibrateMissile({ ...meta('noisy', 16), frames: rows });
+    expect(r.calibration.status).toBe('auto-pass');
+    expectCorrect(r, 200, false, 3);
+  });
+
+  it('noise + mild cropping + position jitter: never a wrong auto-pass, ≥95% auto-pass', () => {
+    const rnd = mulberry32(20240229);
+    const counts: DirCount[] = [8, 16, 32];
+    const trials = 30;
+    let autoPass = 0;
+    let wrongAutoPass = 0;
+    for (let t = 0; t < trials; t++) {
+      const n = counts[Math.floor(rnd() * counts.length)]!;
+      const cw = rnd() < 0.5;
+      const dir0 = rnd() * 360;
+      // 44px 畫布 + ±3px 抖動:水平方向的箭矢兩端會被裁掉約 1px
+      const rows = makeArrowRows(n, dir0, cw, { size: 44, jitter: 3, noiseSigma: 12, rnd });
+      const r = calibrateMissile({ ...meta(`trial_${t}`, n), frames: rows });
+      if (r.calibration.status === 'auto-pass') {
+        autoPass++;
+        const correct =
+          r.calibration.clockwise === cw && angularDistance(r.calibration.dir0WorldAngle, dir0) < 3;
+        if (!correct) wrongAutoPass++;
+      }
+    }
+    expect(wrongAutoPass).toBe(0);
+    expect(autoPass / trials).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('an empty row is reported as needs-review, and the fit still uses the remaining rows', () => {
+    const rows = makeArrowRows(16, 75, true);
+    rows[3] = { width: 64, height: 64, alpha: new Uint8Array(64 * 64) };
+    const r = calibrateMissile({ ...meta('broken', 16), frames: rows });
+    expect(r.calibration.status).toBe('needs-review');
+    expect(r.diagnostics.reasons.join(' ')).toContain('[3]');
+    expectCorrect(r, 75, true, 2);
+  });
+});
+
+// ───────────────────────── 球形無方向性 ─────────────────────────
+
+describe('round sprites → rotationMode none', () => {
+  it.each([1, 8, 16, 32] as const)('solid disc, dirCount=%i', (n) => {
+    const disc = renderEllipse(12, 12, 48);
+    const r = calibrateMissile({ ...meta('fireball', n), frames: Array<AlphaImageLike>(n).fill(disc) });
+    expect(r.calibration.rotationMode).toBe('none');
+    expect(r.calibration.status).toBe('auto-pass');
+    expect(r.calibration.measure.eccentricity).toBeLessThan(1.1);
+    expect(validateCalibration(r.calibration).ok).toBe(true);
+  });
+
+  it('soft glow disc with noise is still round', () => {
+    const rnd = mulberry32(99);
+    const frames = Array.from({ length: 16 }, () => addNoise(renderEllipse(14, 14, 48, true), 10, rnd));
+    const r = calibrateMissile({ ...meta('glow', 16), frames });
+    expect(r.calibration.rotationMode).toBe('none');
+    expect(r.calibration.status).toBe('auto-pass');
+  });
+
+  it('a screen-space 2:1 ellipse (flat ring effect) is NOT labelled round and goes to review', () => {
+    // 螢幕 2:1 橢圓 = 地面上的圓:軸不可信,必須人工確認,不能輸出看似可信的結果
+    const ring = renderEllipse(16, 8, 48);
+    const r = calibrateMissile({ ...meta('ground_ring', 16), frames: Array<AlphaImageLike>(16).fill(ring) });
+    expect(r.calibration.rotationMode).toBe('discrete');
+    expect(r.calibration.status).toBe('needs-review');
+    expect(r.diagnostics.usableRows).toBe(0);
+  });
+});
+
+// ───────────────────────── 擬合與判定邏輯(不經過影像) ─────────────────────────
+
+function fakeAnalysis(phiTrue: number, wrongSign = false, skewMag = 0.7): FrameAnalysis {
+  const phi = normalizeDeg(phiTrue);
+  const axis = phi % 180;
+  let sign = phi < 180 ? 1 : -1; // u 指向前進方向時偏態為正
+  if (wrongSign) sign = -sign;
+  return {
+    valid: true,
+    pixelCount: 200,
+    mass: 200,
+    centroid: { x: 0, y: 0 },
+    axisPhiDeg: axis,
+    eccScreen: 4,
+    eccGround: 5,
+    skew: sign * skewMag,
+  };
+}
+
+function fakeRows(
+  n: DirCount,
+  dir0: number,
+  cw: boolean,
+  wrong: ReadonlySet<number> = new Set(),
+): FrameAnalysis[] {
+  const step = 360 / n;
+  return Array.from({ length: n }, (_, i) =>
+    fakeAnalysis(dir0 + (cw ? 1 : -1) * i * step, wrong.has(i)),
+  );
+}
+
+describe('fit logic on exact analyses', () => {
+  const dir0s = [0, 12.5, 45, 135, 160, 270, 359];
+
+  it('recovers every (n, cw, dir0) exactly', () => {
+    for (const n of [8, 16, 32] as const) {
+      for (const cw of [true, false]) {
+        for (const d0 of dir0s) {
+          const r = calibrateFromAnalyses(meta('x', n), fakeRows(n, d0, cw));
+          expect(r.calibration.clockwise).toBe(cw);
+          expect(angularDistance(r.calibration.dir0WorldAngle, d0)).toBeLessThan(0.01);
+          expect(r.calibration.status).toBe('auto-pass');
+        }
+      }
+    }
+  });
+
+  it('tolerates a few rows with the wrong head sign (2 of 16 → still auto-pass)', () => {
+    const r = calibrateFromAnalyses(meta('x', 16), fakeRows(16, 130, false, new Set([2, 9])));
+    expect(r.calibration.status).toBe('auto-pass');
+    expectCorrect(r, 130, false, 0.01);
+    expect(r.diagnostics.headAgreement).toBeCloseTo(14 / 16, 3);
+  });
+
+  it('many wrong head rows (5 of 16): the majority still wins but status is needs-review', () => {
+    const r = calibrateFromAnalyses(meta('x', 16), fakeRows(16, 130, true, new Set([0, 3, 5, 8, 12])));
+    expect(r.calibration.status).toBe('needs-review');
+    expectCorrect(r, 130, true, 0.01);
+    expect(r.diagnostics.reasons.join(' ')).toContain('一致率');
+  });
+
+  it('no usable skew → head is undecidable → needs-review', () => {
+    const rows = fakeRows(16, 50, true).map((a) => ({ ...a, skew: 0.01 }));
+    const r = calibrateFromAnalyses(meta('x', 16), rows);
+    expect(r.calibration.status).toBe('needs-review');
+    expect(r.diagnostics.headVoters).toBe(0);
+  });
+
+  it('sprite that does not rotate (identical axis on every row) → needs-review', () => {
+    const rows = Array.from({ length: 16 }, () => fakeAnalysis(30));
+    const r = calibrateFromAnalyses(meta('x', 16), rows);
+    expect(r.calibration.status).toBe('needs-review');
+    expect(r.calibration.measure.residualMaxDeg).toBeGreaterThan(11.25);
+  });
+
+  it('too many unreliable axes (low ground eccentricity) → needs-review', () => {
+    const rows = fakeRows(16, 50, true).map((a, i) => (i < 10 ? { ...a, eccGround: 1.0 } : a));
+    const r = calibrateFromAnalyses(meta('x', 16), rows);
+    expect(r.calibration.status).toBe('needs-review');
+    expect(r.diagnostics.usableRows).toBe(6);
+  });
+
+  it('wrong rotation sense is rejected with a clear margin', () => {
+    const fit = fitDirections(fakeRows(16, 20, false), 16);
+    expect(fit.clockwise).toBe(false);
+    expect(fit.clockwiseConfidence).toBeGreaterThan(0.9);
+    expect(fit.residualMaxDeg).toBeLessThan(1e-6);
+  });
+
+  it('fitDirections reports per-row residuals and head votes', () => {
+    const fit = fitDirections(fakeRows(8, 0, true, new Set([4])), 8);
+    expect(fit.rows).toHaveLength(8);
+    expect(fit.rows[4]!.headVote).toBe('disagree');
+    expect(fit.rows[0]!.headVote).toBe('agree');
+    for (const r of fit.rows) expect(r.residualDeg).toBeLessThan(1e-6);
+  });
+
+  it('works when the true dir0 sits at the 0/180 axis wrap', () => {
+    for (const d0 of [0, 180, 179.9, 359.9]) {
+      const r = calibrateFromAnalyses(meta('x', 16), fakeRows(16, d0, true));
+      expect(angularDistance(r.calibration.dir0WorldAngle, d0)).toBeLessThan(0.01);
+    }
+  });
+});
+
+describe('input validation', () => {
+  it('throws on frame count mismatch and invalid dirCount', () => {
+    expect(() => calibrateMissile({ ...meta('x', 16), frames: makeArrowRows(8, 0, true) })).toThrow(RangeError);
+    expect(() =>
+      calibrateFromAnalyses({ missileId: 'x', celFile: 'x', dirCount: 12 as never }, fakeRows(8, 0, true)),
+    ).toThrow(RangeError);
+  });
+
+  it('rejects out-of-range options', () => {
+    const frames = makeArrowRows(8, 0, true);
+    expect(() => calibrateMissile({ ...meta('x', 8), frames }, { roundEccentricity: 1 })).toThrow(RangeError);
+    expect(() => calibrateMissile({ ...meta('x', 8), frames }, { alphaThreshold: 300 })).toThrow(RangeError);
+  });
+});
+
+// ───────────────────────── 批次報告 ─────────────────────────
+
+describe('batch report', () => {
+  const brokenRows = makeArrowRows(16, 10, true);
+  brokenRows[5] = { width: 64, height: 64, alpha: new Uint8Array(64 * 64) };
+
+  const inputs: MissileFrames[] = [
+    { ...meta('arrow16', 16), frames: makeArrowRows(16, 135, true) },
+    { ...meta('fireball16', 16), frames: Array<AlphaImageLike>(16).fill(renderEllipse(12, 12, 48)) },
+    { ...meta('broken16', 16), frames: brokenRows },
+    { ...meta('mismatch', 16), frames: makeArrowRows(8, 0, true) },
+  ];
+  const report = calibrateBatch(inputs);
+
+  it('counts every outcome and never aborts on a bad input', () => {
+    expect(report.total).toBe(4);
+    expect(report.autoPass).toBe(2);
+    expect(report.needsReview).toBe(1);
+    expect(report.failed).toBe(1);
+  });
+
+  it('every successful calibration conforms to the DirectionCalibration schema', () => {
+    for (const e of report.entries) {
+      if (e.ok) expect(validateCalibration(e.result.calibration).ok).toBe(true);
+    }
+  });
+
+  it('JSON report round-trips', () => {
+    const parsed = JSON.parse(reportToJson(report)) as { total: number; entries: unknown[] };
+    expect(parsed.total).toBe(4);
+    expect(parsed.entries).toHaveLength(4);
+  });
+
+  it('Markdown report lists problems first and contains every missile', () => {
+    const md = reportToMarkdown(report);
+    expect(md).toContain('共 4 筆:auto-pass 2、needs-review 1、失敗 1');
+    for (const id of ['arrow16', 'fireball16', 'broken16', 'mismatch']) expect(md).toContain(id);
+    expect(md.indexOf('mismatch')).toBeLessThan(md.indexOf('broken16'));
+    expect(md.indexOf('broken16')).toBeLessThan(md.indexOf('arrow16'));
+    expect(md).toContain('**failed**');
+  });
+});
+```
+
+---
+
+## 執行方式
+
+```bash
+npm run typecheck
+npm test
+```
+
+## 測試與你的驗收條件對照
+
+| 你的要求 | 對應測試 |
+|---|---|
+| 程式合成已知偏角與順逆時針的細長箭頭 | `known dirCount / dir0 / clockwise`:3 種 N × 2 方向 × 3 種 dir0 = **18 組**,要求 dir0 誤差 < 2°、順逆時針全對;另有 `dirIndex()` 端到端一致性 |
+| 加入噪聲測試 | `noise and cropping`:σ=12 的高斯 alpha 噪聲;30 次隨機組合加輕度裁切與位置抖動,**錯誤的 auto-pass 必須為 0,auto-pass 率 ≥ 95%** |
+| 圓形火球無方向性 | `round sprites`:實心圓(N=1/8/16/32)、帶噪聲的柔邊光暈圓都輸出 `none`。另外一個反例:螢幕 2:1 橢圓(地面環形特效)**不會**被當作球形,而是進 needs-review |
+| 批次校準報告驗收 | `batch report`:計數、schema 驗證、JSON 往返、Markdown 排序(失敗最前)、單筆錯誤不中斷整批 |
+| 偏態判頭尾,不明確則標 needs-review | `fit logic`:2/16 行判錯仍 auto-pass、5/16 行判錯 → 多數決仍正確但標 needs-review、完全沒有可用偏態 → needs-review。`headPolarity` 一組演示極性錯誤時的 180° 偏差 |
+
+## 這份程式碼對真實素材的三個風險
+
+1. **極性**:前面已說明,請用已知朝向的素材先確認。
+2. **幀選擇**:我假設傳入的是「每個方向的代表幀」(中間幀)。如果某些投射物每幀形狀變化很大,例如火焰拖尾每幀不同,建議對多幀取中位數,或只對 `eccGround` 高的幀分析。`calibrateFromAnalyses` 已與影像解耦,可以先自行聚合分析結果再餵入。
+3. **alpha 的來源**:D2 的 DCC 多半是調色盤索引加「索引 0 透明」,alpha 是二值的,柔邊其實來自混色表。如果你的解碼輸出的 alpha 是二值,`alphaThreshold: 32` 不影響結果。如果是從「亮度當 alpha」的加法特效取得,先確認解碼端怎麼產生 alpha。
+
+## 下一步
+
+1. 先跑測試,有失敗請貼完整輸出。
+2. 取 2~3 個真實 missile(建議:亞馬遜箭矢、骨矛、火球)各 N 個方向的代表幀,匯出成 PNG 或 raw RGBA 給我。我可以幫你判斷參數(`alphaThreshold`、極性)與真實素材的契合度,再決定是否需要調整偏態以外的頭尾判斷法(例如端點寬度比)。
+3. 通過後進入第 3 輪(F01/F02/F04 行為原語加物件池)。

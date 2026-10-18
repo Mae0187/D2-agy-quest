@@ -1,0 +1,18 @@
+{
+  "name": "icebolt",
+  "atlas": "icebolt_auth.png",
+  "cellW": 94,
+  "cellH": 66,
+  "pivotX": 47,
+  "pivotY": 23,
+  "frames": 6,
+  "dirs": 16,
+  "totalW": 564,
+  "totalH": 1056,
+  "unionBox": {
+    "minX": -46,
+    "maxX": 46,
+    "minY": -22,
+    "maxY": 42
+  }
+}

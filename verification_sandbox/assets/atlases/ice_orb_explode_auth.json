@@ -1,0 +1,18 @@
+{
+  "name": "ice_orb_explode",
+  "atlas": "ice_orb_explode_auth.png",
+  "cellW": 232,
+  "cellH": 294,
+  "pivotX": 112,
+  "pivotY": 269,
+  "frames": 18,
+  "dirs": 1,
+  "totalW": 4176,
+  "totalH": 294,
+  "unionBox": {
+    "minX": -111,
+    "maxX": 119,
+    "minY": -268,
+    "maxY": 24
+  }
+}

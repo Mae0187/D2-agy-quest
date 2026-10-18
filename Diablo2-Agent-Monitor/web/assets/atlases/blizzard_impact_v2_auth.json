@@ -1,0 +1,18 @@
+{
+  "name": "blizzard_impact_v2",
+  "atlas": "blizzard_impact_v2_auth.png",
+  "cellW": 119,
+  "cellH": 87,
+  "pivotX": 56,
+  "pivotY": 110,
+  "frames": 6,
+  "dirs": 1,
+  "totalW": 714,
+  "totalH": 87,
+  "unionBox": {
+    "minX": -55,
+    "maxX": 62,
+    "minY": -109,
+    "maxY": -24
+  }
+}

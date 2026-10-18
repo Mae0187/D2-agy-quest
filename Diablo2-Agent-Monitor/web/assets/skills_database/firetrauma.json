@@ -1,0 +1,42 @@
+{
+  "id": "firetrauma",
+  "name": "Fire Trauma",
+  "class": "assassin",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "FireTraumaMissile",
+    "celFile": "FireTraumaMissile",
+    "speed": 12.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 6
+  },
+  "impact": {
+    "asset": "FireTraumaXplosion",
+    "celFile": "FireTraumaXplosion",
+    "blend": "lighter"
+  },
+  "damage": {
+    "min": 9,
+    "max": 13,
+    "level": 1,
+    "formula": "6 + 3x7 + 8x8 + 20x4",
+    "maxFormula": "8 + 5x7 + 11x8 + 24x4",
+    "type": "fire"
+  },
+  "cost": {
+    "mana": 24
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "assassin_light_cast",
+    "frameRate": 25.0,
+    "frames": 17
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/FireTraumaMissile.png",
+    "numbers": "assets/skills/data/firetrauma.json（Skills.txt / Missiles.txt）"
+  }
+}

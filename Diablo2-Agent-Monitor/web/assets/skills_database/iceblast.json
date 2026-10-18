@@ -1,0 +1,38 @@
+{
+  "id": "iceblast",
+  "name": "Ice Blast",
+  "class": "sorceress",
+  "skillId": null,
+  "reqLevel": null,
+  "projectile": {
+    "asset": "IceBlast",
+    "celFile": "IceBlast",
+    "speed": 12.0,
+    "range": 50.0,
+    "size": 1,
+    "collideType": 3
+  },
+  "impact": null,
+  "damage": {
+    "min": 30,
+    "max": 39,
+    "level": 1,
+    "formula": "16 + 14x7 + 28x8 + 42x4",
+    "maxFormula": "24 + 15x7 + 29x8 + 43x4",
+    "type": "cold"
+  },
+  "cost": {
+    "mana": 12
+  },
+  "castAnimation": {
+    "mode": "cast",
+    "atlas": "sorceress_light_cast",
+    "frameRate": 25.0,
+    "frames": 14
+  },
+  "behavior": null,
+  "source": {
+    "art": "舊專案 Diablo2-Agent-Monitor 解碼圖集 -> assets/atlases/IceBlast.png",
+    "numbers": "assets/skills/data/iceblast.json（Skills.txt / Missiles.txt）"
+  }
+}

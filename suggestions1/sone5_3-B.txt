@@ -1,0 +1,2382 @@
+# 第 3-B 輪交付:物件池、行為原語、MissileManager
+
+本輪產出 `pool.ts`、`behaviors.ts`、`manager.ts`、`testkit.ts`,對應測試,以及對 `targets.ts` 的一處純新增小補丁。主迴圈與 Canvas 渲染留給 3-C。
+
+**我沒有實際執行這份程式碼。** 請跑 `npm run typecheck && npm test`,有失敗請貼完整輸出給我。測試中的期望值(各 tick 的位置、命中時機、爆裂倒數)都是手算過的,並在註解標了推導。效能測試只設了寬鬆上限。
+
+---
+
+## 先說明:與你規格的出入與新增決策
+
+| 項目 | 說明 |
+|---|---|
+| **`step()` 沒有 `dt` 參數** | 邏輯 tick 固定 40ms,一次 `step()` 就是一個 tick。可變 `dt` 會讓同一個種子在不同節奏下產生不同軌跡,和「60Hz/144Hz 邏輯一致」的目標相衝突。真實時間到 tick 的換算由 3-C 的累加器負責 |
+| **補丁 `targets.ts`** | 穿透投射物需要「每個目標只命中一次」。3-A 的 `findNearestUnit` 只能排除一個 id,所以新增 `findNearestUnitSkipping`(純新增,不改動既有方法與測試) |
+| **生成的 tick 語意** | `spawn()` 產生 `INIT` 記錄,在**下一次** `step()` 才啟用並移動,啟用當 tick 就會移動一次。在 step 內(鉤子裡)生成的投射物同樣到下一個 tick 才啟用,與槽位順序無關。這由每槽位的 `spawnTick` 保證 |
+| **行為層私有狀態** | `MissileRuntime` 沒有「基準方向」之類的欄位。我加了 `BehaviorEnv.state`(`Float64Array`,每槽位 `STATE_STRIDE = 4` 個浮點數,生成時清零),F04 用它存基準方向,F03 螺旋之後也會用到。3-A 的型別完全沒動 |
+| **碰撞** | 目標視為一個點,命中條件是「點在投射物碰撞圓內」。單位的體積請折進 `radiusPx`。每 tick 只在終點檢測。**高速投射物可能穿過小目標**,請讓 `radiusPx ≳ speed/2`,或之後加掃掠檢測 |
+| **命中記憶** | 每顆投射物記住最近 8 個命中過的目標(環形緩衝)。無限穿透時,同一 tick 最多處理 8 次命中,超過的留到下個 tick。這同時保證命中迴圈必然終止 |
+| **爆裂時長** | `durationTicks = D`:在轉入 `EXPLODING` 的那個 tick 之後再過 D−1 個 tick 仍是 `EXPLODING`,第 D 個 tick 變 `DEAD`。D=0 立即回收 |
+| **子投射物** | `explosion.spawnMissileId` 在爆裂瞬間生成,繼承位置、方向與陣營。管理器建構時會檢查 id 是否存在、有沒有循環(A→B→A)。F07 的環形或隨機發射圖樣不在本輪範圍 |
+| **耗盡策略** | `'reject'`(預設):`spawn` 回傳 `NO_HANDLE` 並計數。`'evict-oldest'`:先回收 `EXPLODING` 中最接近結束的,否則回收存活最久的,同分取較小槽位 |
+| **「零配置」的範圍** | 池、free-list、命中記憶、行為狀態全部預先配置;每 tick 路徑只用數字與預先配置的物件。我沒有放堆積量測,因為 `types: []` 下沒有 `process`。請用 Chrome Performance 面板或 `node --trace-gc` 實測 |
+| **動畫幀** | `MissileSpec` 沒有幀數與動畫速度欄位,所以管理器不推進 `animAcc/animFrame`,留給 3-C 的繪製器與動畫表 |
+
+---
+
+## 補丁:src/targets.ts(貼進 `TargetRegistry` 類別內,放在 `findNearestUnit` 之後)
+
+```ts
+  /**
+   * 同 findNearestUnit,但略過 skip[skipOffset .. skipOffset+skipCount) 內列出的 id。
+   * 供穿透投射物「每個目標只命中一次」使用。零配置。
+   */
+  findNearestUnitSkipping(
+    x: number,
+    y: number,
+    radius: number,
+    team: number,
+    skip: Int32Array,
+    skipOffset: number,
+    skipCount: number,
+  ): number {
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(radius) || radius < 0) {
+      throw new RangeError(`invalid search (x=${x}, y=${y}, radius=${radius})`);
+    }
+    if (
+      !Number.isInteger(skipOffset) ||
+      !Number.isInteger(skipCount) ||
+      skipOffset < 0 ||
+      skipCount < 0 ||
+      skipOffset + skipCount > skip.length
+    ) {
+      throw new RangeError(`invalid skip range (${skipOffset}, ${skipCount}) for length ${skip.length}`);
+    }
+    const r2 = radius * radius;
+    let bestId = NO_TARGET;
+    let bestD2 = Infinity;
+    const p = this.scratch;
+    for (let i = 0; i < this.list.length; i++) {
+      const t = this.list[i]!;
+      if (!(t instanceof UnitTarget) || t.team !== team) continue;
+      let skipped = false;
+      for (let k = 0; k < skipCount; k++) {
+        if (skip[skipOffset + k] === t.id) {
+          skipped = true;
+          break;
+        }
+      }
+      if (skipped) continue;
+      if (!t.resolve(p)) continue;
+      const dx = p.x - x;
+      const dy = p.y - y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      if (d2 < bestD2 || (d2 === bestD2 && t.id < bestId)) {
+        bestD2 = d2;
+        bestId = t.id;
+      }
+    }
+    return bestId;
+  }
+```
+
+## src/targets-skip.test.ts(新檔,不動原本的 targets.test.ts)
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { NO_TARGET, TargetRegistry } from './targets.js';
+import { makeUnit } from './testkit.js';
+
+describe('TargetRegistry.findNearestUnitSkipping', () => {
+  function setup() {
+    const reg = new TargetRegistry();
+    const a = reg.createUnit(makeUnit(10, 0));
+    const b = reg.createUnit(makeUnit(20, 0));
+    const c = reg.createUnit(makeUnit(30, 0));
+    return { reg, a, b, c };
+  }
+
+  it('with an empty skip list it equals findNearestUnit', () => {
+    const { reg, a } = setup();
+    const skip = new Int32Array(4).fill(NO_TARGET);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 0)).toBe(a.id);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 0)).toBe(reg.findNearestUnit(0, 0, 100, 1));
+  });
+
+  it('skips listed ids and falls through to the next nearest', () => {
+    const { reg, a, b, c } = setup();
+    const skip = new Int32Array([a.id, b.id, NO_TARGET]);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 1)).toBe(b.id);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 2)).toBe(c.id);
+    skip[2] = c.id;
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 3)).toBe(NO_TARGET);
+  });
+
+  it('honours the offset window (entries outside the window are ignored)', () => {
+    const { reg, a, b } = setup();
+    const skip = new Int32Array([a.id, NO_TARGET, NO_TARGET, b.id]);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 1, 2)).toBe(a.id);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 3, 1)).toBe(a.id);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 1)).toBe(b.id);
+  });
+
+  it('still respects team, radius and liveness', () => {
+    const reg = new TargetRegistry();
+    const dead = makeUnit(5, 0, 1, false);
+    reg.createUnit(dead);
+    reg.createUnit(makeUnit(8, 0, 2));
+    const far = reg.createUnit(makeUnit(90, 0, 1));
+    const skip = new Int32Array(1);
+    expect(reg.findNearestUnitSkipping(0, 0, 50, 1, skip, 0, 0)).toBe(NO_TARGET);
+    expect(reg.findNearestUnitSkipping(0, 0, 100, 1, skip, 0, 0)).toBe(far.id);
+  });
+
+  it('rejects invalid arguments', () => {
+    const { reg } = setup();
+    const skip = new Int32Array(2);
+    expect(() => reg.findNearestUnitSkipping(NaN, 0, 1, 1, skip, 0, 0)).toThrow(RangeError);
+    expect(() => reg.findNearestUnitSkipping(0, 0, -1, 1, skip, 0, 0)).toThrow(RangeError);
+    expect(() => reg.findNearestUnitSkipping(0, 0, 1, 1, skip, 1, 2)).toThrow(RangeError);
+    expect(() => reg.findNearestUnitSkipping(0, 0, 1, 1, skip, -1, 1)).toThrow(RangeError);
+    expect(() => reg.findNearestUnitSkipping(0, 0, 1, 1, skip, 0, 1.5)).toThrow(RangeError);
+  });
+});
+```
+
+---
+
+## src/testkit.ts(測試共用,不含 `.test`)
+
+```ts
+import type { MissileSpec } from './missile-types.js';
+
+export interface MutableUnit {
+  x: number;
+  y: number;
+  alive: boolean;
+  team: number;
+}
+
+export function makeUnit(x: number, y: number, team = 1, alive = true): MutableUnit {
+  return { x, y, alive, team };
+}
+
+/** F01 直線、速度 10、碰撞圓 8、命中即停、存活 20 tick。 */
+export const BASE_SPEC: MissileSpec = {
+  id: 'bone',
+  calibrationId: 'bone',
+  blend: 'normal',
+  motion: { speed: 10, accel: 0, maxSpeed: 10 },
+  lifetime: { maxLifeTicks: 20, rangePx: null },
+  collision: { radiusPx: 8, pierce: 0 },
+  explosion: null,
+  behavior: { family: 'F01' },
+};
+
+export function specOf(id: string, patch: Partial<MissileSpec> = {}): MissileSpec {
+  return { ...BASE_SPEC, ...patch, id, calibrationId: id };
+}
+```
+
+---
+
+## src/pool.ts
+
+```ts
+/**
+ * pool.ts — 投射物物件池(預先配置 + free-list + generation handle)
+ *
+ * 設計:
+ *  - 建構時一次配置 capacity 筆 MissileRuntime,之後永不新增、永不丟棄。
+ *  - free-list 以 Int32Array 串成鏈(LIFO):acquire/release 都是 O(1),零配置。
+ *  - handle = generation × 65536 + 槽位索引,純數字(不配置物件)。
+ *    釋放時 resetMissileRuntime 會遞增 generation,所以舊 handle 立刻失效;
+ *    即使槽位被重用,舊 handle 也不會指到新的投射物。
+ *  - 迭代請用 `for (i = 0; i < highWater; i++) at(i)`:highWater 是曾經使用過的最大槽位 + 1,
+ *    不會隨釋放而縮小,迴圈成本與「峰值併發」而非 capacity 成正比。
+ *
+ * 限制:
+ *  - capacity ≤ 65536(索引占 16 位)。
+ *  - generation 為 uint32,同一槽位重用 2^32 次後 handle 會重複,實務上不可能發生。
+ *  - 本類別不分派事件鉤子。需要鉤子請透過 MissileManager.kill()。
+ */
+
+import {
+  MissileState,
+  createMissileRuntime,
+  resetMissileRuntime,
+  type MissileRuntime,
+} from './missile-types.js';
+
+export const NO_HANDLE = -1;
+export const POOL_INDEX_RADIX = 65536;
+export const MAX_POOL_CAPACITY = POOL_INDEX_RADIX;
+
+export class MissileObjectPool {
+  readonly capacity: number;
+
+  private readonly records: MissileRuntime[];
+  private readonly nextFree: Int32Array;
+  private readonly live: Uint8Array;
+  private freeHead = 0;
+  private liveN = 0;
+  private hw = 0;
+  private peak = 0;
+  private exhausted = 0;
+  private acquired = 0;
+  private released = 0;
+
+  constructor(capacity: number) {
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_POOL_CAPACITY) {
+      throw new RangeError(`capacity must be an integer in [1, ${MAX_POOL_CAPACITY}], got ${capacity}`);
+    }
+    this.capacity = capacity;
+    this.records = Array.from({ length: capacity }, (_, i) => createMissileRuntime(i));
+    this.nextFree = new Int32Array(capacity);
+    this.live = new Uint8Array(capacity);
+    this.rebuildFreeList();
+  }
+
+  get liveCount(): number {
+    return this.liveN;
+  }
+  get freeCount(): number {
+    return this.capacity - this.liveN;
+  }
+  /** 曾使用過的最大槽位 + 1。迭代上限。 */
+  get highWater(): number {
+    return this.hw;
+  }
+  get peakLive(): number {
+    return this.peak;
+  }
+  /** acquire() 因池已滿而失敗的累計次數。 */
+  get exhaustedCount(): number {
+    return this.exhausted;
+  }
+  get acquiredTotal(): number {
+    return this.acquired;
+  }
+  get releasedTotal(): number {
+    return this.released;
+  }
+
+  /**
+   * 取出一筆空閒記錄,狀態設為 INIT,其餘欄位為乾淨預設值。
+   * 池已滿回傳 null 並累計 exhaustedCount。
+   */
+  acquire(): MissileRuntime | null {
+    if (this.freeHead === -1) {
+      this.exhausted++;
+      return null;
+    }
+    const idx = this.freeHead;
+    this.freeHead = this.nextFree[idx]!;
+    this.nextFree[idx] = -1;
+    this.live[idx] = 1;
+    this.liveN++;
+    this.acquired++;
+    if (this.liveN > this.peak) this.peak = this.liveN;
+    if (idx + 1 > this.hw) this.hw = idx + 1;
+    const rt = this.records[idx]!;
+    rt.state = MissileState.INIT;
+    return rt;
+  }
+
+  /** 記錄 → handle。只對仍存活的記錄有意義。 */
+  handleOf(rt: MissileRuntime): number {
+    return rt.generation * POOL_INDEX_RADIX + rt.handle;
+  }
+
+  /** handle → 記錄。過期、已釋放、格式錯誤一律回傳 null。 */
+  get(handle: number): MissileRuntime | null {
+    if (!Number.isInteger(handle) || handle < 0) return null;
+    const idx = handle % POOL_INDEX_RADIX;
+    if (idx >= this.capacity || this.live[idx] === 0) return null;
+    const rt = this.records[idx]!;
+    return rt.generation * POOL_INDEX_RADIX + idx === handle ? rt : null;
+  }
+
+  isValid(handle: number): boolean {
+    return this.get(handle) !== null;
+  }
+
+  /** 依索引取記錄(迭代用,不檢查範圍;請用 0 ≤ i < highWater)。可能是 DEAD 狀態的空閒槽位。 */
+  at(index: number): MissileRuntime {
+    return this.records[index]!;
+  }
+
+  /** 以 handle 釋放。過期或重複釋放回傳 false。 */
+  release(handle: number): boolean {
+    const rt = this.get(handle);
+    return rt === null ? false : this.releaseRecord(rt);
+  }
+
+  /** 以記錄釋放:重置所有欄位、遞增 generation、放回 free-list 頭。重複釋放回傳 false。 */
+  releaseRecord(rt: MissileRuntime): boolean {
+    const idx = rt.handle;
+    if (idx < 0 || idx >= this.capacity || this.records[idx] !== rt || this.live[idx] === 0) {
+      return false;
+    }
+    resetMissileRuntime(rt);
+    this.live[idx] = 0;
+    this.nextFree[idx] = this.freeHead;
+    this.freeHead = idx;
+    this.liveN--;
+    this.released++;
+    return true;
+  }
+
+  /** 釋放全部存活記錄並重建 free-list。計數器保留。 */
+  clear(): void {
+    for (let i = 0; i < this.hw; i++) {
+      if (this.live[i] === 1) {
+        resetMissileRuntime(this.records[i]!);
+        this.released++;
+      }
+    }
+    this.liveN = 0;
+    this.live.fill(0);
+    this.rebuildFreeList();
+  }
+
+  /** 診斷用(會配置記憶體,請勿放在熱路徑)。回傳空陣列代表結構完整。 */
+  checkIntegrity(): string[] {
+    const errors: string[] = [];
+    const cap = this.capacity;
+    const seen = new Uint8Array(cap);
+    let n = 0;
+    let cur = this.freeHead;
+    while (cur !== -1) {
+      if (cur < 0 || cur >= cap) {
+        errors.push(`free list index out of range: ${cur}`);
+        break;
+      }
+      if (seen[cur]) {
+        errors.push(`free list cycle or duplicate at slot ${cur}`);
+        break;
+      }
+      seen[cur] = 1;
+      n++;
+      if (this.live[cur] === 1) errors.push(`live slot ${cur} is in the free list`);
+      if (this.records[cur]!.state !== MissileState.DEAD) errors.push(`free slot ${cur} is not DEAD`);
+      cur = this.nextFree[cur]!;
+    }
+    if (n !== cap - this.liveN) errors.push(`free list length ${n} != capacity - live (${cap - this.liveN})`);
+    let flags = 0;
+    for (let i = 0; i < cap; i++) if (this.live[i] === 1) flags++;
+    if (flags !== this.liveN) errors.push(`live flags ${flags} != liveCount ${this.liveN}`);
+    return errors;
+  }
+
+  private rebuildFreeList(): void {
+    const cap = this.capacity;
+    for (let i = 0; i < cap - 1; i++) this.nextFree[i] = i + 1;
+    this.nextFree[cap - 1] = -1;
+    this.freeHead = 0;
+  }
+}
+```
+
+---
+
+## src/behaviors.ts
+
+```ts
+/**
+ * behaviors.ts — 行為原語:F01 直線、F02 追蹤、F04 隨機折線
+ *
+ * 單位:全部是 Ground(地面未壓縮)像素 / tick,角度為度。
+ * 螢幕 Y × 0.5 只在繪製端做,本檔完全不碰。
+ *
+ * 一個 tick 內,行為負責「轉向 + 移動」:
+ *   速度 v' = clamp(v + accel, 0, maxSpeed),位置 += v'·(cosφ, sinφ)
+ * 先更新速度再移動。生命週期、命中、爆裂由 MissileManager 負責。
+ *
+ * 擴充新家族:實作 BehaviorImpl、擴充 BehaviorParams 與 validateMissileSpec,再 register()。
+ */
+
+import type { FamilyId, MissileRuntime, MissileSpec } from './missile-types.js';
+import { DEG2RAD, normalizeDeg } from './geometry.js';
+import { lcgStep, lcgUnit } from './rng.js';
+import { NO_TARGET, groundToPhi, type GroundPoint, type TargetRegistry } from './targets.js';
+
+/** 每個槽位保留的行為私有浮點數個數。 */
+export const STATE_STRIDE = 4;
+
+export const StepOutcome = {
+  /** 本 tick 正常移動。 */
+  CONTINUE: 0,
+  /** 本 tick 到達射程上限(位置已夾在射程終點)。 */
+  RANGE: 1,
+  /** 行為要求立刻到期(如追蹤彈失去目標且 fallback = 'expire')。 */
+  EXPIRE: 2,
+} as const;
+export type StepOutcome = (typeof StepOutcome)[keyof typeof StepOutcome];
+
+/** 行為執行期環境:由管理器持有,熱路徑重複使用,不配置。 */
+export interface BehaviorEnv {
+  readonly targets: TargetRegistry;
+  /** 目前被處理的投射物所要攻擊的陣營(-1 = 無)。由管理器在每次呼叫前設定。 */
+  team: number;
+  /** 行為私有狀態:state[slot × STATE_STRIDE + k],生成時清零。 */
+  readonly state: Float64Array;
+  /** 暫存座標,供 resolve() 使用。 */
+  readonly scratch: GroundPoint;
+}
+
+export function createBehaviorEnv(targets: TargetRegistry, slotCount: number): BehaviorEnv {
+  return {
+    targets,
+    team: -1,
+    state: new Float64Array(slotCount * STATE_STRIDE),
+    scratch: { x: 0, y: 0 },
+  };
+}
+
+export function clearBehaviorState(env: BehaviorEnv, slot: number): void {
+  env.state.fill(0, slot * STATE_STRIDE, (slot + 1) * STATE_STRIDE);
+}
+
+export interface BehaviorImpl {
+  readonly family: FamilyId;
+  /** 生成時呼叫一次(rt 的位置、方向、速度、種子、targetId 已設好)。 */
+  init(rt: MissileRuntime, spec: MissileSpec, env: BehaviorEnv): void;
+  /** 每 tick 一次:轉向並移動。不得配置物件。 */
+  update(rt: MissileRuntime, spec: MissileSpec, env: BehaviorEnv): StepOutcome;
+}
+
+// ───────────────────────── 共用:直線推進 ─────────────────────────
+
+/**
+ * 沿 rt.phi 推進一個 tick。
+ *  - 速度:v' = clamp(v + accel, 0, maxSpeed)
+ *  - 射程:rangePx 非 null 時,若本步會達到或超過射程,步長夾到剛好抵達,回傳 RANGE
+ *    (不會超出射程終點;travelled 精確等於 rangePx)
+ */
+export function advanceLinear(rt: MissileRuntime, spec: MissileSpec): StepOutcome {
+  const m = spec.motion;
+  let v = rt.speed + m.accel;
+  if (v > m.maxSpeed) v = m.maxSpeed;
+  if (v < 0) v = 0;
+  rt.speed = v;
+
+  let step = v;
+  let outcome: StepOutcome = StepOutcome.CONTINUE;
+  const range = spec.lifetime.rangePx;
+  if (range !== null) {
+    const remaining = range - rt.travelled;
+    if (step >= remaining) {
+      step = remaining > 0 ? remaining : 0;
+      outcome = StepOutcome.RANGE;
+    }
+  }
+
+  const rad = rt.phi * DEG2RAD;
+  rt.x += step * Math.cos(rad);
+  rt.y += step * Math.sin(rad);
+  rt.travelled = outcome === StepOutcome.RANGE && range !== null ? range : rt.travelled + step;
+  return outcome;
+}
+
+function mismatch(expected: FamilyId, spec: MissileSpec): Error {
+  return new Error(`behavior ${expected} used with spec "${spec.id}" of family ${spec.behavior.family}`);
+}
+
+// ───────────────────────── F01:直線 ─────────────────────────
+
+export const F01_STRAIGHT: BehaviorImpl = {
+  family: 'F01',
+  init(): void {
+    /* 無私有狀態 */
+  },
+  update(rt, spec): StepOutcome {
+    return advanceLinear(rt, spec);
+  },
+};
+
+// ───────────────────────── F02:追蹤 ─────────────────────────
+
+/**
+ * 每 tick 向目標轉向,每 tick 轉角上限 = turnRateDegPerTick(走最短弧)。
+ *  - 生成時若 rt.targetId 有效就沿用,否則在 acquireRadiusPx 內找最近的敵方單位。
+ *  - 目標失效後:reacquire = true 則重新索敵;找不到(或 reacquire = false)則依 fallback:
+ *      'straight' → 沿當前方向直飛
+ *      'expire'   → 本 tick 不移動,回傳 EXPIRE
+ */
+export const F02_HOMING: BehaviorImpl = {
+  family: 'F02',
+
+  init(rt, spec, env): void {
+    const p = spec.behavior;
+    if (p.family !== 'F02') throw mismatch('F02', spec);
+    if (rt.targetId !== NO_TARGET && env.targets.resolve(rt.targetId, env.scratch)) return;
+    rt.targetId = env.targets.findNearestUnit(rt.x, rt.y, p.acquireRadiusPx, env.team);
+  },
+
+  update(rt, spec, env): StepOutcome {
+    const p = spec.behavior;
+    if (p.family !== 'F02') throw mismatch('F02', spec);
+    const sc = env.scratch;
+
+    let have = false;
+    if (rt.targetId !== NO_TARGET) {
+      have = env.targets.resolve(rt.targetId, sc);
+      if (!have) rt.targetId = NO_TARGET;
+    }
+    if (!have && p.reacquire) {
+      rt.targetId = env.targets.findNearestUnit(rt.x, rt.y, p.acquireRadiusPx, env.team);
+      if (rt.targetId !== NO_TARGET) {
+        have = env.targets.resolve(rt.targetId, sc);
+        if (!have) rt.targetId = NO_TARGET;
+      }
+    }
+
+    if (have) {
+      const dx = sc.x - rt.x;
+      const dy = sc.y - rt.y;
+      if (dx !== 0 || dy !== 0) {
+        let d = normalizeDeg(groundToPhi(dx, dy) - rt.phi);
+        if (d > 180) d -= 360; // 最短弧,範圍 (-180, 180]
+        const lim = p.turnRateDegPerTick;
+        if (d > lim) d = lim;
+        else if (d < -lim) d = -lim;
+        rt.phi = normalizeDeg(rt.phi + d);
+      }
+    } else if (p.fallback === 'expire') {
+      return StepOutcome.EXPIRE;
+    }
+    return advanceLinear(rt, spec);
+  },
+};
+
+// ───────────────────────── F04:隨機折線 ─────────────────────────
+
+/**
+ * 每隔 retargetEveryTicks 個 tick(以 ageTicks % N === 0 判定,所以第一個 tick 就會折一次),
+ * 方向 = 基準方向 + U(−jitter, +jitter)。其餘 tick 直飛。
+ *  - 基準方向:生成時的 phi;若 rt.targetId 有效,每次折線前改為朝向該目標的方位。
+ *  - 隨機:用 rt.rngState 與 lcgStep/lcgUnit 推進,每次折線消耗恰好一個亂數。
+ */
+export const F04_ZIGZAG: BehaviorImpl = {
+  family: 'F04',
+
+  init(rt, spec, env): void {
+    if (spec.behavior.family !== 'F04') throw mismatch('F04', spec);
+    env.state[rt.handle * STATE_STRIDE] = rt.phi;
+  },
+
+  update(rt, spec, env): StepOutcome {
+    const p = spec.behavior;
+    if (p.family !== 'F04') throw mismatch('F04', spec);
+
+    if (rt.ageTicks % p.retargetEveryTicks === 0) {
+      const base = rt.handle * STATE_STRIDE;
+      if (rt.targetId !== NO_TARGET) {
+        if (env.targets.resolve(rt.targetId, env.scratch)) {
+          const dx = env.scratch.x - rt.x;
+          const dy = env.scratch.y - rt.y;
+          if (dx !== 0 || dy !== 0) env.state[base] = groundToPhi(dx, dy);
+        } else {
+          rt.targetId = NO_TARGET;
+        }
+      }
+      rt.rngState = lcgStep(rt.rngState);
+      const jitter = (lcgUnit(rt.rngState) * 2 - 1) * p.stepJitterDeg;
+      rt.phi = normalizeDeg(env.state[base]! + jitter);
+    }
+    return advanceLinear(rt, spec);
+  },
+};
+
+// ───────────────────────── 註冊表 ─────────────────────────
+
+export class BehaviorRegistry {
+  private readonly map = new Map<FamilyId, BehaviorImpl>();
+
+  register(impl: BehaviorImpl): this {
+    if (this.map.has(impl.family)) throw new Error(`behavior already registered: ${impl.family}`);
+    this.map.set(impl.family, impl);
+    return this;
+  }
+
+  get(family: FamilyId): BehaviorImpl | undefined {
+    return this.map.get(family);
+  }
+
+  has(family: FamilyId): boolean {
+    return this.map.has(family);
+  }
+}
+
+export function createDefaultBehaviors(): BehaviorRegistry {
+  return new BehaviorRegistry().register(F01_STRAIGHT).register(F02_HOMING).register(F04_ZIGZAG);
+}
+```
+
+---
+
+## src/manager.ts
+
+```ts
+/**
+ * manager.ts — MissileManager:一個 tick 的投射物邏輯推進
+ *
+ * 每次 step() 就是一個固定 40ms 的邏輯 tick(沒有 dt 參數,見交付說明)。
+ *
+ * 每筆記錄在一個 tick 內的處理順序:
+ *   INIT(且生成於先前的 tick)→ 啟用(ACTIVATE 鉤子)→ 與 ACTIVE 相同處理
+ *   ACTIVE:
+ *     1. prev = curr,teleported = false(渲染插值用)
+ *     2. 行為更新(轉向 + 移動)
+ *     3. ageTicks++
+ *     4. 碰撞:命中 → HIT 鉤子 → 穿透則繼續、否則 finish('hit')
+ *     5. 到期:射程 → RANGE;lifetime 或行為要求 → LIFETIME → EXPIRE 鉤子 → finish('expire')
+ *   EXPLODING:倒數,歸零後 DEAD
+ *   finish:explodesOn(...) 為真 → EXPLODING(EXPLODE 鉤子、可選子投射物),否則 DEAD
+ *
+ * 鉤子可以安全地呼叫 spawn() / kill():每個處理步驟後都會檢查記錄是否仍是同一代、同一狀態。
+ */
+
+import {
+  StepOutcome,
+  clearBehaviorState,
+  createBehaviorEnv,
+  createDefaultBehaviors,
+  type BehaviorEnv,
+  type BehaviorImpl,
+  type BehaviorRegistry,
+} from './behaviors.js';
+import { normalizeDeg } from './geometry.js';
+import {
+  ExpireReason,
+  MissileEventKind,
+  MissileState,
+  canPierce,
+  consumePierce,
+  dispatchMissileEvent,
+  explodesOn,
+  validateMissileSpec,
+  type MissileHooks,
+  type MissileRuntime,
+  type MissileSpec,
+} from './missile-types.js';
+import { MissileObjectPool, NO_HANDLE } from './pool.js';
+import { deriveSeed } from './rng.js';
+import { NO_TARGET, type TargetRegistry } from './targets.js';
+
+export const NO_TEAM = -1;
+/** 每顆投射物記住的最近命中目標數(也是單 tick 最大命中處理數)。 */
+export const HIT_MEMORY = 8;
+
+export type ExhaustionPolicy = 'reject' | 'evict-oldest';
+
+export interface MissileManagerOptions {
+  /** 規格表。建構後不可變;spawn 以索引(或 spawnById)引用。 */
+  readonly specs: readonly MissileSpec[];
+  readonly targets: TargetRegistry;
+  /** 池容量,預設 512,上限 65536。 */
+  readonly capacity?: number;
+  /** 世界種子:每顆投射物的種子 = deriveSeed(worldSeed, 生成序號)。預設 1。 */
+  readonly worldSeed?: number;
+  readonly hooks?: MissileHooks | null;
+  readonly behaviors?: BehaviorRegistry;
+  readonly onExhausted?: ExhaustionPolicy;
+}
+
+export interface ManagerStats {
+  spawned: number;
+  rejected: number;
+  evicted: number;
+  hits: number;
+  expired: number;
+  exploded: number;
+  died: number;
+}
+
+export class MissileManager {
+  readonly pool: MissileObjectPool;
+  readonly stats: ManagerStats = {
+    spawned: 0,
+    rejected: 0,
+    evicted: 0,
+    hits: 0,
+    expired: 0,
+    exploded: 0,
+    died: 0,
+  };
+  /** 已執行的 step() 次數。 */
+  tickCount = 0;
+
+  private readonly specs: readonly MissileSpec[];
+  private readonly specIndexById = new Map<string, number>();
+  private readonly behaviors: BehaviorImpl[] = [];
+  private readonly childIndex: Int32Array;
+  private readonly env: BehaviorEnv;
+  private readonly targets: TargetRegistry;
+  private readonly hitTeam: Int16Array;
+  private readonly hitMem: Int32Array;
+  private readonly spawnTick: Float64Array;
+  private readonly worldSeed: number;
+  private readonly policy: ExhaustionPolicy;
+  private hooks: MissileHooks | null;
+  private spawnCounter = 0;
+
+  constructor(opts: MissileManagerOptions) {
+    const capacity = opts.capacity ?? 512;
+    this.pool = new MissileObjectPool(capacity);
+    this.targets = opts.targets;
+    this.worldSeed = opts.worldSeed ?? 1;
+    this.hooks = opts.hooks ?? null;
+    this.policy = opts.onExhausted ?? 'reject';
+    this.specs = [...opts.specs];
+
+    const registry = opts.behaviors ?? createDefaultBehaviors();
+    const n = this.specs.length;
+    const errors: string[] = [];
+
+    this.specs.forEach((s, i) => {
+      for (const e of validateMissileSpec(s)) errors.push(`${s.id || `#${i}`}: ${e}`);
+      if (this.specIndexById.has(s.id)) errors.push(`duplicate spec id: ${s.id}`);
+      else this.specIndexById.set(s.id, i);
+    });
+
+    this.childIndex = new Int32Array(n).fill(-1);
+    this.specs.forEach((s, i) => {
+      const impl = registry.get(s.behavior.family);
+      if (impl === undefined) errors.push(`${s.id}: no behavior registered for ${s.behavior.family}`);
+      else this.behaviors.push(impl);
+
+      const child = s.explosion?.spawnMissileId ?? null;
+      if (child !== null) {
+        const ci = this.specIndexById.get(child);
+        if (ci === undefined) errors.push(`${s.id}: explosion.spawnMissileId "${child}" does not exist`);
+        else this.childIndex[i] = ci;
+      }
+    });
+
+    // 子投射物鏈每個節點最多一個後繼;走 n+1 步仍未結束就表示有循環。
+    for (let i = 0; i < n; i++) {
+      let cur = i;
+      let k = 0;
+      for (; k <= n; k++) {
+        cur = this.childIndex[cur]!;
+        if (cur < 0) break;
+      }
+      if (k > n) errors.push(`${this.specs[i]!.id}: spawn chain contains a cycle`);
+    }
+
+    if (errors.length > 0) throw new Error(`invalid missile specs:\n${errors.join('\n')}`);
+
+    this.env = createBehaviorEnv(this.targets, capacity);
+    this.hitTeam = new Int16Array(capacity).fill(NO_TEAM);
+    this.hitMem = new Int32Array(capacity * HIT_MEMORY).fill(NO_TARGET);
+    this.spawnTick = new Float64Array(capacity);
+  }
+
+  get liveCount(): number {
+    return this.pool.liveCount;
+  }
+
+  setHooks(hooks: MissileHooks | null): void {
+    this.hooks = hooks;
+  }
+
+  /** 規格 id → 索引,找不到回傳 -1。請在載入時查一次,熱路徑用索引。 */
+  specIndexOf(id: string): number {
+    return this.specIndexById.get(id) ?? -1;
+  }
+
+  specAt(index: number): MissileSpec {
+    return this.specs[index]!;
+  }
+
+  // ───────────────────────── 生成與銷毀 ─────────────────────────
+
+  /**
+   * 生成投射物。
+   * @param specIndex 規格索引
+   * @param x,y       Ground 座標
+   * @param phi       方向(度)
+   * @param hitTeam   要攻擊的陣營;NO_TEAM(-1)= 不做碰撞
+   * @param targetId  初始目標(NO_TARGET 則由行為自行索敵)
+   * @returns handle;池滿且無法回收時回傳 NO_HANDLE
+   */
+  spawn(
+    specIndex: number,
+    x: number,
+    y: number,
+    phi: number,
+    hitTeam: number = NO_TEAM,
+    targetId: number = NO_TARGET,
+  ): number {
+    return this.spawnInternal(specIndex, x, y, phi, hitTeam, targetId, -1);
+  }
+
+  spawnById(
+    id: string,
+    x: number,
+    y: number,
+    phi: number,
+    hitTeam: number = NO_TEAM,
+    targetId: number = NO_TARGET,
+  ): number {
+    const idx = this.specIndexOf(id);
+    if (idx < 0) throw new RangeError(`unknown missile spec id: ${id}`);
+    return this.spawnInternal(idx, x, y, phi, hitTeam, targetId, -1);
+  }
+
+  /** 立即銷毀(會分派 DEAD 鉤子)。過期或已死亡的 handle 回傳 false。 */
+  kill(handle: number): boolean {
+    const rt = this.pool.get(handle);
+    if (rt === null || rt.state === MissileState.DEAD) return false;
+    this.terminate(rt);
+    return true;
+  }
+
+  isAlive(handle: number): boolean {
+    const rt = this.pool.get(handle);
+    return rt !== null && rt.state !== MissileState.DEAD;
+  }
+
+  /** 清空所有投射物,不分派鉤子(換場景、從隱藏狀態恢復時使用)。 */
+  clearAll(): void {
+    this.pool.clear();
+  }
+
+  // ───────────────────────── 單 tick 推進 ─────────────────────────
+
+  step(): void {
+    this.tickCount++;
+    const tick = this.tickCount;
+    const pool = this.pool;
+    const hw = pool.highWater;
+
+    for (let i = 0; i < hw; i++) {
+      const rt = pool.at(i);
+      const st = rt.state;
+      if (st === MissileState.DEAD) continue;
+      if (st === MissileState.INIT) {
+        // 本 tick 內才生成的(例如鉤子裡生成),留到下一個 tick 啟用,結果與槽位順序無關。
+        if (this.spawnTick[i]! >= tick) continue;
+        this.activate(rt);
+        if (rt.state !== MissileState.ACTIVE) continue;
+        this.stepActive(rt);
+      } else if (st === MissileState.ACTIVE) {
+        this.stepActive(rt);
+      } else {
+        this.stepExploding(rt);
+      }
+    }
+  }
+
+  // ───────────────────────── 內部實作 ─────────────────────────
+
+  private spawnInternal(
+    specIndex: number,
+    x: number,
+    y: number,
+    phi: number,
+    hitTeam: number,
+    targetId: number,
+    protectSlot: number,
+  ): number {
+    if (!Number.isInteger(specIndex) || specIndex < 0 || specIndex >= this.specs.length) {
+      throw new RangeError(`specIndex out of range: ${specIndex}`);
+    }
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(phi)) {
+      throw new RangeError(`spawn position/direction must be finite, got (${x}, ${y}, ${phi})`);
+    }
+    if (!Number.isInteger(hitTeam) || hitTeam < -1 || hitTeam > 32767) {
+      throw new RangeError(`hitTeam must be an integer in [-1, 32767], got ${hitTeam}`);
+    }
+    if (!Number.isInteger(targetId)) throw new RangeError(`targetId must be an integer, got ${targetId}`);
+
+    let rt = this.pool.acquire();
+    if (rt === null && this.policy === 'evict-oldest' && this.evictOne(protectSlot)) {
+      rt = this.pool.acquire();
+    }
+    if (rt === null) {
+      this.stats.rejected++;
+      return NO_HANDLE;
+    }
+
+    const spec = this.specs[specIndex]!;
+    const slot = rt.handle;
+    rt.specIndex = specIndex;
+    rt.ageTicks = 0;
+    rt.x = x;
+    rt.y = y;
+    rt.prevX = x;
+    rt.prevY = y;
+    rt.phi = normalizeDeg(phi);
+    rt.speed = spec.motion.speed;
+    rt.travelled = 0;
+    rt.pierceLeft = spec.collision.pierce;
+    rt.hitCount = 0;
+    rt.targetId = targetId;
+    rt.rngState = deriveSeed(this.worldSeed, this.spawnCounter++);
+    rt.explodeTicksLeft = 0;
+    rt.teleported = true; // 生成不插值
+
+    this.hitTeam[slot] = hitTeam;
+    this.hitMem.fill(NO_TARGET, slot * HIT_MEMORY, (slot + 1) * HIT_MEMORY);
+    this.spawnTick[slot] = this.tickCount;
+    clearBehaviorState(this.env, slot);
+    this.env.team = hitTeam;
+    this.behaviors[specIndex]!.init(rt, spec, this.env);
+
+    this.stats.spawned++;
+    dispatchMissileEvent(this.hooks, MissileEventKind.SPAWN, rt, spec);
+    return this.pool.handleOf(rt);
+  }
+
+  private activate(rt: MissileRuntime): void {
+    rt.state = MissileState.ACTIVE;
+    dispatchMissileEvent(this.hooks, MissileEventKind.ACTIVATE, rt, this.specs[rt.specIndex]!);
+  }
+
+  private stepActive(rt: MissileRuntime): void {
+    const spec = this.specs[rt.specIndex]!;
+    const team = this.hitTeam[rt.handle]!;
+
+    rt.prevX = rt.x;
+    rt.prevY = rt.y;
+    rt.teleported = false;
+
+    this.env.team = team;
+    const outcome = this.behaviors[rt.specIndex]!.update(rt, spec, this.env);
+    rt.ageTicks++;
+
+    if (team >= 0 && this.resolveHits(rt, spec, team)) return;
+
+    if (outcome === StepOutcome.RANGE) {
+      this.expire(rt, spec, ExpireReason.RANGE);
+    } else if (outcome === StepOutcome.EXPIRE || rt.ageTicks >= spec.lifetime.maxLifeTicks) {
+      this.expire(rt, spec, ExpireReason.LIFETIME);
+    }
+  }
+
+  /** 處理本 tick 的所有命中。回傳 true 表示該記錄已不再是 ACTIVE(轉換、死亡或被鉤子改動)。 */
+  private resolveHits(rt: MissileRuntime, spec: MissileSpec, team: number): boolean {
+    const gen = rt.generation;
+    const base = rt.handle * HIT_MEMORY;
+    for (let n = 0; n < HIT_MEMORY; n++) {
+      const known = rt.hitCount < HIT_MEMORY ? rt.hitCount : HIT_MEMORY;
+      const id = this.targets.findNearestUnitSkipping(
+        rt.x,
+        rt.y,
+        spec.collision.radiusPx,
+        team,
+        this.hitMem,
+        base,
+        known,
+      );
+      if (id === NO_TARGET) return false;
+
+      this.hitMem[base + (rt.hitCount % HIT_MEMORY)] = id;
+      rt.hitCount++;
+      this.stats.hits++;
+      dispatchMissileEvent(this.hooks, MissileEventKind.HIT, rt, spec, id);
+      if (rt.generation !== gen || rt.state !== MissileState.ACTIVE) return true;
+
+      if (canPierce(rt.pierceLeft)) {
+        rt.pierceLeft = consumePierce(rt.pierceLeft);
+        continue;
+      }
+      this.finish(rt, spec, 'hit');
+      return true;
+    }
+    return false;
+  }
+
+  private expire(rt: MissileRuntime, spec: MissileSpec, reason: ExpireReason): void {
+    const gen = rt.generation;
+    this.stats.expired++;
+    dispatchMissileEvent(this.hooks, MissileEventKind.EXPIRE, rt, spec, reason);
+    if (rt.generation !== gen || rt.state !== MissileState.ACTIVE) return;
+    this.finish(rt, spec, 'expire');
+  }
+
+  private finish(rt: MissileRuntime, spec: MissileSpec, trigger: 'hit' | 'expire'): void {
+    if (explodesOn(spec, trigger)) this.beginExplosion(rt, spec);
+    else this.terminate(rt);
+  }
+
+  private beginExplosion(rt: MissileRuntime, spec: MissileSpec): void {
+    const x = spec.explosion;
+    if (x === null) {
+      this.terminate(rt);
+      return;
+    }
+    const gen = rt.generation;
+    const slot = rt.handle;
+
+    rt.state = MissileState.EXPLODING;
+    rt.explodeTicksLeft = x.durationTicks;
+    rt.speed = 0;
+    this.stats.exploded++;
+    dispatchMissileEvent(this.hooks, MissileEventKind.EXPLODE, rt, spec);
+    if (rt.generation !== gen || rt.state !== MissileState.EXPLODING) return;
+
+    const child = this.childIndex[rt.specIndex]!;
+    if (child >= 0) {
+      this.spawnInternal(child, rt.x, rt.y, rt.phi, this.hitTeam[slot]!, NO_TARGET, slot);
+      if (rt.generation !== gen || rt.state !== MissileState.EXPLODING) return;
+    }
+    if (x.durationTicks === 0) this.terminate(rt);
+  }
+
+  private stepExploding(rt: MissileRuntime): void {
+    rt.prevX = rt.x;
+    rt.prevY = rt.y;
+    rt.teleported = false;
+    rt.ageTicks++;
+    rt.explodeTicksLeft--;
+    if (rt.explodeTicksLeft <= 0) this.terminate(rt);
+  }
+
+  /** 標為 DEAD → DEAD 鉤子(此時資料仍完整)→ 放回池。 */
+  private terminate(rt: MissileRuntime): void {
+    const spec = this.specs[rt.specIndex]!;
+    rt.state = MissileState.DEAD;
+    this.stats.died++;
+    dispatchMissileEvent(this.hooks, MissileEventKind.DEAD, rt, spec);
+    this.pool.releaseRecord(rt);
+  }
+
+  /** 池滿時回收一筆:優先 EXPLODING 中最接近結束的,否則存活最久的。同分取較小槽位。 */
+  private evictOne(protectSlot: number): boolean {
+    const pool = this.pool;
+    let victim: MissileRuntime | null = null;
+    let best = -1;
+    for (let i = 0; i < pool.highWater; i++) {
+      const rt = pool.at(i);
+      if (rt.state === MissileState.DEAD || i === protectSlot) continue;
+      const score = rt.state === MissileState.EXPLODING ? 1e9 - rt.explodeTicksLeft : rt.ageTicks;
+      if (score > best) {
+        best = score;
+        victim = rt;
+      }
+    }
+    if (victim === null) return false;
+    this.stats.evicted++;
+    this.terminate(victim);
+    return true;
+  }
+}
+```
+
+---
+
+## src/pool.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { MissileState } from './missile-types.js';
+import { MAX_POOL_CAPACITY, MissileObjectPool, NO_HANDLE } from './pool.js';
+import { Lcg } from './rng.js';
+
+describe('construction', () => {
+  it.each([0, -1, 1.5, NaN, MAX_POOL_CAPACITY + 1])('rejects capacity %f', (cap) => {
+    expect(() => new MissileObjectPool(cap)).toThrow(RangeError);
+  });
+
+  it('starts empty, fully free and structurally sound', () => {
+    const p = new MissileObjectPool(8);
+    expect(p.capacity).toBe(8);
+    expect(p.liveCount).toBe(0);
+    expect(p.freeCount).toBe(8);
+    expect(p.highWater).toBe(0);
+    expect(p.checkIntegrity()).toEqual([]);
+    for (let i = 0; i < 8; i++) {
+      expect(p.at(i).state).toBe(MissileState.DEAD);
+      expect(p.at(i).handle).toBe(i);
+    }
+  });
+});
+
+describe('acquire / release', () => {
+  it('hands out INIT records in ascending slot order at first', () => {
+    const p = new MissileObjectPool(4);
+    for (let i = 0; i < 3; i++) {
+      const rt = p.acquire()!;
+      expect(rt.handle).toBe(i);
+      expect(rt.state).toBe(MissileState.INIT);
+    }
+    expect(p.liveCount).toBe(3);
+    expect(p.highWater).toBe(3);
+  });
+
+  it('handle round-trips to the same record', () => {
+    const p = new MissileObjectPool(4);
+    const rt = p.acquire()!;
+    const h = p.handleOf(rt);
+    expect(p.get(h)).toBe(rt);
+    expect(p.isValid(h)).toBe(true);
+  });
+
+  it('stale handles are rejected after release, even when the slot is reused', () => {
+    const p = new MissileObjectPool(2);
+    const rt = p.acquire()!;
+    const h1 = p.handleOf(rt);
+    expect(p.release(h1)).toBe(true);
+
+    expect(p.get(h1)).toBeNull();
+    expect(p.isValid(h1)).toBe(false);
+    expect(p.release(h1)).toBe(false); // 重複釋放
+
+    const rt2 = p.acquire()!;
+    expect(rt2).toBe(rt); // LIFO:同一個槽位、同一個物件
+    const h2 = p.handleOf(rt2);
+    expect(h2).not.toBe(h1);
+    expect(p.get(h1)).toBeNull();
+    expect(p.get(h2)).toBe(rt2);
+    expect(p.checkIntegrity()).toEqual([]);
+  });
+
+  it('released records are fully reset and DEAD', () => {
+    const p = new MissileObjectPool(2);
+    const rt = p.acquire()!;
+    rt.x = 5;
+    rt.ageTicks = 9;
+    rt.hitCount = 3;
+    p.releaseRecord(rt);
+    expect(rt.state).toBe(MissileState.DEAD);
+    expect(rt.x).toBe(0);
+    expect(rt.ageTicks).toBe(0);
+    expect(rt.hitCount).toBe(0);
+    expect(p.releaseRecord(rt)).toBe(false);
+  });
+
+  it('garbage handles never resolve', () => {
+    const p = new MissileObjectPool(4);
+    p.acquire();
+    for (const h of [NO_HANDLE, NaN, Infinity, 1.5, -7, 1e15, 65536 * 3 + 100]) {
+      expect(p.get(h)).toBeNull();
+    }
+  });
+
+  it('highWater never shrinks on release', () => {
+    const p = new MissileObjectPool(8);
+    const rts = [p.acquire()!, p.acquire()!, p.acquire()!];
+    rts.forEach((r) => p.releaseRecord(r));
+    expect(p.highWater).toBe(3);
+    expect(p.peakLive).toBe(3);
+  });
+});
+
+describe('capacity protection', () => {
+  it('returns null when exhausted, counts it, and recovers after a release', () => {
+    const p = new MissileObjectPool(3);
+    const rts = [p.acquire()!, p.acquire()!, p.acquire()!];
+    expect(p.acquire()).toBeNull();
+    expect(p.acquire()).toBeNull();
+    expect(p.exhaustedCount).toBe(2);
+    expect(p.liveCount).toBe(3);
+
+    p.releaseRecord(rts[1]!);
+    const again = p.acquire();
+    expect(again).toBe(rts[1]);
+    expect(p.checkIntegrity()).toEqual([]);
+  });
+});
+
+describe('zero-leak under churn', () => {
+  it('10,000 consecutive acquire/release cycles reuse one record and leak nothing', () => {
+    const p = new MissileObjectPool(16);
+    const before = Array.from({ length: 16 }, (_, i) => p.at(i));
+    for (let i = 0; i < 10_000; i++) {
+      const rt = p.acquire()!;
+      expect(rt.handle).toBe(0);
+      expect(p.releaseRecord(rt)).toBe(true);
+    }
+    expect(p.liveCount).toBe(0);
+    expect(p.acquiredTotal).toBe(10_000);
+    expect(p.releasedTotal).toBe(10_000);
+    expect(p.at(0).generation).toBe(10_000); // 每次釋放恰好 +1
+    expect(p.highWater).toBe(1);
+    before.forEach((rt, i) => expect(p.at(i)).toBe(rt));
+    expect(p.checkIntegrity()).toEqual([]);
+  });
+
+  it('random churn (seeded): free list stays intact, record objects never replaced', () => {
+    const cap = 64;
+    const p = new MissileObjectPool(cap);
+    const before = Array.from({ length: cap }, (_, i) => p.at(i));
+    const rnd = new Lcg(42);
+    const live: number[] = [];
+
+    for (let i = 0; i < 10_000; i++) {
+      if (live.length < cap && (live.length === 0 || rnd.next() < 0.55)) {
+        const rt = p.acquire();
+        expect(rt).not.toBeNull();
+        live.push(p.handleOf(rt!));
+      } else {
+        const k = rnd.nextInt(live.length);
+        const h = live[k]!;
+        live[k] = live[live.length - 1]!;
+        live.pop();
+        expect(p.release(h)).toBe(true);
+        expect(p.release(h)).toBe(false);
+      }
+      if (i % 1000 === 0) expect(p.checkIntegrity()).toEqual([]);
+    }
+    expect(p.liveCount).toBe(live.length);
+    for (const h of live) expect(p.release(h)).toBe(true);
+
+    expect(p.liveCount).toBe(0);
+    expect(p.freeCount).toBe(cap);
+    expect(p.acquiredTotal).toBe(p.releasedTotal);
+    expect(p.checkIntegrity()).toEqual([]);
+    before.forEach((rt, i) => expect(p.at(i)).toBe(rt));
+    expect(before.reduce((s, r) => s + r.generation, 0)).toBe(p.releasedTotal);
+  });
+});
+
+describe('clear', () => {
+  it('releases everything, invalidates old handles and rebuilds the free list', () => {
+    const p = new MissileObjectPool(5);
+    const hs = [p.acquire()!, p.acquire()!, p.acquire()!].map((r) => p.handleOf(r));
+    p.clear();
+    expect(p.liveCount).toBe(0);
+    expect(p.freeCount).toBe(5);
+    for (const h of hs) expect(p.get(h)).toBeNull();
+    expect(p.checkIntegrity()).toEqual([]);
+    const rts = Array.from({ length: 5 }, () => p.acquire());
+    expect(rts.every((r) => r !== null)).toBe(true);
+    expect(p.acquire()).toBeNull();
+  });
+});
+```
+
+---
+
+## src/behaviors.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  BehaviorRegistry,
+  F01_STRAIGHT,
+  F02_HOMING,
+  F04_ZIGZAG,
+  STATE_STRIDE,
+  StepOutcome,
+  advanceLinear,
+  clearBehaviorState,
+  createBehaviorEnv,
+  createDefaultBehaviors,
+} from './behaviors.js';
+import { angularDistance, phiToScreenVelocity, screenToPhi } from './geometry.js';
+import {
+  MissileState,
+  createMissileRuntime,
+  type F02Params,
+  type F04Params,
+  type MissileRuntime,
+  type MissileSpec,
+} from './missile-types.js';
+import { deriveSeed } from './rng.js';
+import { NO_TARGET, TargetRegistry, groundToScreenInto } from './targets.js';
+import { makeUnit, specOf } from './testkit.js';
+
+function makeRt(x: number, y: number, phi: number, spec: MissileSpec, seed = 1): MissileRuntime {
+  const rt = createMissileRuntime(0);
+  rt.state = MissileState.ACTIVE;
+  rt.x = x;
+  rt.y = y;
+  rt.phi = phi;
+  rt.speed = spec.motion.speed;
+  rt.rngState = seed;
+  return rt;
+}
+
+// ───────────────────────── 共用直線推進 / F01 ─────────────────────────
+
+describe('advanceLinear / F01', () => {
+  it('constant speed along φ = 0', () => {
+    const spec = specOf('s', { lifetime: { maxLifeTicks: 100, rangePx: null } });
+    const rt = makeRt(0, 0, 0, spec);
+    for (let i = 0; i < 5; i++) expect(advanceLinear(rt, spec)).toBe(StepOutcome.CONTINUE);
+    expect(rt.x).toBeCloseTo(50, 9);
+    expect(rt.y).toBeCloseTo(0, 9);
+    expect(rt.travelled).toBeCloseTo(50, 9);
+    expect(rt.speed).toBe(10);
+  });
+
+  it('direction φ = 30° in Ground space', () => {
+    const spec = specOf('s');
+    const rt = makeRt(0, 0, 30, spec);
+    for (let i = 0; i < 5; i++) advanceLinear(rt, spec);
+    expect(rt.x).toBeCloseTo(50 * Math.cos(Math.PI / 6), 9);
+    expect(rt.y).toBeCloseTo(50 * Math.sin(Math.PI / 6), 9);
+  });
+
+  it('acceleration is clamped at maxSpeed (2 → 5 → 8 → 10 → 10)', () => {
+    const spec = specOf('acc', { motion: { speed: 2, accel: 3, maxSpeed: 10 } });
+    const rt = makeRt(0, 0, 0, spec);
+    const speeds: number[] = [];
+    const travelled: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      advanceLinear(rt, spec);
+      speeds.push(rt.speed);
+      travelled.push(rt.travelled);
+    }
+    expect(speeds).toEqual([5, 8, 10, 10]);
+    expect(travelled).toEqual([5, 13, 23, 33]);
+  });
+
+  it('deceleration bottoms out at 0 and the missile stops (10 → 6 → 2 → 0 → 0)', () => {
+    const spec = specOf('dec', { motion: { speed: 10, accel: -4, maxSpeed: 10 } });
+    const rt = makeRt(0, 0, 0, spec);
+    const speeds: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      advanceLinear(rt, spec);
+      speeds.push(rt.speed);
+    }
+    expect(speeds).toEqual([6, 2, 0, 0]);
+    expect(rt.travelled).toBe(8);
+    expect(rt.x).toBeCloseTo(8, 9);
+  });
+
+  it('range clamps the last step exactly onto the range end', () => {
+    const spec = specOf('rng', { lifetime: { maxLifeTicks: 100, rangePx: 25 } });
+    const rt = makeRt(0, 0, 0, spec);
+    expect(advanceLinear(rt, spec)).toBe(StepOutcome.CONTINUE);
+    expect(advanceLinear(rt, spec)).toBe(StepOutcome.CONTINUE);
+    expect(advanceLinear(rt, spec)).toBe(StepOutcome.RANGE);
+    expect(rt.x).toBe(25);
+    expect(rt.travelled).toBe(25);
+  });
+
+  it('reaching the range exactly (not overshooting) also reports RANGE', () => {
+    const spec = specOf('rng', { lifetime: { maxLifeTicks: 100, rangePx: 20 } });
+    const rt = makeRt(0, 0, 0, spec);
+    advanceLinear(rt, spec);
+    expect(advanceLinear(rt, spec)).toBe(StepOutcome.RANGE);
+    expect(rt.x).toBe(20);
+  });
+
+  it.each([0, 30, 45, 60, 90, 135, 200, 300])(
+    'φ = %i°: Ground motion maps to the 2:1 screen (Δsy/Δsx = 0.5·tanφ) and round-trips through screenToPhi',
+    (phi) => {
+      const spec = specOf('geo');
+      const rt = makeRt(0, 0, phi, spec);
+      for (let i = 0; i < 4; i++) advanceLinear(rt, spec);
+      const s = { x: 0, y: 0 };
+      groundToScreenInto(rt.x, rt.y, s);
+
+      const c = Math.cos((phi * Math.PI) / 180);
+      if (Math.abs(c) > 1e-6) {
+        expect(s.y / s.x).toBeCloseTo(0.5 * Math.tan((phi * Math.PI) / 180), 9);
+      }
+      expect(angularDistance(screenToPhi(s.x, s.y), phi)).toBeLessThan(1e-9);
+
+      // 與 geometry.ts 的單 tick 螢幕速度一致
+      const one = makeRt(0, 0, phi, spec);
+      advanceLinear(one, spec);
+      const v = phiToScreenVelocity(phi, 10);
+      expect(one.x).toBeCloseTo(v.vx, 9);
+      expect(one.y * 0.5).toBeCloseTo(v.vy, 9);
+    },
+  );
+
+  it('F01 update is exactly advanceLinear', () => {
+    const spec = specOf('s');
+    const env = createBehaviorEnv(new TargetRegistry(), 2);
+    const a = makeRt(3, 4, 77, spec);
+    const b = makeRt(3, 4, 77, spec);
+    F01_STRAIGHT.init(a, spec, env);
+    expect(F01_STRAIGHT.update(a, spec, env)).toBe(advanceLinear(b, spec));
+    expect(a).toEqual(b);
+  });
+});
+
+// ───────────────────────── F02 追蹤 ─────────────────────────
+
+function homingSpec(patch: Partial<F02Params> = {}, id = 'homing'): MissileSpec {
+  const behavior: F02Params = {
+    family: 'F02',
+    turnRateDegPerTick: 10,
+    acquireRadiusPx: 300,
+    reacquire: true,
+    fallback: 'straight',
+    ...patch,
+  };
+  return specOf(id, { motion: { speed: 5, accel: 0, maxSpeed: 5 }, behavior });
+}
+
+describe('F02 homing', () => {
+  it('turns at most turnRate per tick', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    const spec = homingSpec();
+    const target = reg.createPoint(0, 100); // 正下方,φ = 90
+    const rt = makeRt(0, 0, 0, spec);
+    rt.targetId = target.id;
+    F02_HOMING.init(rt, spec, env);
+    expect(rt.targetId).toBe(target.id); // 明確目標被沿用
+
+    F02_HOMING.update(rt, spec, env);
+    expect(rt.phi).toBeCloseTo(10, 9);
+    F02_HOMING.update(rt, spec, env);
+    expect(rt.phi).toBeGreaterThan(10);
+    expect(rt.phi).toBeLessThanOrEqual(20 + 1e-9);
+  });
+
+  it('takes the shortest arc across the 0°/360° seam (both directions)', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    const spec = homingSpec();
+    const rad = (d: number) => (d * Math.PI) / 180;
+
+    const t1 = reg.createPoint(100 * Math.cos(rad(10)), 100 * Math.sin(rad(10)));
+    const a = makeRt(0, 0, 350, spec);
+    a.targetId = t1.id;
+    F02_HOMING.update(a, spec, env);
+    expect(angularDistance(a.phi, 0)).toBeLessThan(1e-9); // 350 + 10 = 360 → 0
+
+    const t2 = reg.createPoint(100 * Math.cos(rad(350)), 100 * Math.sin(rad(350)));
+    const b = makeRt(0, 0, 10, spec);
+    b.targetId = t2.id;
+    F02_HOMING.update(b, spec, env);
+    expect(angularDistance(b.phi, 0)).toBeLessThan(1e-9); // 10 − 10 = 0
+  });
+
+  it('converges on a stationary target', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const spec = homingSpec({ turnRateDegPerTick: 12 });
+    const target = reg.createUnit(makeUnit(100, 100));
+    const rt = makeRt(0, 0, 0, spec);
+    rt.targetId = target.id;
+    let minD = Infinity;
+    for (let i = 0; i < 100; i++) {
+      F02_HOMING.update(rt, spec, env);
+      minD = Math.min(minD, Math.hypot(rt.x - 100, rt.y - 100));
+    }
+    expect(minD).toBeLessThan(6);
+  });
+
+  it('init acquires the nearest living unit of the hit team inside the acquire radius', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const spec = homingSpec({ acquireRadiusPx: 100 });
+    const near = reg.createUnit(makeUnit(50, 0, 1));
+    reg.createUnit(makeUnit(10, 0, 2)); // 敵我陣營不符
+    reg.createUnit(makeUnit(200, 0, 1)); // 半徑外
+    const rt = makeRt(0, 0, 0, spec);
+    F02_HOMING.init(rt, spec, env);
+    expect(rt.targetId).toBe(near.id);
+  });
+
+  it('init leaves NO_TARGET when nobody is in range', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const spec = homingSpec({ acquireRadiusPx: 50 });
+    reg.createUnit(makeUnit(200, 0, 1));
+    const rt = makeRt(0, 0, 0, spec);
+    F02_HOMING.init(rt, spec, env);
+    expect(rt.targetId).toBe(NO_TARGET);
+  });
+
+  it("target lost + reacquire=false + fallback 'straight': keeps heading and flies on", () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const spec = homingSpec({ reacquire: false });
+    const u = makeUnit(0, 100);
+    const t = reg.createUnit(u);
+    const rt = makeRt(0, 0, 0, spec);
+    rt.targetId = t.id;
+    F02_HOMING.update(rt, spec, env);
+    const phiAfterTurn = rt.phi;
+
+    u.alive = false;
+    const x0 = rt.x;
+    const y0 = rt.y;
+    expect(F02_HOMING.update(rt, spec, env)).toBe(StepOutcome.CONTINUE);
+    expect(rt.targetId).toBe(NO_TARGET);
+    expect(rt.phi).toBe(phiAfterTurn);
+    expect(Math.hypot(rt.x - x0, rt.y - y0)).toBeCloseTo(5, 9);
+  });
+
+  it("fallback 'expire' returns EXPIRE and does not move", () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const spec = homingSpec({ reacquire: false, fallback: 'expire' });
+    const rt = makeRt(7, 8, 33, spec);
+    expect(F02_HOMING.update(rt, spec, env)).toBe(StepOutcome.EXPIRE);
+    expect(rt.x).toBe(7);
+    expect(rt.y).toBe(8);
+  });
+
+  it('reacquire=true picks a new target when the old one dies; reacquire=false does not', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    env.team = 1;
+    const u1 = makeUnit(60, 0);
+    const t1 = reg.createUnit(u1);
+    const t2 = reg.createUnit(makeUnit(0, 80));
+
+    const on = homingSpec({ reacquire: true });
+    const a = makeRt(0, 0, 0, on);
+    a.targetId = t1.id;
+    u1.alive = false;
+    F02_HOMING.update(a, on, env);
+    expect(a.targetId).toBe(t2.id);
+
+    u1.alive = true;
+    const off = homingSpec({ reacquire: false });
+    const b = makeRt(0, 0, 0, off);
+    b.targetId = t1.id;
+    u1.alive = false;
+    F02_HOMING.update(b, off, env);
+    expect(b.targetId).toBe(NO_TARGET);
+  });
+
+  it('refuses to run with a spec of another family', () => {
+    const env = createBehaviorEnv(new TargetRegistry(), 2);
+    const spec = specOf('s');
+    expect(() => F02_HOMING.update(makeRt(0, 0, 0, spec), spec, env)).toThrow();
+  });
+});
+
+// ───────────────────────── F04 隨機折線 ─────────────────────────
+
+function zigzagSpec(patch: Partial<F04Params> = {}): MissileSpec {
+  const behavior: F04Params = { family: 'F04', stepJitterDeg: 30, retargetEveryTicks: 3, ...patch };
+  return specOf('zig', { motion: { speed: 4, accel: 0, maxSpeed: 4 }, behavior });
+}
+
+/** 與管理器相同的呼叫方式:update 之前 ageTicks = k,之後 +1。 */
+function runZigzag(spec: MissileSpec, seed: number, ticks: number, phi0 = 40) {
+  const env = createBehaviorEnv(new TargetRegistry(), 2);
+  const rt = makeRt(0, 0, phi0, spec, seed);
+  F04_ZIGZAG.init(rt, spec, env);
+  const phis: number[] = [];
+  const xs: number[] = [];
+  for (let k = 0; k < ticks; k++) {
+    rt.ageTicks = k;
+    F04_ZIGZAG.update(rt, spec, env);
+    phis.push(rt.phi);
+    xs.push(rt.x, rt.y);
+  }
+  return { rt, phis, xs };
+}
+
+describe('F04 zigzag', () => {
+  it('direction only changes on retarget ticks and stays within ±jitter of the base', () => {
+    const spec = zigzagSpec({ stepJitterDeg: 30, retargetEveryTicks: 3 });
+    const { phis } = runZigzag(spec, deriveSeed(1, 1), 60, 40);
+    for (let k = 0; k < phis.length; k++) {
+      if (k % 3 !== 0) expect(phis[k]).toBe(phis[k - 1]);
+      expect(angularDistance(phis[k]!, 40)).toBeLessThanOrEqual(30 + 1e-9);
+    }
+    expect(new Set(phis).size).toBeGreaterThan(5);
+  });
+
+  it('is deterministic for the same seed and differs between seeds', () => {
+    const spec = zigzagSpec();
+    const a = runZigzag(spec, 12345, 80);
+    const b = runZigzag(spec, 12345, 80);
+    const c = runZigzag(spec, 54321, 80);
+    expect(a.xs).toEqual(b.xs);
+    expect(a.rt.rngState).toBe(b.rt.rngState);
+    expect(a.xs).not.toEqual(c.xs);
+  });
+
+  it('consumes exactly one random number per retarget', () => {
+    const spec = zigzagSpec({ retargetEveryTicks: 4 });
+    const seed = 777;
+    const { rt } = runZigzag(spec, seed, 20); // k = 0,4,8,12,16 → 5 次
+    let s = seed;
+    for (let i = 0; i < 5; i++) s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    expect(rt.rngState).toBe(s);
+  });
+
+  it('jitter is unbiased and spans both signs (3000 retargets)', () => {
+    const spec = zigzagSpec({ stepJitterDeg: 30, retargetEveryTicks: 1 });
+    const { phis } = runZigzag(spec, deriveSeed(9, 9), 3000, 100);
+    let sum = 0;
+    let neg = 0;
+    let pos = 0;
+    for (const p of phis) {
+      let d = p - 100;
+      if (d > 180) d -= 360;
+      if (d < -180) d += 360;
+      sum += d;
+      if (d < 0) neg++;
+      if (d > 0) pos++;
+      expect(Math.abs(d)).toBeLessThanOrEqual(30 + 1e-9);
+    }
+    expect(Math.abs(sum / phis.length)).toBeLessThan(2);
+    expect(neg).toBeGreaterThan(1000);
+    expect(pos).toBeGreaterThan(1000);
+  });
+
+  it('zero jitter and no target is a straight line along the spawn direction', () => {
+    const spec = zigzagSpec({ stepJitterDeg: 0, retargetEveryTicks: 1 });
+    const { rt } = runZigzag(spec, 5, 10, 25);
+    expect(angularDistance(rt.phi, 25)).toBeLessThan(1e-9);
+    expect(rt.x).toBeCloseTo(40 * Math.cos((25 * Math.PI) / 180), 9);
+    expect(rt.y).toBeCloseTo(40 * Math.sin((25 * Math.PI) / 180), 9);
+  });
+
+  it('with a live target the base direction is the bearing to it', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    const target = reg.createPoint(0, 100);
+
+    const exact = zigzagSpec({ stepJitterDeg: 0, retargetEveryTicks: 1 });
+    const a = makeRt(0, 0, 0, exact, 3);
+    a.targetId = target.id;
+    F04_ZIGZAG.init(a, exact, env);
+    F04_ZIGZAG.update(a, exact, env);
+    expect(a.phi).toBeCloseTo(90, 9);
+
+    const loose = zigzagSpec({ stepJitterDeg: 10, retargetEveryTicks: 1 });
+    for (let seed = 1; seed <= 20; seed++) {
+      const rt = makeRt(0, 0, 0, loose, seed);
+      rt.targetId = target.id;
+      F04_ZIGZAG.init(rt, loose, env);
+      F04_ZIGZAG.update(rt, loose, env);
+      expect(angularDistance(rt.phi, 90)).toBeLessThanOrEqual(10 + 1e-9);
+    }
+  });
+
+  it('a dead target is dropped and the last base direction is kept', () => {
+    const reg = new TargetRegistry();
+    const env = createBehaviorEnv(reg, 2);
+    const u = makeUnit(0, 100);
+    const t = reg.createUnit(u);
+    const spec = zigzagSpec({ stepJitterDeg: 0, retargetEveryTicks: 1 });
+    const rt = makeRt(0, 0, 0, spec, 3);
+    rt.targetId = t.id;
+    F04_ZIGZAG.init(rt, spec, env);
+    F04_ZIGZAG.update(rt, spec, env);
+    expect(rt.phi).toBeCloseTo(90, 9);
+    u.alive = false;
+    F04_ZIGZAG.update(rt, spec, env);
+    expect(rt.targetId).toBe(NO_TARGET);
+    expect(rt.phi).toBeCloseTo(90, 9);
+  });
+});
+
+// ───────────────────────── 環境與註冊表 ─────────────────────────
+
+describe('behavior env and registry', () => {
+  it('state is per-slot and clearBehaviorState only clears that slot', () => {
+    const env = createBehaviorEnv(new TargetRegistry(), 3);
+    expect(env.state.length).toBe(3 * STATE_STRIDE);
+    env.state.fill(7);
+    clearBehaviorState(env, 1);
+    for (let i = 0; i < env.state.length; i++) {
+      const inSlot1 = i >= STATE_STRIDE && i < 2 * STATE_STRIDE;
+      expect(env.state[i]).toBe(inSlot1 ? 0 : 7);
+    }
+  });
+
+  it('default registry has F01/F02/F04 and rejects duplicate registration', () => {
+    const reg = createDefaultBehaviors();
+    expect(reg.has('F01')).toBe(true);
+    expect(reg.has('F02')).toBe(true);
+    expect(reg.has('F04')).toBe(true);
+    expect(reg.has('F03')).toBe(false);
+    expect(() => reg.register(F01_STRAIGHT)).toThrow();
+    expect(new BehaviorRegistry().get('F01')).toBeUndefined();
+  });
+});
+```
+
+---
+
+## src/manager.test.ts
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { BehaviorRegistry } from './behaviors.js';
+import { phiToScreenVelocity } from './geometry.js';
+import { HIT_MEMORY, MissileManager, NO_TEAM, type MissileManagerOptions } from './manager.js';
+import {
+  MissileState,
+  UNLIMITED_PIERCE,
+  type F02Params,
+  type F04Params,
+  type MissileHooks,
+  type MissileRuntime,
+  type MissileSpec,
+} from './missile-types.js';
+import { NO_HANDLE } from './pool.js';
+import { Lcg } from './rng.js';
+import { NO_TARGET, TargetRegistry, groundToScreenInto } from './targets.js';
+import { makeUnit, specOf } from './testkit.js';
+
+declare const performance: { now(): number };
+declare const console: { log(...args: unknown[]): void };
+
+function setup(specs: MissileSpec[], opts: Partial<MissileManagerOptions> = {}) {
+  const targets = opts.targets ?? new TargetRegistry();
+  const log: string[] = [];
+  const logging: MissileHooks = {
+    onSpawn: (_rt, s) => {
+      log.push(`spawn:${s.id}`);
+    },
+    onActivate: (_rt, s) => {
+      log.push(`activate:${s.id}`);
+    },
+    onHit: (_rt, s, t) => {
+      log.push(`hit:${s.id}:${t}`);
+    },
+    onExpire: (rt, s, r) => {
+      log.push(`expire:${s.id}:${r}:${rt.x}`);
+    },
+    onExplode: (_rt, s) => {
+      log.push(`explode:${s.id}`);
+    },
+    onDead: (_rt, s) => {
+      log.push(`dead:${s.id}`);
+    },
+  };
+  const hooks = opts.hooks === undefined ? logging : opts.hooks;
+  const mgr = new MissileManager({ ...opts, specs, targets, hooks });
+  return { mgr, targets, log };
+}
+
+function stepN(mgr: MissileManager, n: number): void {
+  for (let i = 0; i < n; i++) mgr.step();
+}
+
+// ───────────────────────── 建構驗證 ─────────────────────────
+
+describe('construction', () => {
+  it('rejects an invalid spec and names it in the message', () => {
+    const bad = specOf('broken', { motion: { speed: -1, accel: 0, maxSpeed: 5 } });
+    expect(() => setup([bad])).toThrow(/broken/);
+  });
+
+  it('rejects duplicate spec ids', () => {
+    expect(() => setup([specOf('a'), specOf('a')])).toThrow(/duplicate/);
+  });
+
+  it('rejects a missing child spec and spawn cycles (including self-reference)', () => {
+    const boom = (child: string) =>
+      specOf('boom', {
+        explosion: { durationTicks: 1, onHit: true, onExpire: true, spawnMissileId: child },
+      });
+    expect(() => setup([boom('nope')])).toThrow(/does not exist/);
+    expect(() => setup([boom('boom')])).toThrow(/cycle/);
+
+    const a = specOf('a', { explosion: { durationTicks: 1, onHit: true, onExpire: true, spawnMissileId: 'b' } });
+    const b = specOf('b', { explosion: { durationTicks: 1, onHit: true, onExpire: true, spawnMissileId: 'a' } });
+    expect(() => setup([a, b])).toThrow(/cycle/);
+  });
+
+  it('rejects specs whose family has no registered behavior', () => {
+    expect(() => setup([specOf('a')], { behaviors: new BehaviorRegistry() })).toThrow(/no behavior/);
+  });
+
+  it('rejects an invalid capacity', () => {
+    expect(() => setup([specOf('a')], { capacity: 0 })).toThrow(RangeError);
+  });
+
+  it('spawn validates its arguments', () => {
+    const { mgr } = setup([specOf('a')]);
+    expect(() => mgr.spawn(5, 0, 0, 0)).toThrow(RangeError);
+    expect(() => mgr.spawn(-1, 0, 0, 0)).toThrow(RangeError);
+    expect(() => mgr.spawn(0, NaN, 0, 0)).toThrow(RangeError);
+    expect(() => mgr.spawn(0, 0, 0, Infinity)).toThrow(RangeError);
+    expect(() => mgr.spawn(0, 0, 0, 0, 40000)).toThrow(RangeError);
+    expect(() => mgr.spawn(0, 0, 0, 0, 1.5)).toThrow(RangeError);
+    expect(() => mgr.spawnById('zzz', 0, 0, 0)).toThrow(RangeError);
+    expect(mgr.specIndexOf('a')).toBe(0);
+    expect(mgr.specIndexOf('zzz')).toBe(-1);
+  });
+});
+
+// ───────────────────────── 生成、啟用、幾何 ─────────────────────────
+
+describe('spawn and activation', () => {
+  it('spawn creates an INIT record without moving; the first step activates and moves', () => {
+    const { mgr, log } = setup([specOf('bone')]);
+    const h = mgr.spawn(0, 100, 50, 0);
+    const rt = mgr.pool.get(h)!;
+    expect(rt.state).toBe(MissileState.INIT);
+    expect(rt.teleported).toBe(true);
+    expect(rt.prevX).toBe(100);
+    expect(rt.prevY).toBe(50);
+    expect(log).toEqual(['spawn:bone']);
+
+    mgr.step();
+    expect(rt.state).toBe(MissileState.ACTIVE);
+    expect(rt.x).toBe(110);
+    expect(rt.prevX).toBe(100);
+    expect(rt.teleported).toBe(false);
+    expect(rt.ageTicks).toBe(1);
+    expect(log).toEqual(['spawn:bone', 'activate:bone']);
+  });
+
+  it('flight follows Ground φ and matches the 2:1 screen velocity from geometry.ts', () => {
+    const { mgr } = setup([specOf('bone')]);
+    const h = mgr.spawn(0, 0, 0, 60);
+    const rt = mgr.pool.get(h)!;
+    mgr.step();
+    const v = phiToScreenVelocity(60, 10);
+    expect(rt.x - rt.prevX).toBeCloseTo(v.vx, 9);
+    expect((rt.y - rt.prevY) * 0.5).toBeCloseTo(v.vy, 9);
+
+    stepN(mgr, 5); // 共 6 步
+    expect(rt.x).toBeCloseTo(60 * Math.cos(Math.PI / 3), 9);
+    expect(rt.y).toBeCloseTo(60 * Math.sin(Math.PI / 3), 9);
+    const s = { x: 0, y: 0 };
+    groundToScreenInto(rt.x, rt.y, s);
+    expect(s.y / s.x).toBeCloseTo(0.5 * Math.tan(Math.PI / 3), 9);
+  });
+
+  it('missiles spawned inside a hook activate on the following tick, regardless of slot order', () => {
+    const log: string[] = [];
+    let mgr: MissileManager | undefined;
+    const hooks: MissileHooks = {
+      onActivate: (rt, s) => {
+        log.push(`activate:${s.id}@${mgr!.tickCount}`);
+        if (s.id === 'parent') mgr!.spawn(1, rt.x, rt.y, 0);
+      },
+    };
+    ({ mgr } = setup([specOf('parent'), specOf('child')], { hooks }));
+    mgr.spawn(0, 0, 0, 0);
+    mgr.step(); // tick 1:parent 啟用並生成 child(槽位 1,在迴圈後面)
+    expect(log).toEqual(['activate:parent@1']);
+    expect(mgr.pool.at(1).state).toBe(MissileState.INIT);
+    mgr.step(); // tick 2:child 啟用
+    expect(log).toEqual(['activate:parent@1', 'activate:child@2']);
+  });
+});
+
+// ───────────────────────── 生命週期 ─────────────────────────
+
+describe('lifetime and range', () => {
+  it('dies exactly when ageTicks reaches maxLifeTicks (LIFETIME reason)', () => {
+    const { mgr, log } = setup([specOf('bone', { lifetime: { maxLifeTicks: 5, rangePx: null } })]);
+    const h = mgr.spawn(0, 0, 0, 0);
+    stepN(mgr, 4);
+    expect(mgr.isAlive(h)).toBe(true);
+    mgr.step();
+    expect(mgr.isAlive(h)).toBe(false);
+    expect(mgr.pool.get(h)).toBeNull();
+    expect(mgr.liveCount).toBe(0);
+    expect(log.slice(-2)).toEqual(['expire:bone:0:50', 'dead:bone']);
+  });
+
+  it('range expiry stops exactly at the range end (RANGE reason)', () => {
+    const spec = specOf('bone', { lifetime: { maxLifeTicks: 100, rangePx: 25 } });
+    const { mgr, log } = setup([spec]);
+    const h = mgr.spawn(0, 0, 0, 0);
+    stepN(mgr, 2);
+    expect(mgr.isAlive(h)).toBe(true);
+    mgr.step();
+    expect(mgr.isAlive(h)).toBe(false);
+    expect(log.slice(-2)).toEqual(['expire:bone:1:25', 'dead:bone']);
+  });
+});
+
+// ───────────────────────── 碰撞與穿透 ─────────────────────────
+
+describe('collision and pierce', () => {
+  it('pierce = 1 passes the first target and stops on the second', () => {
+    const spec = specOf('bone', {
+      lifetime: { maxLifeTicks: 30, rangePx: null },
+      collision: { radiusPx: 8, pierce: 1 },
+    });
+    const { mgr, targets, log } = setup([spec]);
+    const a = targets.createUnit(makeUnit(50, 0));
+    const b = targets.createUnit(makeUnit(100, 0));
+    targets.createUnit(makeUnit(150, 0));
+    const h = mgr.spawn(0, 0, 0, 0, 1);
+
+    let steps = 0;
+    while (mgr.isAlive(h) && steps < 30) {
+      mgr.step();
+      steps++;
+    }
+    expect(steps).toBe(10); // x = 100 時命中第二個
+    expect(log.filter((l) => l.startsWith('hit:'))).toEqual([`hit:bone:${a.id}`, `hit:bone:${b.id}`]);
+  });
+
+  it('unlimited pierce hits every target exactly once, even while overlapping for several ticks', () => {
+    const spec = specOf('spear', {
+      motion: { speed: 3, accel: 0, maxSpeed: 3 },
+      lifetime: { maxLifeTicks: 60, rangePx: null },
+      collision: { radiusPx: 8, pierce: UNLIMITED_PIERCE },
+    });
+    const { mgr, targets, log } = setup([spec]);
+    const ids = [30, 60, 90].map((x) => targets.createUnit(makeUnit(x, 0)).id);
+    const h = mgr.spawn(0, 0, 0, 0, 1);
+    stepN(mgr, 59);
+    expect(mgr.isAlive(h)).toBe(true);
+    expect(mgr.pool.get(h)!.hitCount).toBe(3);
+    mgr.step();
+    expect(mgr.isAlive(h)).toBe(false);
+    expect(log.filter((l) => l.startsWith('hit:'))).toEqual(ids.map((id) => `hit:spear:${id}`));
+    expect(mgr.stats.hits).toBe(3);
+  });
+
+  it('several targets in the same tick are hit nearest-first, ties by smaller id', () => {
+    const spec = specOf('spear', {
+      lifetime: { maxLifeTicks: 8, rangePx: null },
+      collision: { radiusPx: 8, pierce: UNLIMITED_PIERCE },
+    });
+    const { mgr, targets, log } = setup([spec]);
+    const far = targets.createUnit(makeUnit(50, 6));
+    const n1 = targets.createUnit(makeUnit(50, 3));
+    const n2 = targets.createUnit(makeUnit(50, -3));
+    mgr.spawn(0, 0, 0, 0, 1);
+    stepN(mgr, 5);
+    expect(log.filter((l) => l.startsWith('hit:'))).toEqual([
+      `hit:spear:${n1.id}`,
+      `hit:spear:${n2.id}`,
+      `hit:spear:${far.id}`,
+    ]);
+  });
+
+  it('team filter, NO_TEAM and dead units never produce hits', () => {
+    const spec = specOf('bone', { lifetime: { maxLifeTicks: 8, rangePx: null } });
+    const { mgr, targets, log } = setup([spec]);
+    targets.createUnit(makeUnit(50, 0, 2));
+    targets.createUnit(makeUnit(50, 0, 1, false));
+    mgr.spawn(0, 0, 0, 0, 1); // 陣營 1:只有一個死亡單位、一個陣營 2 的單位
+    mgr.spawn(0, 0, 0, 0, NO_TEAM); // 不碰撞
+    stepN(mgr, 8);
+    expect(log.some((l) => l.startsWith('hit:'))).toBe(false);
+  });
+
+  it('a hook that kills the missile on hit stops further processing (single hit, single dead)', () => {
+    const spec = specOf('spear', {
+      lifetime: { maxLifeTicks: 10, rangePx: null },
+      collision: { radiusPx: 8, pierce: UNLIMITED_PIERCE },
+    });
+    const log: string[] = [];
+    let mgr: MissileManager | undefined;
+    const hooks: MissileHooks = {
+      onHit: (rt) => {
+        log.push('hit');
+        mgr!.kill(mgr!.pool.handleOf(rt));
+      },
+      onDead: () => {
+        log.push('dead');
+      },
+    };
+    const s = setup([spec], { hooks });
+    mgr = s.mgr;
+    s.targets.createUnit(makeUnit(50, 3));
+    s.targets.createUnit(makeUnit(50, -3));
+    mgr.spawn(0, 0, 0, 0, 1);
+    stepN(mgr, 6);
+    expect(log).toEqual(['hit', 'dead']);
+    expect(mgr.liveCount).toBe(0);
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+});
+
+// ───────────────────────── 爆裂 ─────────────────────────
+
+describe('explosion', () => {
+  const fireball = (patch: Partial<MissileSpec['explosion'] & object> = {}) =>
+    specOf('fire', {
+      blend: 'additive',
+      lifetime: { maxLifeTicks: 40, rangePx: null },
+      collision: { radiusPx: 8, pierce: 0 },
+      explosion: { durationTicks: 3, onHit: true, onExpire: false, spawnMissileId: null, ...patch },
+    });
+
+  it('hit → EXPLODING for durationTicks ticks → DEAD (hook order HIT, EXPLODE, DEAD)', () => {
+    const { mgr, targets, log } = setup([fireball()]);
+    const u = targets.createUnit(makeUnit(50, 0));
+    const h = mgr.spawn(0, 0, 0, 0, 1);
+
+    stepN(mgr, 4);
+    expect(mgr.pool.get(h)!.state).toBe(MissileState.ACTIVE);
+    mgr.step(); // 第 5 步:x = 50,命中
+    const rt = mgr.pool.get(h)!;
+    expect(rt.state).toBe(MissileState.EXPLODING);
+    expect(rt.explodeTicksLeft).toBe(3);
+    expect(rt.speed).toBe(0);
+    expect(log).toEqual(['spawn:fire', 'activate:fire', `hit:fire:${u.id}`, 'explode:fire']);
+
+    mgr.step(); // left 2
+    expect(rt.state).toBe(MissileState.EXPLODING);
+    expect(rt.x).toBe(50);
+    expect(rt.prevX).toBe(50); // 爆裂中靜止,不再插值
+    mgr.step(); // left 1
+    expect(mgr.isAlive(h)).toBe(true);
+    mgr.step(); // left 0 → DEAD
+    expect(mgr.isAlive(h)).toBe(false);
+    expect(log[log.length - 1]).toBe('dead:fire');
+    expect(mgr.liveCount).toBe(0);
+  });
+
+  it('durationTicks = 0 recycles immediately (EXPLODE then DEAD in the same step)', () => {
+    const { mgr, targets, log } = setup([fireball({ durationTicks: 0 })]);
+    const u = targets.createUnit(makeUnit(50, 0));
+    mgr.spawn(0, 0, 0, 0, 1);
+    stepN(mgr, 5);
+    expect(log.slice(-3)).toEqual([`hit:fire:${u.id}`, 'explode:fire', 'dead:fire']);
+    expect(mgr.liveCount).toBe(0);
+  });
+
+  it('onExpire explosion: EXPIRE then EXPLODE, then DEAD after the duration', () => {
+    const spec = specOf('pop', {
+      lifetime: { maxLifeTicks: 3, rangePx: null },
+      explosion: { durationTicks: 2, onHit: false, onExpire: true, spawnMissileId: null },
+    });
+    const { mgr, log } = setup([spec]);
+    const h = mgr.spawn(0, 0, 0, 0);
+    stepN(mgr, 3);
+    expect(log.slice(-2)).toEqual(['expire:pop:0:30', 'explode:pop']);
+    expect(mgr.pool.get(h)!.state).toBe(MissileState.EXPLODING);
+    mgr.step();
+    expect(mgr.isAlive(h)).toBe(true);
+    mgr.step();
+    expect(mgr.isAlive(h)).toBe(false);
+  });
+
+  it('spawns the child missile at the explosion point, inheriting direction and team', () => {
+    const frost = specOf('frost', {
+      collision: { radiusPx: 8, pierce: 0 },
+      explosion: { durationTicks: 2, onHit: true, onExpire: false, spawnMissileId: 'shard' },
+    });
+    const shard = specOf('shard', {
+      motion: { speed: 6, accel: 0, maxSpeed: 6 },
+      lifetime: { maxLifeTicks: 4, rangePx: null },
+    });
+    const { mgr, targets, log } = setup([frost, shard]);
+    const u = makeUnit(50, 0);
+    targets.createUnit(u);
+    mgr.spawn(0, 0, 0, 0, 1);
+    stepN(mgr, 5);
+
+    expect(mgr.liveCount).toBe(2);
+    const child = mgr.pool.at(1);
+    expect(child.state).toBe(MissileState.INIT);
+    expect(child.x).toBe(50);
+    expect(child.phi).toBe(0);
+    expect(child.teleported).toBe(true);
+    expect(log.slice(-2)).toEqual(['explode:frost', 'spawn:shard']);
+
+    u.alive = false; // 避免子彈立刻命中同一個單位
+    mgr.step();
+    expect(child.state).toBe(MissileState.ACTIVE);
+    expect(child.x).toBe(56);
+    expect(mgr.stats.spawned).toBe(2);
+  });
+});
+
+// ───────────────────────── 耗盡、handle、清除 ─────────────────────────
+
+describe('capacity, handles and clearing', () => {
+  const longLived = specOf('long', { lifetime: { maxLifeTicks: 100, rangePx: null } });
+
+  it("'reject' returns NO_HANDLE and counts it", () => {
+    const { mgr } = setup([longLived], { capacity: 4 });
+    const hs = Array.from({ length: 6 }, () => mgr.spawn(0, 0, 0, 0));
+    expect(hs.slice(0, 4).every((h) => h !== NO_HANDLE)).toBe(true);
+    expect(hs.slice(4)).toEqual([NO_HANDLE, NO_HANDLE]);
+    expect(mgr.stats.rejected).toBe(2);
+    expect(mgr.pool.exhaustedCount).toBe(2);
+    expect(mgr.stats.spawned).toBe(4);
+  });
+
+  it("'evict-oldest' recycles the longest-lived missile and notifies DEAD", () => {
+    const { mgr, log } = setup([longLived], { capacity: 3, onExhausted: 'evict-oldest' });
+    const h0 = mgr.spawn(0, 0, 0, 0);
+    mgr.step();
+    const h1 = mgr.spawn(0, 0, 0, 0);
+    mgr.step();
+    const h2 = mgr.spawn(0, 0, 0, 0); // 年齡:h0 = 2,h1 = 1,h2 = 0
+    const h3 = mgr.spawn(0, 0, 0, 0);
+
+    expect(h3).not.toBe(NO_HANDLE);
+    expect(mgr.pool.get(h0)).toBeNull();
+    expect(mgr.isAlive(h1)).toBe(true);
+    expect(mgr.isAlive(h2)).toBe(true);
+    expect(mgr.isAlive(h3)).toBe(true);
+    expect(mgr.stats.evicted).toBe(1);
+    expect(log.filter((l) => l === 'dead:long')).toHaveLength(1);
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+
+  it('kill is idempotent and stale handles never hit a reused slot', () => {
+    const { mgr } = setup([longLived], { capacity: 2 });
+    const h = mgr.spawn(0, 0, 0, 0);
+    expect(mgr.kill(h)).toBe(true);
+    expect(mgr.kill(h)).toBe(false);
+    const h2 = mgr.spawn(0, 0, 0, 0);
+    expect(mgr.pool.get(h)).toBeNull();
+    expect(mgr.kill(h)).toBe(false);
+    expect(mgr.isAlive(h2)).toBe(true);
+  });
+
+  it('clearAll empties the pool without dispatching hooks', () => {
+    const { mgr, log } = setup([longLived], { capacity: 8 });
+    const h = mgr.spawn(0, 0, 0, 0);
+    mgr.spawn(0, 0, 0, 0);
+    mgr.step();
+    const before = log.length;
+    mgr.clearAll();
+    expect(mgr.liveCount).toBe(0);
+    expect(mgr.pool.get(h)).toBeNull();
+    expect(log.length).toBe(before);
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+});
+
+// ───────────────────────── 零洩漏 ─────────────────────────
+
+describe('10,000 launches leak nothing', () => {
+  it('spawn → step → recycle, 10,000 times, reusing a single record', () => {
+    const { mgr } = setup([specOf('blip', { lifetime: { maxLifeTicks: 1, rangePx: null } })], {
+      capacity: 64,
+      hooks: null,
+    });
+    const before = Array.from({ length: 64 }, (_, i) => mgr.pool.at(i));
+    for (let i = 0; i < 10_000; i++) {
+      expect(mgr.spawn(0, 0, 0, i % 360)).not.toBe(NO_HANDLE);
+      mgr.step();
+    }
+    expect(mgr.stats.spawned).toBe(10_000);
+    expect(mgr.stats.died).toBe(10_000);
+    expect(mgr.stats.rejected).toBe(0);
+    expect(mgr.liveCount).toBe(0);
+    expect(mgr.pool.at(0).generation).toBe(10_000);
+    expect(mgr.pool.highWater).toBe(1);
+    before.forEach((rt, i) => expect(mgr.pool.at(i)).toBe(rt));
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+
+  it('random churn with mixed lifetimes: every record returns, none is replaced', () => {
+    const specs = [1, 3, 6, 10].map((n) => specOf(`life${n}`, { lifetime: { maxLifeTicks: n, rangePx: null } }));
+    const { mgr } = setup(specs, { capacity: 256, hooks: null });
+    const before = Array.from({ length: 256 }, (_, i) => mgr.pool.at(i));
+    const rnd = new Lcg(5);
+
+    let launched = 0;
+    while (launched < 10_000) {
+      const n = rnd.nextInt(4);
+      for (let k = 0; k < n && launched < 10_000; k++) {
+        mgr.spawn(rnd.nextInt(4), 0, 0, rnd.nextRange(0, 360));
+        launched++;
+      }
+      mgr.step();
+    }
+    stepN(mgr, 20);
+
+    expect(mgr.stats.spawned).toBe(10_000);
+    expect(mgr.stats.rejected).toBe(0);
+    expect(mgr.stats.died).toBe(10_000);
+    expect(mgr.liveCount).toBe(0);
+    expect(before.reduce((s, r) => s + r.generation, 0)).toBe(10_000);
+    before.forEach((rt, i) => expect(mgr.pool.at(i)).toBe(rt));
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+
+  it('with explosions and child spawns the pool still drains completely', () => {
+    const parent = specOf('parent', {
+      lifetime: { maxLifeTicks: 3, rangePx: null },
+      explosion: { durationTicks: 2, onHit: false, onExpire: true, spawnMissileId: 'kid' },
+    });
+    const kid = specOf('kid', { lifetime: { maxLifeTicks: 2, rangePx: null } });
+    const { mgr } = setup([parent, kid], { capacity: 128, hooks: null });
+    for (let i = 0; i < 2000; i++) {
+      mgr.spawn(0, 0, 0, i % 360);
+      mgr.step();
+    }
+    stepN(mgr, 20);
+    expect(mgr.stats.spawned).toBe(4000);
+    expect(mgr.liveCount).toBe(0);
+    expect(mgr.pool.checkIntegrity()).toEqual([]);
+  });
+});
+
+// ───────────────────────── 確定性回放 ─────────────────────────
+
+describe('deterministic replay', () => {
+  function runScenario(worldSeed: number): { trace: number[]; hits: number } {
+    const charged: F04Params = { family: 'F04', stepJitterDeg: 40, retargetEveryTicks: 2 };
+    const spirit: F02Params = {
+      family: 'F02',
+      turnRateDegPerTick: 8,
+      acquireRadiusPx: 600,
+      reacquire: true,
+      fallback: 'straight',
+    };
+    const specs = [
+      specOf('charged', {
+        motion: { speed: 6, accel: 0, maxSpeed: 6 },
+        lifetime: { maxLifeTicks: 40, rangePx: null },
+        collision: { radiusPx: 10, pierce: 0 },
+        behavior: charged,
+      }),
+      specOf('spirit', {
+        motion: { speed: 6, accel: 0, maxSpeed: 6 },
+        lifetime: { maxLifeTicks: 60, rangePx: null },
+        collision: { radiusPx: 10, pierce: 0 },
+        behavior: spirit,
+      }),
+      specOf('spear', {
+        motion: { speed: 8, accel: 0, maxSpeed: 8 },
+        lifetime: { maxLifeTicks: 30, rangePx: null },
+        collision: { radiusPx: 10, pierce: UNLIMITED_PIERCE },
+      }),
+    ];
+    const targets = new TargetRegistry();
+    const units = Array.from({ length: 6 }, (_, i) => makeUnit(80 + i * 40, -100 + i * 60));
+    units.forEach((u) => targets.createUnit(u));
+    const mgr = new MissileManager({ specs, targets, worldSeed, capacity: 128 });
+
+    const trace: number[] = [];
+    for (let t = 0; t < 120; t++) {
+      units.forEach((u, i) => {
+        u.x += Math.cos(t * 0.1 + i);
+        u.y += Math.sin(t * 0.13 + i);
+      });
+      if (t % 4 === 0) {
+        mgr.spawn(0, 0, 0, (t * 37) % 360, 1);
+        mgr.spawn(1, 0, 0, (t * 53) % 360, 1);
+      }
+      if (t % 7 === 0) mgr.spawn(2, 0, 0, (t * 11) % 360, 1);
+      mgr.step();
+      for (let i = 0; i < mgr.pool.highWater; i++) {
+        const rt = mgr.pool.at(i);
+        if (rt.state !== MissileState.DEAD) {
+          trace.push(i, rt.state, rt.x, rt.y, rt.phi, rt.rngState, rt.hitCount, rt.targetId);
+        }
+      }
+    }
+    trace.push(mgr.stats.spawned, mgr.stats.hits, mgr.stats.died);
+    return { trace, hits: mgr.stats.hits };
+  }
+
+  it('same world seed → bit-identical trajectories (F01 + F02 + F04 mixed, with collisions)', () => {
+    const a = runScenario(7);
+    const b = runScenario(7);
+    expect(a.trace.length).toBeGreaterThan(1000);
+    expect(a.hits).toBeGreaterThan(0);
+    expect(a.trace).toEqual(b.trace);
+  });
+
+  it('a different world seed produces different zig-zag trajectories', () => {
+    expect(runScenario(7).trace).not.toEqual(runScenario(8).trace);
+  });
+
+  it('per-missile seeds depend only on (worldSeed, spawn order)', () => {
+    const spec = specOf('z', {
+      behavior: { family: 'F04', stepJitterDeg: 30, retargetEveryTicks: 1 },
+      lifetime: { maxLifeTicks: 50, rangePx: null },
+    });
+    const seeds = (): number[] => {
+      const { mgr } = setup([spec], { worldSeed: 99, hooks: null });
+      const hs = [mgr.spawn(0, 0, 0, 0), mgr.spawn(0, 0, 0, 0), mgr.spawn(0, 0, 0, 0)];
+      return hs.map((h) => mgr.pool.get(h)!.rngState);
+    };
+    const s = seeds();
+    expect(s).toEqual(seeds());
+    expect(new Set(s).size).toBe(3);
+  });
+});
+
+// ───────────────────────── 效能基準 ─────────────────────────
+
+describe('benchmark: 200 concurrent missiles', () => {
+  it('single-tick logic time (reports numbers; generous 4 ms median bound)', () => {
+    const charged: F04Params = { family: 'F04', stepJitterDeg: 60, retargetEveryTicks: 2 };
+    const spec = specOf('bolt', {
+      motion: { speed: 4, accel: 0, maxSpeed: 4 },
+      lifetime: { maxLifeTicks: 100_000, rangePx: null },
+      collision: { radiusPx: 10, pierce: UNLIMITED_PIERCE },
+      behavior: charged,
+    });
+    const targets = new TargetRegistry();
+    const rnd = new Lcg(2024);
+    for (let i = 0; i < 60; i++) {
+      targets.createUnit(makeUnit(rnd.nextRange(-300, 300), rnd.nextRange(-300, 300)));
+    }
+    const mgr = new MissileManager({ specs: [spec], targets, capacity: 256, worldSeed: 3 });
+    for (let i = 0; i < 200; i++) {
+      mgr.spawn(0, rnd.nextRange(-200, 200), rnd.nextRange(-200, 200), rnd.nextRange(0, 360), 1);
+    }
+    expect(mgr.liveCount).toBe(200);
+
+    for (let i = 0; i < 60; i++) mgr.step(); // 暖機
+
+    const samples: number[] = [];
+    for (let i = 0; i < 300; i++) {
+      const t0 = performance.now();
+      mgr.step();
+      samples.push(performance.now() - t0);
+    }
+    expect(mgr.liveCount).toBe(200);
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1]!;
+    const p95 = sorted[Math.floor(sorted.length * 0.95)]!;
+    const max = sorted[sorted.length - 1]!;
+    const mean = samples.reduce((s, v) => s + v, 0) / samples.length;
+    console.log(
+      `[bench] 200 missiles × 60 targets, 300 ticks: mean=${mean.toFixed(3)}ms median=${median.toFixed(3)}ms ` +
+        `p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms hits=${mgr.stats.hits} (tick budget 40ms)`,
+    );
+    expect(median).toBeLessThan(4);
+  });
+});
+
+describe('hit memory constant', () => {
+  it('is a small fixed ring (documented limit for per-tick hits)', () => {
+    expect(HIT_MEMORY).toBe(8);
+  });
+});
+
+// 型別保險:MissileRuntime 的鉤子參數可直接餵給 pool.handleOf。
+const _typeCheck = (m: MissileManager, rt: Readonly<MissileRuntime>): number => m.pool.handleOf(rt);
+void _typeCheck;
+void NO_TARGET;
+```
+
+---
+
+## 執行方式
+
+```bash
+npm run typecheck
+npm test
+```
+
+## 測試與你的驗收項目對照
+
+| 你的要求 | 對應測試 |
+|---|---|
+| 10,000 次連續發射與回收零洩漏 | `pool.test`:10,000 次 acquire/release 只用槽位 0,`generation` 精確等於 10,000;隨機 churn 後 free-list 完整、記錄物件從未被替換。`manager.test`:10,000 次 spawn→step→回收、混合壽命的隨機 churn(`spawned = died = 10,000`、`rejected = 0`)、含爆裂與子投射物的 churn 最終全部歸還 |
+| 確定性回放(相同種子軌跡一致) | `deterministic replay`:F01、F02、F04 混合並有碰撞,120 tick 的完整軌跡(位置、方向、`rngState`、命中數、目標 id)`toEqual` 逐值相同;不同 `worldSeed` 軌跡不同;每顆投射物的種子只取決於 `(worldSeed, 生成序)` |
+| 200 個實體單 tick 效能 | `benchmark`:200 顆 F04 無限穿透彈 × 60 個目標,暖機後量測 300 tick,印出 mean、median、p95、max。**只對 median 設 4ms 寬鬆上限**,tick 預算是 40ms。請把你機器上印出的數字貼給我 |
+| 生命週期、穿透、爆裂 | `lifetime and range`、`collision and pierce`(穿透 1、無限穿透只命中一次、同 tick 多目標的先後順序、陣營與死亡過濾、鉤子在命中時殺死自己)、`explosion`(時序、`durationTicks = 0`、到期爆裂、子投射物) |
+| 地面單位 ↔ 螢幕 | `behaviors.test`:8 個角度驗證 `Δsy/Δsx = 0.5·tanφ`,並與 `screenToPhi`、`phiToScreenVelocity` 交叉驗證 |
+
+## 已知限制
+
+1. **穿透過快的投射物可能漏掉目標**(只在終點檢測)。若之後遇到,最直接的修法是在 `resolveHits` 前加入「起點到終點的線段採樣」。
+2. **F02 每 tick 索敵是 O(單位數)**,200 顆追蹤彈 × 數百單位仍然很便宜,但單位數上千時需要空間分格。
+3. **`evict-oldest` 掃描是 O(highWater)**,只在池滿時觸發,不在常態路徑。
+4. 出現在鉤子裡的 `rt` 是會被池重用的記錄,不能保存引用,與 3-A 的約定一致。
+
+## 下一步:第 3-C 輪
+
+- 25Hz 主迴圈:`MAX_CATCHUP_TICKS = 5`、alpha 插值(`rt.teleported` 為 true 時不插值)、失焦降頻。
+- 動畫表(幀數、`AnimationSpeed`、`dirCount` 與 `DirectionCalibration` 的連接)與 Canvas 繪製器(`dirIndex`、位置取整、`BlendMode` → `applyBlend`)。
+- 除錯覆蓋層與 60Hz/144Hz 邏輯一致性測試。
+- F03 螺旋的擴充步驟說明。F03 會用到本輪新增的 `env.state` 私有狀態。
+
+先跑一次測試,把失敗訊息或 benchmark 數字貼給我,再進入 3-C。
