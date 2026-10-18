@@ -244,6 +244,22 @@
           <span id="lbl-gamma">0</span>
         </div>
       </div>
+
+      <div class="panel-group">
+        <h3>5. Phase 2 HSM 狀態機與 SSE 連線</h3>
+        <div class="control-row" style="gap: 6px;">
+          <button id="btn-toggle-loop" style="flex:1;">啟動 25FPS 主迴圈</button>
+          <button id="btn-step-tick" style="flex:1;">單步 +1 Tick</button>
+        </div>
+        <div class="control-row" style="margin-top: 6px; gap: 6px;">
+          <button id="btn-connect-sse" style="flex:1;">連接後台 SSE</button>
+          <button id="btn-sim-burst" style="flex:1;">全流程壓測模擬</button>
+        </div>
+        <div class="control-row" style="margin-top: 6px; gap: 6px;">
+          <button id="btn-emit-code" style="flex:1;">5x 連斬生成</button>
+          <button id="btn-emit-err" style="flex:1;">P=0 例外受創</button>
+        </div>
+      </div>
     </aside>
   </div>
 
@@ -260,57 +276,88 @@
   <script type="module">
     import { UI_CONFIG } from '../../d2-engine/templates/ui_config.js';
     import { D2ViewShell } from '../../d2-engine/templates/d2_view_shell.js';
+    import { D2EngineController } from './js/d2_engine_controller.js';
 
     const canvas = document.getElementById('d2-viewport');
     const viewShell = new D2ViewShell(canvas);
     viewShell.renderFrame();
 
-    const badge = document.getElementById('hud-intent-badge');
-    const readout = document.getElementById('hud-anim-readout');
+    const domRefs = {
+      badge: document.getElementById('hud-intent-badge'),
+      readout: document.getElementById('hud-anim-readout'),
+      orbLife: document.getElementById('orb-life'),
+      orbMana: document.getElementById('orb-mana')
+    };
 
-    function syncUI() {
-      const intentKey = document.getElementById('sel-intent').value;
-      const intentCfg = UI_CONFIG.AGENT_INTENT_MAP[intentKey];
-      const dir = Number(document.getElementById('rng-dir').value);
-      const frame = Number(document.getElementById('rng-frame').value);
-      const gamma = Number(document.getElementById('rng-gamma').value);
+    const controller = new D2EngineController(viewShell, domRefs);
 
-      document.getElementById('lbl-dir').textContent = `${dir} (${UI_CONFIG.FIRE_OFFSET_CONFIG.DIRECTION_8_TABLE[dir].label})`;
-      document.getElementById('lbl-frame').textContent = String(frame);
-      document.getElementById('lbl-gamma').textContent = String(gamma);
+    // Phase 2 控制按鈕綁定
+    const btnLoop = document.getElementById('btn-toggle-loop');
+    btnLoop.addEventListener('click', () => {
+      if (controller.isAutoRunning) {
+        controller.stopAutoLoop();
+        btnLoop.textContent = '啟動 25FPS 主迴圈';
+        btnLoop.style.background = '#1c1814';
+      } else {
+        controller.startAutoLoop();
+        btnLoop.textContent = '暫停迴圈 (Running)';
+        btnLoop.style.background = '#15803d';
+      }
+    });
 
-      badge.textContent = intentCfg.hudLabel;
-      badge.style.color = intentCfg.hudColor;
-      badge.style.borderColor = intentCfg.hudColor;
+    document.getElementById('btn-step-tick').addEventListener('click', () => {
+      controller.stepSingleTick();
+    });
 
-      const activeAnimMode = intentCfg.d2AnimModes[0];
-      readout.textContent = `MODE: ${activeAnimMode} | DIR: ${dir} | FRAME: ${frame}`;
+    const btnSse = document.getElementById('btn-connect-sse');
+    btnSse.addEventListener('click', () => {
+      controller.connectBackendSSE('/api/agent/stream');
+      btnSse.textContent = 'SSE 已連線 (Streaming)';
+      btnSse.style.background = '#2563eb';
+    });
 
-      viewShell.setViewState({
-        agentIntent: intentKey,
-        animMode: activeAnimMode,
-        characterClass: document.getElementById('sel-class').value,
-        direction: dir,
-        frameIndex: frame,
-        holyShieldOverride: document.getElementById('chk-holy-shield').checked,
-        handSource: document.getElementById('sel-hand').value,
-        campfireStepPhase: document.getElementById('sel-campfire-phase').value,
-        gammaFadeStep: gamma,
-        targetMonster: {
-          sizeClass: document.getElementById('sel-monster-size').value,
-          worldPos: { x: 3.5, y: 0.0, z: 0 },
-          showHitOverlay: document.getElementById('chk-hit-overlay').checked
+    document.getElementById('btn-sim-burst').addEventListener('click', async () => {
+      await fetch('/api/agent/simulate_burst', { method: 'POST' });
+    });
+
+    document.getElementById('btn-emit-code').addEventListener('click', async () => {
+      for (let i = 0; i < 5; i++) {
+        await fetch('/api/agent/emit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent: 'CODE_GENERATING', payload: { chunk: i } })
+        });
+      }
+    });
+
+    document.getElementById('btn-emit-err').addEventListener('click', async () => {
+      await fetch('/api/agent/emit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intent: 'ERROR_HAZARD', payload: { fatal: false } })
+      });
+    });
+
+    // 抽屜參數即時同步
+    document.querySelectorAll('select, input').forEach((el) => {
+      el.addEventListener('input', () => {
+        controller.physics.configurePrimaryTarget(
+          document.getElementById('sel-monster-size').value,
+          { x: 3.5, y: 0.0, z: 0 }
+        );
+        controller.hsm.state.direction = Number(document.getElementById('rng-dir').value);
+        controller.hsm.state.characterClass = document.getElementById('sel-class').value;
+        controller.hsm.state.handSource = document.getElementById('sel-hand').value;
+        controller.hsm.state.holyShieldOverride = document.getElementById('chk-holy-shield').checked;
+        if (!controller.isAutoRunning) {
+          viewShell.renderFrame();
         }
       });
-    }
-
-    document.querySelectorAll('select, input').forEach((el) => {
-      el.addEventListener('input', syncUI);
-      el.addEventListener('change', syncUI);
     });
 
     document.getElementById('btn-toggle-scene').addEventListener('click', () => {
-      const nextScene = viewShell.viewState.sceneMode === 'DUNGEON' ? 'CAMPFIRE' : 'DUNGEON';
+      const nextScene = controller.hsm.state.sceneMode === 'DUNGEON' ? 'CAMPFIRE' : 'DUNGEON';
+      controller.hsm.state.sceneMode = nextScene;
       viewShell.setViewState({ sceneMode: nextScene });
     });
   </script>

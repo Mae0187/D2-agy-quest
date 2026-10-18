@@ -50,8 +50,68 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
+import threading
+
+class AgentSignalBridgeHub:
+    """管理前端 SSE 訂閱者佇列，提供執行緒安全之 Agent 狀態廣播與 120ms 併發壓測模擬"""
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._subscribers = []
+        self._event_seq = 0
+
+    def subscribe(self):
+        q = queue.Queue(maxsize=256)
+        with self._lock:
+            self._subscribers.append(q)
+        return q
+
+    def unsubscribe(self, q):
+        with self._lock:
+            if q in self._subscribers:
+                self._subscribers.remove(q)
+
+    def broadcast_event(self, intent: str, payload: dict = None) -> dict:
+        with self._lock:
+            self._event_seq += 1
+            seq = self._event_seq
+            targets = list(self._subscribers)
+
+        event_packet = {
+            "seq": seq,
+            "intent": intent,
+            "timestampMs": int(time.time() * 1000),
+            "payload": payload or {}
+        }
+        serialized = f"data: {json.dumps(event_packet, ensure_ascii=False)}\n\n"
+        for sub_q in targets:
+            try:
+                sub_q.put_nowait(serialized)
+            except queue.Full:
+                pass
+        return event_packet
+
+    def run_coalesce_and_interrupt_simulation(self):
+        def _worker():
+            self.broadcast_event("DEEP_THINKING", {"thought": "Analyzing AST & SDD contracts"})
+            time.sleep(0.5)
+            for i in range(5):
+                self.broadcast_event("CODE_GENERATING", {"chunkIndex": i, "tokens": 24})
+                time.sleep(0.015)
+            time.sleep(0.35)
+            self.broadcast_event("TOOL_EXECUTING", {"tool": "pytest_runner"})
+            time.sleep(0.35)
+            self.broadcast_event("TEST_AOE", {"suite": "swept_circle_collision_test"})
+            time.sleep(0.25)
+            self.broadcast_event("ERROR_HAZARD", {"fatal": False, "reason": "AssertionWarning blocked"})
+            time.sleep(0.6)
+            self.broadcast_event("QUEST_COMPLETE", {"eliteKilled": "Balrog_TechDebt_Lord"})
+        threading.Thread(target=_worker, daemon=True).start()
+
+AGENT_BRIDGE = AgentSignalBridgeHub()
+
 class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
     hub = EventHub()
+    agent_bridge = AGENT_BRIDGE
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIR, **kwargs)
@@ -77,7 +137,35 @@ class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        # 1. Server-Sent Events (SSE) 即時事件串流
+        # 0. Agent SSE 即時事件串流 (Phase 2 /api/agent/stream)
+        if self.path.startswith("/api/agent/stream"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+
+            sub_queue = self.agent_bridge.subscribe()
+            try:
+                init_pkt = json.dumps({"intent": "IDLE_PATROL", "timestampMs": int(time.time() * 1000)})
+                self.wfile.write(f"data: {init_pkt}\n\n".encode("utf-8"))
+                self.wfile.flush()
+                while True:
+                    try:
+                        msg = sub_queue.get(timeout=15.0)
+                        self.wfile.write(msg.encode("utf-8"))
+                        self.wfile.flush()
+                    except queue.Empty:
+                        self.wfile.write(b": heartbeat\n\n")
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+                pass
+            finally:
+                self.agent_bridge.unsubscribe(sub_queue)
+            return
+
+        # 1. Server-Sent Events (SSE) 即時事件串流 (原有相容)
         if self.path.startswith("/api/events") and not self.path.startswith("/api/events/poll"):
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -188,7 +276,7 @@ class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 return
 
         clean_path = self.path.split("?")[0].lstrip("/")
-        if clean_path.startswith(("verification_sandbox/", "official_visual_standards/")):
+        if clean_path.startswith(("verification_sandbox/", "official_visual_standards/", "d2-engine/")):
             full_path = os.path.join(BASE_DIR, clean_path.replace("/", os.sep))
             if os.path.exists(full_path) and os.path.isfile(full_path):
                 ext = os.path.splitext(full_path)[1].lower()
@@ -224,6 +312,39 @@ class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        # 0.1 Agent 狀態事件注入 (POST /api/agent/emit)
+        if self.path == "/api/agent/emit":
+            content_length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(content_length).decode("utf-8", errors="replace") if content_length > 0 else "{}"
+            try:
+                body = json.loads(raw_body)
+                intent = str(body.get("intent", "IDLE_PATROL"))
+                payload = body.get("payload", {})
+                packet = self.agent_bridge.broadcast_event(intent, payload)
+                res_data = json.dumps({"status": "ok", "dispatched": packet}, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+            except Exception as exc:
+                res_data = json.dumps({"status": "error", "message": str(exc)}).encode("utf-8")
+                self.send_response(400)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(res_data)))
+            self.end_headers()
+            self.wfile.write(res_data)
+            return
+
+        # 0.2 Agent 併發與中斷模擬 (POST /api/agent/simulate_burst)
+        if self.path == "/api/agent/simulate_burst":
+            self.agent_bridge.run_coalesce_and_interrupt_simulation()
+            res_data = json.dumps({"status": "simulation_started"}, ensure_ascii=False).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Length", str(len(res_data)))
+            self.end_headers()
+            self.wfile.write(res_data)
+            return
+
         # 1. 外部日誌吸收 Webhook (POST /api/log)
         if self.path == "/api/log":
             content_length = int(self.headers.get("Content-Length", 0))
