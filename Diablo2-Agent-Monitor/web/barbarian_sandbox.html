@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    if (window.location.protocol === 'file:') {
+      const base = document.createElement('base');
+      base.href = '../Diablo2-Agent-Monitor/web/';
+      document.head.appendChild(base);
+    }
+  </script>
+  <title>野蠻人 (Barbarian) 原廠 MPQ 技能實機驗證沙盒 (Port 8769 - D2 Engine)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: #060709;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .header { margin-bottom: 12px; text-align: center; }
+    .header h1 {
+      font-size: 22px; color: #F59E0B;
+      text-shadow: 0 0 10px rgba(245,158,11,0.4);
+      margin-bottom: 4px; letter-spacing: 1px;
+    }
+    .header p { font-size: 13px; color: #94A3B8; }
+    .control-deck {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 1000px; margin-bottom: 8px; gap: 12px;
+    }
+    .element-tabs {
+      display: flex; gap: 6px;
+      background: #111827; padding: 6px 10px;
+      border-radius: 8px; border: 1px solid #374151;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+    }
+    .tab-btn {
+      background: #1E293B; color: #94A3B8;
+      border: 1px solid #334155; padding: 7px 14px;
+      border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 700; transition: all 0.2s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab-btn .tab-key {
+      font-size: 11px; background: rgba(0,0,0,0.3);
+      padding: 1px 5px; border-radius: 3px; color: #64748B;
+    }
+    .tab-btn:hover { color: #F1F5F9; background: #334155; }
+    .tab-btn.active.combat {
+      background: linear-gradient(180deg, #991B1B 0%, #450A0A 100%);
+      color: #FEE2E2; border-color: #EF4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+    }
+    .tab-btn.active.combat .tab-key { color: #FCA5A5; }
+    .tab-btn.active.warcry {
+      background: linear-gradient(180deg, #78350F 0%, #451A03 100%);
+      color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.45);
+    }
+    .tab-btn.active.warcry .tab-key { color: #FCD34D; }
+
+    .deck-utils { display: flex; gap: 8px; align-items: center; }
+    .util-btn {
+      background: #1F2937; color: #D1D5DB; border: 1px solid #374151;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .util-btn:hover { background: #374151; color: #FFF; }
+    .util-btn.active { background: #047857; border-color: #10B981; color: #FFF; }
+
+    .skills-deck {
+      display: flex; gap: 8px; width: 1000px;
+      background: #111827; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #374151; margin-bottom: 10px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.5);
+      flex-wrap: wrap;
+    }
+    .skill-card-btn {
+      background: #1E293B; color: #D1D5DB; border: 1px solid #334155;
+      padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      font-weight: 600; transition: all 0.15s ease;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .skill-card-btn:hover:not(:disabled) {
+      background: #374151; color: #FFF; border-color: #9CA3AF;
+    }
+    .skill-card-btn.active {
+      background: #B91C1C; color: #FEE2E2; border-color: #EF4444;
+      box-shadow: 0 0 12px rgba(239,68,68,0.5);
+    }
+    .skill-card-btn.active.warcry {
+      background: #B45309; color: #FEF3C7; border-color: #F59E0B;
+      box-shadow: 0 0 12px rgba(245,158,11,0.5);
+    }
+
+    .canvas-container {
+      position: relative;
+      border: 2px solid #374151; border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.8);
+      overflow: hidden; background: #0B0D11;
+    }
+    canvas { display: block; cursor: crosshair; }
+
+    .footer {
+      margin-top: 12px;
+      display: flex; gap: 20px; font-size: 12px; color: #64748B;
+      background: #0F172A; padding: 6px 16px;
+      border-radius: 6px; border: 1px solid #1E293B;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .key-badge {
+      background: #334155; color: #F1F5F9; padding: 2px 6px;
+      border-radius: 4px; font-family: monospace; font-size: 11px;
+    }
+    .hud-panel {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(15, 23, 42, 0.85); border: 1px solid #334155;
+      border-radius: 6px; padding: 8px 12px; font-size: 12px;
+      color: #94A3B8; pointer-events: none; line-height: 1.5;
+    }
+    .hud-title { color: #F59E0B; font-weight: bold; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+  <!-- 全面停用音效 (依使用者指令強制靜音) -->
+  <script>window.__D2_DISABLE_AUDIO__ = true;</script>
+
+  <div class="header">
+    <h1>🪓 野蠻人 (Barbarian) 原廠 MPQ 技能實機驗證沙盒 (Port 8769 - D2 Engine)</h1>
+    <p>25Hz 固定邏輯步長 | 原廠 DCC/PNG 圖集 | 7 大核心技能原版運動學與碰撞檢測 | 16 方向動作切換</p>
+  </div>
+
+  <div class="control-deck">
+    <div class="element-tabs">
+      <button class="tab-btn active combat" id="tab-combat" onclick="switchCategory('combat')">
+        <span>⚔️ 作戰技能</span> <span class="tab-key">Tab</span>
+      </button>
+      <button class="tab-btn warcry" id="tab-warcries" onclick="switchCategory('warcries')">
+        <span>📢 戰嚎與圖騰</span> <span class="tab-key">[Q]</span>
+      </button>
+    </div>
+
+    <div class="deck-utils">
+      <button id="btn-toggle-run" class="util-btn">🏃 走跑: 奔跑中 [Shift]</button>
+      <button id="btn-inspect-16dir" class="util-btn">🔄 [R] 16向自轉巡檢: 關閉</button>
+      <button id="btn-cycle-armor" class="util-btn">🛡️ [T] 裝甲: 輕裝</button>
+      <div style="display: flex; align-items: center; gap: 4px; background: #1F2937; border: 1px solid #374151; padding: 4px 8px; border-radius: 6px;">
+        <span style="font-size: 11px; color: #94A3B8;">方向:</span>
+        <button id="btn-dir-prev" class="util-btn" style="padding: 2px 6px; font-size: 11px;">◀</button>
+        <span id="hud-dir-display" style="color: #FCD34D; font-weight: bold; font-size: 12px; min-width: 80px; text-align: center;">0 正南</span>
+        <button id="btn-dir-next" class="util-btn" style="padding: 2px 6px; font-size: 11px;">▶</button>
+      </div>
+      <button id="btn-spawn-dummies" class="util-btn">👾 [G] 召喚怪群</button>
+      <button id="btn-toggle-debug" class="util-btn active">🛠️ [D] 除錯錨點</button>
+    </div>
+  </div>
+
+  <!-- 當前系別技能動作列 -->
+  <div class="skills-deck" id="skills-deck"></div>
+
+  <div class="main-area">
+    <div class="canvas-container">
+      <canvas id="barbarian-canvas" width="1000" height="600"></canvas>
+      <div class="hud-panel" id="hud-metrics">
+        <div class="hud-title">📊 運動學與狀態監視器</div>
+        <div id="metric-state">狀態: IDLE</div>
+        <div id="metric-skill">當前技能: 旋風斬 (Whirlwind)</div>
+        <div id="metric-parabola">拋物線離地高度 z: 0 px</div>
+        <div id="metric-ww-spin">旋風角速度: 0 rad/s</div>
+        <div id="metric-actives">活動投射物/實體: 0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>🖱️ <span class="key-badge">左鍵點擊地面 / 右鍵</span> 走位尋路 | <span class="key-badge">左鍵點擊怪物/空地</span> 施展選中技能</div>
+    <div>⌨️ <span class="key-badge">WASD</span> 鍵盤方向自由走位 | <span class="key-badge">Shift</span> 切換走跑模式</div>
+    <div>⚔️ <span class="key-badge">1~5</span> 作戰技能 (1 旋風斬 / 2 跳躍攻擊 / 3 雙重打擊 / 4 狂戰士 / 5 雙重投擲)</div>
+    <div>📢 <span class="key-badge">Q/W</span> 戰嚎與圖騰 (Q 震撼戰嚎 / W 殘酷庇護所)</div>
+    <div>🔄 <span class="key-badge">R</span> 16方向巡檢 | <span class="key-badge">T</span> 3階裝甲切換 | <span class="key-badge">G</span> 重生怪群 | <span class="key-badge">D</span> 開關碰撞範圍圈</div>
+  </div>
+
+  <!-- 引入真實角色控制器與野蠻人 16 方向動作圖集配置 -->
+  <script src="js/direction_controller.js"></script>
+  <script src="js/cast_sockets.js"></script>
+  <script src="assets/characters/barbarian/manifest.js"></script>
+  <script src="assets/characters/barbarian/light/manifest.js"></script>
+  <script src="assets/characters/barbarian/medium/manifest.js"></script>
+  <script src="assets/characters/barbarian/heavy/manifest.js"></script>
+  <script src="assets/fx/fx_manifest.js"></script>
+  <script src="js/skills_manifest.js"></script>
+  <script src="js/character_controller.js"></script>
+
+  <script>
+    // ── 野蠻人《全角色技能清單與實裝選擇表.md》指定實裝 [x] 7 大精選技能 ──
+    const BARBARIAN_COMBAT_SKILLS = [
+      { id: 'whirlwind', key: '1', icon: '🌪️', name: '旋風斬 (Whirlwind - SQ 8向旋轉穿梭多段命中)', type: 'combat', needTarget: true },
+      { id: 'leap_attack', key: '2', icon: '🦘', name: '跳躍攻擊 (Leap Attack - SQ 三段拋物線滯空重劈)', type: 'combat', needTarget: true },
+      { id: 'double_swing', key: '3', icon: '⚔️', name: '雙重打擊 (Double Swing - SQ 左右雙持二連斬)', type: 'combat', needTarget: true },
+      { id: 'berserk', key: '4', icon: '🔥', name: '狂戰士 (Berserk - A1 魔法重斬與破甲 Debuff)', type: 'combat', needTarget: true },
+      { id: 'double_throw', key: '5', icon: '🪓', name: '雙重投擲 (Double Throw - SQ 雙發射點平行飛斧)', type: 'combat', needTarget: true }
+    ];
+
+    const BARBARIAN_WARCRY_SKILLS = [
+      { id: 'war_cry', key: 'Q', icon: '📢', name: '震撼戰嚎 (War Cry - SC 16向同心音波震盪群暈)', type: 'warcry', needTarget: false },
+      { id: 'grim_ward', key: 'W', icon: '💀', name: '殘酷庇護所 (Grim Ward - SC 骨圖騰脈衝恐懼驅散)', type: 'warcry', needTarget: true }
+    ];
+
+    let currentCategory = 'combat'; // 'combat' | 'warcries'
+    let currentSkillId = 'whirlwind';
+    let debugMode = true;
+    let inspect16DirActive = false;
+    let currentArmorIndex = 0;
+    const armorTiers = ['light', 'medium', 'heavy'];
+    const armorNames = ['輕裝 (Light)', '中裝 (Medium)', '重裝 (Heavy)'];
+
+    // 假人木人與浮動文字系統
+    const dummies = [];
+    const floatingTexts = [];
+    const overlays = [];
+    const projectiles = [];
+    const groundTotems = [];
+
+    window.__barbarianDummies = dummies;
+    window.__floatingTexts = floatingTexts;
+
+    function initDummies() {
+      dummies.length = 0;
+      const coords = [
+        { x: 500, y: 240, hp: 350 }, // 前方核心標靶
+        { x: 590, y: 290, hp: 280 }, // 右側木人
+        { x: 410, y: 310, hp: 280 }, // 左側木人
+        { x: 670, y: 210, hp: 320 }, // 遠端右木人
+        { x: 330, y: 220, hp: 320 }, // 遠端左木人
+        { x: 500, y: 150, hp: 400 }  // 上方遠端首領木人
+      ];
+      coords.forEach((c, idx) => {
+        dummies.push({
+          id: idx + 1,
+          x: c.x,
+          y: c.y,
+          originX: c.x,
+          originY: c.y,
+          hp: c.hp,
+          maxHp: c.hp,
+          hitTime: 0,
+          isDead: false,
+          remove: false,
+          isFrozen: false,
+          isStunned: false,
+          stunTimer: 0,
+          isFeared: false,
+          fearTimer: 0,
+          fearVec: { x: 0, y: 0 },
+          takeDamage(amount, type = 'normal') {
+            this.hp = Math.max(0, this.hp - amount);
+            this.hitTime = performance.now();
+            if (this.hp <= 0) {
+              this.isDead = true;
+            }
+          }
+        });
+      });
+    }
+
+    function addFloatingText(x, y, text, color) {
+      if (!text || text === 'NaN' || text.includes('NaN')) return;
+      floatingTexts.push({ x, y, text, color, alpha: 1.0 });
+    }
+    window.addFloatingText = addFloatingText;
+
+    // 預載原廠 DCC/PNG 特效圖集
+    const skillImages = {
+      whirlwind_dust: new Image(),
+      berserk_overlay: new Image(),
+      warcry_shockwave: new Image(),
+      warcry_hit: new Image(),
+      stun_stars: new Image(),
+      flying_axe: new Image(),
+      grim_ward_start: new Image(),
+      grim_ward_loop: new Image(),
+      grim_ward_stop: new Image()
+    };
+    skillImages.whirlwind_dust.src = 'assets/skills/barbarian/BAWhirlwind01.png';
+    skillImages.berserk_overlay.src = 'assets/skills/barbarian/BerserkOverlay.png';
+    skillImages.warcry_shockwave.src = 'assets/skills/barbarian/WarcryShockwave.png';
+    skillImages.warcry_hit.src = 'assets/skills/barbarian/WarcryHit.png';
+    skillImages.stun_stars.src = 'assets/skills/barbarian/Stun.png';
+    skillImages.flying_axe.src = 'assets/skills/general/MissileHandAxe.png';
+    skillImages.grim_ward_start.src = 'assets/skills/general/GrimWardLargeStart.png';
+    skillImages.grim_ward_loop.src = 'assets/skills/general/GrimWardLarge.png';
+    skillImages.grim_ward_stop.src = 'assets/skills/general/GrimWardLargeStop.png';
+
+    // 建立畫布與角色控制器
+    const canvas = document.getElementById('barbarian-canvas');
+    const ctx = canvas.getContext('2d');
+    const heroPos = { x: 500, y: 350 };
+
+    const character = new CharacterController(
+      'assets/characters/barbarian/manifest.json',
+      () => {
+        console.log('[Barbarian Sandbox] CharacterController loaded: Barbarian');
+      },
+      'barbarian'
+    );
+    character.x = heroPos.x;
+    character.y = heroPos.y;
+    character.prevX = heroPos.x;
+    character.prevY = heroPos.y;
+    window.__sandboxCharacter = character;
+
+    // ── 野蠻人專屬高階運動學狀態控制器 ──
+    const barbCombatEngine = {
+      state: 'IDLE', // 'IDLE' | 'WHIRLWIND' | 'LEAP_ATTACK' | 'DOUBLE_SWING' | 'BERSERK' | 'DOUBLE_THROW' | 'WAR_CRY' | 'GRIM_WARD'
+      stateTick: 0,
+      berserkDebuffTicks: 0,
+
+      // 旋風斬 Whirlwind 運動學
+      ww: {
+        startX: 0, startY: 0,
+        targetX: 0, targetY: 0,
+        dirX: 0, dirY: 0,
+        totalTicks: 0,
+        currentTick: 0,
+        speed: 8.8, // 0.276 sub-tiles/tick * 32px
+        spinIndex: 0
+      },
+
+      // 跳躍攻擊 Leap Attack 運動學
+      leap: {
+        startX: 0, startY: 0,
+        endX: 0, endY: 0,
+        tAir: 16,
+        currentTick: 0,
+        phase: 'TAKEOFF', // 'TAKEOFF' | 'AIRBORNE' | 'LANDING'
+        maxHeight: 120,
+        z: 0
+      },
+
+      // 雙重打擊 Double Swing
+      ds: {
+        targetX: 0, targetY: 0,
+        currentTick: 0
+      },
+
+      // 狂戰士 Berserk
+      berserk: {
+        targetX: 0, targetY: 0,
+        currentTick: 0
+      },
+
+      // 雙重投擲 Double Throw
+      dt: {
+        targetX: 0, targetY: 0,
+        currentTick: 0,
+        facingAngle: 0
+      },
+
+      // 震撼戰嚎 War Cry
+      warcry: {
+        currentTick: 0
+      },
+
+      // 殘酷庇護所 Grim Ward
+      ward: {
+        targetX: 0, targetY: 0,
+        currentTick: 0
+      }
+    };
+
+    // 切換技能與分頁 UI
+    function switchCategory(cat) {
+      currentCategory = cat;
+      document.getElementById('tab-combat').className = 'tab-btn ' + (cat === 'combat' ? 'active combat' : '');
+      document.getElementById('tab-warcries').className = 'tab-btn ' + (cat === 'warcries' ? 'active warcry' : '');
+      renderSkillsDeck();
+    }
+
+    function renderSkillsDeck() {
+      const deck = document.getElementById('skills-deck');
+      deck.innerHTML = '';
+      const list = (currentCategory === 'combat') ? BARBARIAN_COMBAT_SKILLS : BARBARIAN_WARCRY_SKILLS;
+      list.forEach(s => {
+        const btn = document.createElement('button');
+        btn.className = 'skill-card-btn ' + (currentSkillId === s.id ? 'active' : '') + (s.type === 'warcry' ? ' warcry' : '');
+        btn.innerHTML = `<span>[${s.key}] ${s.icon} ${s.name}</span>`;
+        btn.onclick = () => selectSkill(s.id);
+        deck.appendChild(btn);
+      });
+    }
+
+    function selectSkill(skillId) {
+      currentSkillId = skillId;
+      renderSkillsDeck();
+      const allSkills = [...BARBARIAN_COMBAT_SKILLS, ...BARBARIAN_WARCRY_SKILLS];
+      const found = allSkills.find(s => s.id === skillId);
+      if (found) {
+        document.getElementById('metric-skill').textContent = `當前技能: ${found.name}`;
+      }
+    }
+
+    // ── 執行野蠻人 7 大核心技能 ──
+    function executeSkillAt(tx, ty) {
+      if (barbCombatEngine.state !== 'IDLE') return;
+
+      const allSkills = [...BARBARIAN_COMBAT_SKILLS, ...BARBARIAN_WARCRY_SKILLS];
+      const skill = allSkills.find(s => s.id === currentSkillId) || allSkills[0];
+
+      // 計算朝向目標的方向
+      const dirTowards = character.directionController.getDirectionTowards(character.x, character.y, tx, ty, true);
+      character.currentDir = dirTowards;
+      updateDirDisplay(dirTowards);
+
+      if (skill.id === 'whirlwind') {
+        // 1. 旋風斬 (Whirlwind)
+        startWhirlwind(tx, ty);
+      } else if (skill.id === 'leap_attack') {
+        // 2. 跳躍攻擊 (Leap Attack)
+        startLeapAttack(tx, ty);
+      } else if (skill.id === 'double_swing') {
+        // 3. 雙重打擊 (Double Swing)
+        startDoubleSwing(tx, ty);
+      } else if (skill.id === 'berserk') {
+        // 4. 狂戰士 (Berserk)
+        startBerserk(tx, ty);
+      } else if (skill.id === 'double_throw') {
+        // 5. 雙重投擲 (Double Throw)
+        startDoubleThrow(tx, ty);
+      } else if (skill.id === 'war_cry') {
+        // 6. 震撼戰嚎 (War Cry)
+        startWarCry();
+      } else if (skill.id === 'grim_ward') {
+        // 7. 殘酷庇護所 (Grim Ward)
+        startGrimWard(tx, ty);
+      }
+    }
+
+    // 1. 旋風斬實裝
+    function startWhirlwind(tx, ty) {
+      const dx = tx - character.x;
+      const dy = ty - character.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 10) return;
+
+      // 旋風斬穿透目標點：向目標方向延伸穿過
+      const sweepDist = Math.max(160, dist + 60);
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const targetX = character.x + nx * sweepDist;
+      const targetY = character.y + ny * sweepDist;
+
+      const totalTicks = Math.round(sweepDist / barbCombatEngine.ww.speed);
+      barbCombatEngine.state = 'WHIRLWIND';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.ww = {
+        startX: character.x,
+        startY: character.y,
+        targetX: targetX,
+        targetY: targetY,
+        dirX: nx,
+        dirY: ny,
+        totalTicks: Math.max(12, totalTicks),
+        currentTick: 0,
+        speed: 8.8,
+        spinIndex: character.currentDir
+      };
+
+      character.state = 'attack';
+      character.currentAction = 'attack';
+      addFloatingText(character.x, character.y - 70, "🌪️ 旋風斬！狂暴 8 向自轉掃掠", "#f59e0b");
+    }
+
+    // 2. 跳躍攻擊實裝
+    function startLeapAttack(tx, ty) {
+      const dist = Math.hypot(tx - character.x, ty - character.y);
+      const subTiles = dist / 32;
+      const tAir = Math.min(22, Math.max(12, Math.floor(subTiles / 0.45)));
+      const maxHeight = Math.min(160, 72 + 12 * subTiles);
+
+      barbCombatEngine.state = 'LEAP_ATTACK';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.leap = {
+        startX: character.x,
+        startY: character.y,
+        endX: tx,
+        endY: ty,
+        tAir: tAir,
+        currentTick: 0,
+        phase: 'TAKEOFF',
+        maxHeight: maxHeight,
+        z: 0
+      };
+
+      character.state = 'attack';
+      character.currentAction = 'attack';
+      addFloatingText(character.x, character.y - 70, "🦘 跳躍攻擊！起跳蓄力飛空", "#f97316");
+    }
+
+    // 3. 雙重打擊實裝
+    function startDoubleSwing(tx, ty) {
+      const dist = Math.hypot(tx - character.x, (ty - character.y) * 2);
+      if (dist > 95) {
+        character.startMeleeAutoApproach(tx, ty, 'double_swing');
+        return;
+      }
+      barbCombatEngine.state = 'DOUBLE_SWING';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.ds = { targetX: tx, targetY: ty, currentTick: 0 };
+      character.state = 'attack';
+      character.currentAction = 'attack';
+      character.frame = 0;
+      addFloatingText(character.x, character.y - 70, "⚔️ 雙重打擊！左右手雙持連斬", "#ef4444");
+    }
+
+    // 4. 狂戰士實裝
+    function startBerserk(tx, ty) {
+      const dist = Math.hypot(tx - character.x, (ty - character.y) * 2);
+      if (dist > 95) {
+        character.startMeleeAutoApproach(tx, ty, 'berserk');
+        return;
+      }
+      barbCombatEngine.state = 'BERSERK';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.berserk = { targetX: tx, targetY: ty, currentTick: 0 };
+      character.state = 'attack';
+      character.currentAction = 'attack';
+      character.frame = 0;
+      addFloatingText(character.x, character.y - 70, "🔥 狂戰士！魔法極限重斬蓄力中", "#38bdf8");
+    }
+
+    // 5. 雙重投擲實裝
+    function startDoubleThrow(tx, ty) {
+      const dx = tx - character.x;
+      const dy = ty - character.y;
+      const angle = Math.atan2(dy, dx);
+      barbCombatEngine.state = 'DOUBLE_THROW';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.dt = { targetX: tx, targetY: ty, currentTick: 0, facingAngle: angle };
+      character.state = 'attack';
+      character.currentAction = 'attack';
+      character.frame = 0;
+      addFloatingText(character.x, character.y - 70, "🪓 雙重投擲！平行雙發射點飛斧", "#eab308");
+    }
+
+    // 6. 震撼戰嚎實裝
+    function startWarCry() {
+      barbCombatEngine.state = 'WAR_CRY';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.warcry = { currentTick: 0 };
+      character.state = 'cast';
+      character.currentAction = 'cast';
+      character.frame = 0;
+      addFloatingText(character.x, character.y - 70, "📢 震撼戰嚎！音波震盪全場群暈", "#f59e0b");
+    }
+
+    // 7. 殘酷庇護所實裝
+    function startGrimWard(tx, ty) {
+      barbCombatEngine.state = 'GRIM_WARD';
+      barbCombatEngine.stateTick = 0;
+      barbCombatEngine.ward = { targetX: tx, targetY: ty, currentTick: 0 };
+      character.state = 'cast';
+      character.currentAction = 'cast';
+      character.frame = 0;
+      addFloatingText(character.x, character.y - 70, "💀 殘酷庇護所！屍體召喚恐懼圖騰", "#c084fc");
+    }
+
+    // ── 25Hz 物理步長更新（鐵律 7 & 12：運動學、碰撞與狀態機） ──
+    const TICK_MS = 40;
+    let accum = 0;
+    let lastTime = performance.now();
+    let inspectCounter = 0;
+
+    function fixedPhysicsTick() {
+      // 狂戰士破防 Debuff 計時
+      if (barbCombatEngine.berserkDebuffTicks > 0) {
+        barbCombatEngine.berserkDebuffTicks--;
+      }
+
+      // 1. 旋風斬 (Whirlwind) 邏輯更新
+      if (barbCombatEngine.state === 'WHIRLWIND') {
+        const ww = barbCombatEngine.ww;
+        ww.currentTick++;
+
+        // 每 Tick 旋轉 1 個 8 方向（順時針 $\pi/4$ rad/tick）
+        ww.spinIndex = (ww.spinIndex + 2) % 16;
+        character.currentDir = ww.spinIndex;
+        updateDirDisplay(ww.spinIndex);
+
+        // 線性位移更新
+        character.x += ww.dirX * ww.speed;
+        character.y += ww.dirY * ww.speed;
+
+        // 腳底旋風塵土覆蓋層
+        overlays.push({
+          img: skillImages.whirlwind_dust,
+          x: character.x,
+          y: character.y + 10,
+          cw: 119, ch: 102, px: 60, py: -14,
+          frames: 8, frame: ww.currentTick % 8, time: 0,
+          blend: 'lighter', ttl: 1
+        });
+
+        // 多段判定頻率：第 4 Tick、第 8 Tick，隨後每 4 Ticks 觸發一次
+        if (ww.currentTick === 4 || ww.currentTick === 8 || (ww.currentTick > 8 && (ww.currentTick - 8) % 4 === 0)) {
+          // 近戰掃掠半徑 2.2 sub-tiles (約 70px)
+          const R_melee = 75;
+          let hitAny = false;
+          dummies.forEach(d => {
+            if (!d.isDead && !d.remove) {
+              const dDist = Math.hypot(d.x - character.x, (d.y - character.y) * 1.6);
+              if (dDist <= R_melee) {
+                d.takeDamage(48);
+                hitAny = true;
+                // 命中火花與爆血
+                overlays.push({
+                  img: skillImages.warcry_hit,
+                  x: d.x, y: d.y - 18,
+                  cw: 120, ch: 92, px: 59, py: 41,
+                  frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+                });
+                addFloatingText(d.x, d.y - 40, "-48 旋風斬命中！", "#f59e0b");
+              }
+            }
+          });
+        }
+
+        if (ww.currentTick >= ww.totalTicks) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // 2. 跳躍攻擊 (Leap Attack) 邏輯更新
+      else if (barbCombatEngine.state === 'LEAP_ATTACK') {
+        const leap = barbCombatEngine.leap;
+        leap.currentTick++;
+
+        // 階段一：起跳蓄力 (0~2 Ticks)
+        if (leap.currentTick <= 3) {
+          leap.phase = 'TAKEOFF';
+          leap.z = 0;
+          if (leap.currentTick === 1) {
+            addFloatingText(leap.startX, leap.startY - 30, "💨 起跳揚塵！", "#94a3b8");
+          }
+        }
+        // 階段二：拋物線滯空 (4 ~ 3 + tAir)
+        else if (leap.currentTick <= 3 + leap.tAir) {
+          leap.phase = 'AIRBORNE';
+          const u = (leap.currentTick - 3) / leap.tAir;
+          // 水平線性插值
+          character.x = (1 - u) * leap.startX + u * leap.endX;
+          character.y = (1 - u) * leap.startY + u * leap.endY;
+          // 垂直拋物線高度方程 z(u) = 4 * H_max * u * (1 - u)
+          leap.z = 4 * leap.maxHeight * u * (1 - u);
+        }
+        // 階段三：落地重劈與震波
+        else if (leap.currentTick <= 3 + leap.tAir + 7) {
+          leap.phase = 'LANDING';
+          leap.z = 0;
+          character.x = leap.endX;
+          character.y = leap.endY;
+
+          // 著地第 2 幀 (currentTick === 3 + tAir + 2) 觸發單體重劈與範圍裂地震波
+          if (leap.currentTick === 3 + leap.tAir + 2) {
+            // 裂地重擊震波
+            overlays.push({
+              img: skillImages.warcry_shockwave,
+              x: character.x, y: character.y,
+              cw: 84, ch: 56, px: 42, py: -3,
+              frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+            });
+
+            // 震波擊退與巨額傷害 (半徑 2.0 sub-tiles 約 65px)
+            dummies.forEach(d => {
+              if (!d.isDead && !d.remove) {
+                const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 1.6);
+                if (dist <= 75) {
+                  d.takeDamage(145);
+                  // 擊退 35px
+                  const kx = d.x - character.x;
+                  const ky = d.y - character.y;
+                  const kd = Math.hypot(kx, ky) || 1;
+                  d.x += (kx / kd) * 35;
+                  d.y += (ky / kd) * 35;
+                  overlays.push({
+                    img: skillImages.warcry_hit,
+                    x: d.x, y: d.y - 18,
+                    cw: 120, ch: 92, px: 59, py: 41,
+                    frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+                  });
+                  addFloatingText(d.x, d.y - 50, "-145 跳躍重劈震波！", "#f97316");
+                }
+              }
+            });
+          }
+        } else {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+          leap.z = 0;
+        }
+      }
+
+      // 3. 雙重打擊 (Double Swing) 邏輯更新
+      else if (barbCombatEngine.state === 'DOUBLE_SWING') {
+        const ds = barbCombatEngine.ds;
+        ds.currentTick++;
+
+        // 第 3 Tick：右手第一擊
+        if (ds.currentTick === 3) {
+          triggerMeleeHit(ds.targetX, ds.targetY, 52, "雙打右手揮擊！", "#ef4444");
+        }
+        // 第 9 Tick：左手第二擊
+        else if (ds.currentTick === 9) {
+          triggerMeleeHit(ds.targetX, ds.targetY, 52, "雙打左手速斬！", "#ef4444");
+        }
+
+        if (ds.currentTick >= 12) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // 4. 狂戰士 (Berserk) 邏輯更新
+      else if (barbCombatEngine.state === 'BERSERK') {
+        const bz = barbCombatEngine.berserk;
+        bz.currentTick++;
+
+        // 第 2 Tick：武器蓄力流光
+        if (bz.currentTick === 2) {
+          overlays.push({
+            img: skillImages.berserk_overlay,
+            x: character.x, y: character.y - 45,
+            cw: 69, ch: 84, px: 38, py: 95,
+            frames: 24, frame: 0, time: 0, blend: 'lighter', maxFrames: 24
+          });
+        }
+        // 第 5 Tick (關鍵動作幀)：魔法重斬爆發
+        else if (bz.currentTick === 5) {
+          triggerMeleeHit(bz.targetX, bz.targetY, 210, "狂戰士魔法巨力重劈！", "#38bdf8", true);
+          barbCombatEngine.berserkDebuffTicks = 50; // 持續 2 秒破防 Debuff
+        }
+
+        if (bz.currentTick >= 11) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // 5. 雙重投擲 (Double Throw) 邏輯更新
+      else if (barbCombatEngine.state === 'DOUBLE_THROW') {
+        const dt = barbCombatEngine.dt;
+        dt.currentTick++;
+
+        const theta = dt.facingAngle;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+        // 正交側向向量 (-sin, cos)
+        const L = 11.2; // 側向半距 0.35 sub-tiles
+        const Rfwd = 20.8; // 前向順距 0.65 sub-tiles
+        const zFire = 42;
+
+        // 第 4 Tick：右手投擲第一柄飛斧
+        if (dt.currentTick === 4) {
+          const spawnX = character.x + Rfwd * cosT - L * sinT;
+          const spawnY = character.y + Rfwd * sinT + L * cosT;
+          spawnFlyingAxe(spawnX, spawnY, theta, '右手飛斧');
+        }
+        // 第 8 Tick：左手投擲第二柄飛斧
+        else if (dt.currentTick === 8) {
+          const spawnX = character.x + Rfwd * cosT + L * sinT;
+          const spawnY = character.y + Rfwd * sinT - L * cosT;
+          spawnFlyingAxe(spawnX, spawnY, theta, '左手飛斧');
+        }
+
+        if (dt.currentTick >= 12) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // 6. 震撼戰嚎 (War Cry) 邏輯更新
+      else if (barbCombatEngine.state === 'WAR_CRY') {
+        const wc = barbCombatEngine.warcry;
+        wc.currentTick++;
+
+        // 第 6 Tick (釋放幀)：發射 16 方向同心擴散音波
+        if (wc.currentTick === 6) {
+          for (let k = 0; k < 16; k++) {
+            const phi = (2 * Math.PI * k) / 16;
+            spawnWarCryWave(character.x, character.y - 36, phi);
+          }
+
+          // 對半徑 160px 內怪物造成音波震盪與 65 Ticks (2.6s) 眩暈
+          dummies.forEach(d => {
+            if (!d.isDead && !d.remove) {
+              const dist = Math.hypot(d.x - character.x, (d.y - character.y) * 1.5);
+              if (dist <= 170) {
+                d.takeDamage(75);
+                d.isStunned = true;
+                d.stunTimer = 65 * TICK_MS; // 2.6 秒
+                overlays.push({
+                  img: skillImages.warcry_hit,
+                  x: d.x, y: d.y - 18,
+                  cw: 120, ch: 92, px: 59, py: 41,
+                  frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+                });
+                addFloatingText(d.x, d.y - 50, "-75 震撼戰嚎！音波震盪群暈", "#facc15");
+              }
+            }
+          });
+        }
+
+        if (wc.currentTick >= 13) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // 7. 殘酷庇護所 (Grim Ward) 邏輯更新
+      else if (barbCombatEngine.state === 'GRIM_WARD') {
+        const gw = barbCombatEngine.ward;
+        gw.currentTick++;
+
+        // 第 6 Tick：生成骨駭圖騰實體
+        if (gw.currentTick === 6) {
+          groundTotems.push({
+            x: gw.targetX,
+            y: gw.targetY,
+            lifetimeTicks: 250, // 10 秒
+            currentTick: 0,
+            pulseTimer: 0,
+            stage: 'SPAWN', // 'SPAWN' | 'LOOP' | 'STOP'
+            animFrame: 0
+          });
+          addFloatingText(gw.targetX, gw.targetY - 50, "💀 殘酷庇護所骨圖騰立起！", "#c084fc");
+        }
+
+        if (gw.currentTick >= 13) {
+          barbCombatEngine.state = 'IDLE';
+          character.state = 'idle';
+          character.currentAction = 'idle';
+        }
+      }
+
+      // ── 投射物物理更新（飛斧與戰嚎音波） ──
+      for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.currentTick++;
+
+        if (p.type === 'flying_axe') {
+          // Swept Circle 連續碰撞位移
+          const oldX = p.x;
+          const oldY = p.y;
+          p.x += p.vx;
+          p.y += p.vy;
+
+          // 碰撞檢測
+          for (const d of dummies) {
+            if (!d.isDead && !d.remove) {
+              const dDist = Math.hypot(d.x - p.x, (d.y - p.y) * 1.5);
+              if (dDist <= 32) {
+                d.takeDamage(60);
+                overlays.push({
+                  img: skillImages.warcry_hit,
+                  x: d.x, y: d.y - 18,
+                  cw: 120, ch: 92, px: 59, py: 41,
+                  frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+                });
+                addFloatingText(d.x, d.y - 45, `-60 ${p.source}穿透命中！`, "#eab308");
+                p.remove = true;
+                break;
+              }
+            }
+          }
+
+          if (p.currentTick >= p.maxTicks || p.remove) {
+            projectiles.splice(i, 1);
+          }
+        } else if (p.type === 'warcry_wave') {
+          p.r += p.vr;
+          p.x = p.originX + Math.cos(p.phi) * p.r;
+          p.y = p.originY + Math.sin(p.phi) * p.r * 0.65; // 等軸測扁平化
+          if (p.currentTick >= p.maxTicks) {
+            projectiles.splice(i, 1);
+          }
+        }
+      }
+
+      // ── 骨圖騰 (Grim Ward) 脈衝恐懼波與假人逃竄 AI ──
+      for (let i = groundTotems.length - 1; i >= 0; i--) {
+        const totem = groundTotems[i];
+        totem.currentTick++;
+
+        if (totem.currentTick <= 8) {
+          totem.stage = 'SPAWN';
+          totem.animFrame = totem.currentTick - 1;
+        } else if (totem.currentTick < totem.lifetimeTicks - 9) {
+          totem.stage = 'LOOP';
+          totem.animFrame = 0;
+          totem.pulseTimer++;
+          // 每 25 Ticks (1.0 秒) 發出一圈恐懼脈衝波
+          if (totem.pulseTimer >= 25) {
+            totem.pulseTimer = 0;
+            // 脈衝波特效
+            overlays.push({
+              img: skillImages.warcry_shockwave,
+              x: totem.x, y: totem.y,
+              cw: 84, ch: 56, px: 42, py: -3,
+              frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+            });
+
+            // 驅散半徑 6.0 sub-tiles (約 192px)
+            const fearRadius = 192;
+            dummies.forEach(d => {
+              if (!d.isDead && !d.remove) {
+                const dist = Math.hypot(d.x - totem.x, (d.y - totem.y) * 1.5);
+                if (dist <= fearRadius) {
+                  d.isFeared = true;
+                  d.fearTimer = 40 * TICK_MS; // 1.6 秒恐懼逃竄
+                  const fx = d.x - totem.x;
+                  const fy = d.y - totem.y;
+                  const fLen = Math.hypot(fx, fy) || 1;
+                  d.fearVec = { x: fx / fLen, y: fy / fLen };
+                  addFloatingText(d.x, d.y - 50, "😱 恐懼逃竄！背離圖騰退避", "#c084fc");
+                }
+              }
+            });
+          }
+        } else {
+          totem.stage = 'STOP';
+          totem.animFrame = totem.currentTick - (totem.lifetimeTicks - 9);
+        }
+
+        if (totem.currentTick >= totem.lifetimeTicks) {
+          groundTotems.splice(i, 1);
+        }
+      }
+
+      // 假人狀態計時與恐懼逃竄位移
+      dummies.forEach(d => {
+        if (d.stunTimer > 0) {
+          d.stunTimer -= TICK_MS;
+          if (d.stunTimer <= 0) d.isStunned = false;
+        }
+        if (d.fearTimer > 0) {
+          d.fearTimer -= TICK_MS;
+          // 恐懼位移逃跑
+          d.x += d.fearVec.x * 2.2;
+          d.y += d.fearVec.y * 1.4;
+          if (d.fearTimer <= 0) d.isFeared = false;
+        }
+      });
+
+      // 浮動文字動畫推進
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ft.y -= 0.8;
+        ft.alpha -= 0.025;
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // 命中特效動畫推進
+      for (let i = overlays.length - 1; i >= 0; i--) {
+        const ov = overlays[i];
+        ov.time += TICK_MS;
+        ov.frame = Math.floor(ov.time / 40);
+        if (ov.maxFrames && ov.frame >= ov.maxFrames) {
+          overlays.splice(i, 1);
+        } else if (!ov.maxFrames && ov.ttl) {
+          ov.ttl--;
+          if (ov.ttl <= 0) overlays.splice(i, 1);
+        }
+      }
+    }
+
+    // 輔助函式：近戰打擊結算
+    function triggerMeleeHit(tx, ty, damage, label, color, isMagic = false) {
+      let hit = false;
+      dummies.forEach(d => {
+        if (!d.isDead && !d.remove) {
+          const dist = Math.hypot(d.x - tx, (d.y - ty) * 1.6);
+          if (dist <= 65) {
+            d.takeDamage(damage);
+            hit = true;
+            overlays.push({
+              img: skillImages.warcry_hit,
+              x: d.x, y: d.y - 18,
+              cw: 120, ch: 92, px: 59, py: 41,
+              frames: 16, frame: 0, time: 0, blend: 'lighter', maxFrames: 16
+            });
+            addFloatingText(d.x, d.y - 45, `-${damage} ${label}`, color);
+          }
+        }
+      });
+      if (!hit) {
+        addFloatingText(tx, ty - 30, label, color);
+      }
+    }
+
+    // 輔助函式：發射平行飛斧
+    function spawnFlyingAxe(sx, sy, angle, sourceName) {
+      const speed = 24.0; // px/tick
+      projectiles.push({
+        type: 'flying_axe',
+        source: sourceName,
+        x: sx,
+        y: sy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        angle: angle,
+        currentTick: 0,
+        maxTicks: 25,
+        remove: false
+      });
+    }
+
+    // 輔助函式：發射戰嚎同心音波
+    function spawnWarCryWave(ox, oy, phi) {
+      projectiles.push({
+        type: 'warcry_wave',
+        originX: ox,
+        originY: oy,
+        phi: phi,
+        r: 0,
+        vr: 20.0, // px/tick (0.625 sub-tiles/tick)
+        currentTick: 0,
+        maxTicks: 8
+      });
+    }
+
+    // ── 畫布點擊與鍵盤操作 ──
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      let clickedDummy = null;
+      for (const d of dummies) {
+        if (!d.isDead && !d.remove) {
+          const dist = Math.hypot(clickX - d.x, (clickY - (d.y - 25)) * 1.5);
+          if (dist <= 35) {
+            clickedDummy = d;
+            break;
+          }
+        }
+      }
+
+      if (e.button === 2) {
+        // 右鍵走位尋路
+        character.moveTo(clickX, clickY);
+        return;
+      }
+
+      if (clickedDummy) {
+        executeSkillAt(clickedDummy.x, clickedDummy.y);
+      } else {
+        const allSkills = [...BARBARIAN_COMBAT_SKILLS, ...BARBARIAN_WARCRY_SKILLS];
+        const skill = allSkills.find(s => s.id === currentSkillId) || allSkills[0];
+        if (skill.id === 'war_cry' || skill.id === 'grim_ward' || skill.id === 'whirlwind' || skill.id === 'leap_attack' || skill.id === 'double_throw') {
+          executeSkillAt(clickX, clickY);
+        } else {
+          character.moveTo(clickX, clickY);
+        }
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    const activeKeys = {};
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      activeKeys[e.key.toLowerCase()] = true;
+      activeKeys[e.code] = true;
+
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        const isRun = character.toggleRunMode();
+        updateMovementHud(isRun);
+      } else if (e.code === 'Tab') {
+        e.preventDefault();
+        switchCategory(currentCategory === 'combat' ? 'warcries' : 'combat');
+      } else if (e.code === 'KeyQ') {
+        e.preventDefault();
+        selectSkill('war_cry');
+        executeSkillAt(character.x, character.y);
+      } else if (e.code === 'KeyW') {
+        e.preventDefault();
+        selectSkill('grim_ward');
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        inspect16DirActive = !inspect16DirActive;
+        const btn = document.getElementById('btn-inspect-16dir');
+        btn.textContent = `🔄 [R] 16向自轉巡檢: ${inspect16DirActive ? '開啟中' : '關閉'}`;
+        btn.className = `util-btn ${inspect16DirActive ? 'active' : ''}`;
+      } else if (e.code === 'KeyT') {
+        e.preventDefault();
+        currentArmorIndex = (currentArmorIndex + 1) % armorTiers.length;
+        const tier = armorTiers[currentArmorIndex];
+        character.setArmorTier(tier).then(() => {
+          updateArmorDisplay();
+        });
+        updateArmorDisplay();
+      } else if (e.code === 'KeyG') {
+        e.preventDefault();
+        initDummies();
+        addFloatingText(heroPos.x, heroPos.y - 70, "召喚全新作戰假人木人群！", "#34d399");
+      } else if (e.code === 'KeyD') {
+        e.preventDefault();
+        debugMode = !debugMode;
+        document.getElementById('btn-toggle-debug').className = `util-btn ${debugMode ? 'active' : ''}`;
+      } else if (e.code === 'BracketLeft') {
+        e.preventDefault();
+        stepDir(-1);
+      } else if (e.code === 'BracketRight') {
+        e.preventDefault();
+        stepDir(1);
+      } else if (e.key >= '1' && e.key <= '5') {
+        const num = parseInt(e.key) - 1;
+        if (num < BARBARIAN_COMBAT_SKILLS.length) {
+          selectSkill(BARBARIAN_COMBAT_SKILLS[num].id);
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      delete activeKeys[e.key.toLowerCase()];
+      delete activeKeys[e.code];
+    });
+
+    function updateMovementHud(isRun) {
+      const btn = document.getElementById('btn-toggle-run');
+      if (btn) btn.textContent = isRun ? '🏃 走跑: 奔跑中 [Shift]' : '🚶 走跑: 行走中 [Shift]';
+    }
+
+    const DIR_NAMES = [
+      "0 正南 (S)", "1 南南東 (SSE)", "2 東南 (SE)", "3 東東南 (ESE)",
+      "4 正東 (E)", "5 東東北 (ENE)", "6 東北 (NE)", "7 北東北 (NNE)",
+      "8 正北 (N)", "9 北西北 (NNW)", "10 西北 (NW)", "11 西西北 (WNW)",
+      "12 正西 (W)", "13 西西南 (WSW)", "14 西南 (SW)", "15 南西南 (SSW)"
+    ];
+
+    function stepDir(delta) {
+      if (!character) return;
+      const next = (character.currentDir + delta + 16) % 16;
+      character.currentDir = next;
+      updateDirDisplay(next);
+    }
+
+    function updateDirDisplay(dir) {
+      const el = document.getElementById('hud-dir-display');
+      if (el) el.textContent = DIR_NAMES[dir] || `${dir}`;
+    }
+
+    function updateArmorDisplay() {
+      const btn = document.getElementById('btn-cycle-armor');
+      if (btn) btn.textContent = `🛡️ [T] 裝甲: ${armorNames[currentArmorIndex]}`;
+    }
+
+    document.getElementById('btn-toggle-run').onclick = () => {
+      const isRun = character.toggleRunMode();
+      updateMovementHud(isRun);
+    };
+    document.getElementById('btn-inspect-16dir').onclick = () => {
+      inspect16DirActive = !inspect16DirActive;
+      const btn = document.getElementById('btn-inspect-16dir');
+      btn.textContent = `🔄 [R] 16向自轉巡檢: ${inspect16DirActive ? '開啟中' : '關閉'}`;
+      btn.className = `util-btn ${inspect16DirActive ? 'active' : ''}`;
+    };
+    document.getElementById('btn-cycle-armor').onclick = () => {
+      currentArmorIndex = (currentArmorIndex + 1) % armorTiers.length;
+      const tier = armorTiers[currentArmorIndex];
+      character.setArmorTier(tier).then(() => {
+        updateArmorDisplay();
+      });
+      updateArmorDisplay();
+    };
+    document.getElementById('btn-dir-prev').onclick = () => stepDir(-1);
+    document.getElementById('btn-dir-next').onclick = () => stepDir(1);
+    document.getElementById('btn-spawn-dummies').onclick = () => {
+      initDummies();
+      addFloatingText(heroPos.x, heroPos.y - 70, "召喚全新作戰假人木人群！", "#34d399");
+    };
+    document.getElementById('btn-toggle-debug').onclick = () => {
+      debugMode = !debugMode;
+      document.getElementById('btn-toggle-debug').className = `util-btn ${debugMode ? 'active' : ''}`;
+    };
+
+    // ── 主遊戲迴圈 (25Hz 物理與 60FPS 畫面渲染) ──
+    function gameLoop(now) {
+      accum += (now - lastTime);
+      lastTime = now;
+
+      while (accum >= TICK_MS) {
+        if (character && character.isLoaded) {
+          // 當處於特殊 SQ 動畫狀態時暫停通用鍵盤走位，否則正常處理
+          if (barbCombatEngine.state === 'IDLE') {
+            character.handleKeyboardInput(activeKeys);
+          }
+          character.fixedTick(TICK_MS);
+          updateDirDisplay(character.currentDir);
+
+          // 16 向自轉巡檢
+          if (inspect16DirActive && barbCombatEngine.state === 'IDLE') {
+            inspectCounter++;
+            if (inspectCounter >= 12) {
+              inspectCounter = 0;
+              const nextDir = (character.currentDir + 1) % 16;
+              character.currentDir = nextDir;
+              updateDirDisplay(nextDir);
+            }
+          }
+        }
+
+        fixedPhysicsTick();
+        accum -= TICK_MS;
+      }
+
+      renderScene();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ── 畫面渲染 (Render Pipeline) ──
+    function renderScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. 等軸測 2:1 地面網格底襯
+      ctx.strokeStyle = '#1E293B';
+      ctx.lineWidth = 1;
+      const stepX = 80;
+      for (let x = -canvas.width; x < canvas.width * 2; x += stepX) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + canvas.height * 2, canvas.height);
+        ctx.stroke();
+      }
+      for (let x = -canvas.width; x < canvas.width * 2; x += stepX) {
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height);
+        ctx.lineTo(x + canvas.height * 2, 0);
+        ctx.stroke();
+      }
+
+      // 2. 除錯碰撞圈與技能範圍
+      if (debugMode) {
+        ctx.save();
+        // 近戰判定圈 75px
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(character.x, character.y, 75, 45, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 戰嚎 160px 範圍圈
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.beginPath();
+        ctx.ellipse(character.x, character.y, 160, 95, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 3. 繪製骨圖騰 (Grim Ward)
+      groundTotems.forEach(totem => {
+        ctx.save();
+        // 地表骨駭恐懼脈衝圈
+        ctx.strokeStyle = 'rgba(192, 132, 252, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(totem.x, totem.y, 192, 110, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        let imgToDraw = skillImages.grim_ward_loop;
+        let cellW = 88, cellH = 85;
+        if (totem.stage === 'SPAWN') {
+          imgToDraw = skillImages.grim_ward_start;
+          cellW = 96; cellH = 88;
+        } else if (totem.stage === 'STOP') {
+          imgToDraw = skillImages.grim_ward_stop;
+          cellW = 104; cellH = 94;
+        }
+
+        if (imgToDraw.complete && imgToDraw.naturalWidth > 0) {
+          const frameIdx = Math.min(totem.animFrame, 7);
+          ctx.drawImage(imgToDraw, frameIdx * cellW, 0, cellW, cellH, totem.x - cellW / 2, totem.y - cellH + 15, cellW, cellH);
+        } else {
+          // 骨圖騰備用幾何標記
+          ctx.fillStyle = '#C084FC';
+          ctx.fillRect(totem.x - 8, totem.y - 45, 16, 45);
+        }
+        ctx.restore();
+      });
+
+      // 4. 繪製假人怪群 (包含陰影、受擊、眩暈星環與恐懼標記)
+      dummies.forEach(d => {
+        if (d.remove) return;
+        ctx.save();
+        // 陰影
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(d.x, d.y, 22, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 假人本體
+        let dummyColor = '#94A3B8';
+        if (d.isStunned) dummyColor = '#FBBF24'; // 眩暈金黃色
+        else if (d.isFeared) dummyColor = '#C084FC'; // 恐懼紫色
+        else if (d.hitTime && performance.now() - d.hitTime < 150) dummyColor = '#EF4444'; // 受擊紅色
+
+        ctx.fillStyle = dummyColor;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y - 25, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 血條
+        const bw = 38;
+        const bh = 5;
+        const hpPct = Math.max(0, d.hp / d.maxHp);
+        ctx.fillStyle = '#374151';
+        ctx.fillRect(d.x - bw / 2, d.y - 52, bw, bh);
+        ctx.fillStyle = d.isStunned ? '#FBBF24' : (d.isFeared ? '#C084FC' : '#EF4444');
+        ctx.fillRect(d.x - bw / 2, d.y - 52, bw * hpPct, bh);
+
+        // 頭頂眩暈星環 Overlay (Stun.png)
+        if (d.isStunned && skillImages.stun_stars.complete && skillImages.stun_stars.naturalWidth > 0) {
+          const sFrame = Math.floor((performance.now() / 80) % 12);
+          ctx.drawImage(skillImages.stun_stars, sFrame * 71, 0, 71, 56, d.x - 35, d.y - 65, 71, 56);
+        }
+
+        // 頭頂恐懼詛咒標記
+        if (d.isFeared) {
+          ctx.font = '14px sans-serif';
+          ctx.fillStyle = '#C084FC';
+          ctx.textAlign = 'center';
+          ctx.fillText('😱 TERROR', d.x, d.y - 62);
+        }
+        ctx.restore();
+      });
+
+      // 5. 繪製 Underlay 特效（例如旋風斬旋風塵土）
+      overlays.forEach(ov => {
+        if (ov.img && ov.img.complete && ov.img.naturalWidth > 0) {
+          ctx.save();
+          if (ov.blend) ctx.globalCompositeOperation = ov.blend;
+          const sx = ov.frame * ov.cw;
+          ctx.drawImage(ov.img, sx, 0, ov.cw, ov.ch, ov.x - ov.px, ov.y - (ov.py || 0), ov.cw, ov.ch);
+          ctx.restore();
+        }
+      });
+
+      // 6. 繪製角色本體（鐵律 2 & 12：跳躍攻擊拋物線高度分離）
+      if (character && character.isLoaded) {
+        ctx.save();
+        const leapZ = barbCombatEngine.leap.z || 0;
+
+        // 地面陰影維持在 z = 0 平面
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        const shadowScale = Math.max(0.5, 1 - (leapZ / 200));
+        ctx.beginPath();
+        ctx.ellipse(character.x, character.y, 25 * shadowScale, 12 * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 角色本體以離地高度 z 偏移繪製
+        const origY = character.y;
+        character.y = origY - leapZ;
+        character.render(ctx);
+        character.y = origY; // 復原
+
+        // 狂戰士自身破防 Debuff 光環
+        if (barbCombatEngine.berserkDebuffTicks > 0) {
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(character.x, character.y - 5, 30, 15, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.font = '11px sans-serif';
+          ctx.fillStyle = '#FCA5A5';
+          ctx.textAlign = 'center';
+          ctx.fillText('🛡️ DEF = 0', character.x, character.y - 75);
+        }
+        ctx.restore();
+      }
+
+      // 7. 繪製投射物（雙重投擲飛斧與戰嚎音波）
+      projectiles.forEach(p => {
+        ctx.save();
+        if (p.type === 'flying_axe') {
+          if (skillImages.flying_axe.complete && skillImages.flying_axe.naturalWidth > 0) {
+            // 32 方向旋轉與 8 幀滾動
+            const frameIdx = Math.floor((performance.now() / 40) % 8);
+            ctx.drawImage(skillImages.flying_axe, frameIdx * 34, 0, 34, 37, p.x - 17, p.y - 25, 34, 37);
+          } else {
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y - 20, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (p.type === 'warcry_wave') {
+          // 戰嚎 16 方向同心音波
+          ctx.globalCompositeOperation = 'lighter';
+          if (skillImages.warcry_shockwave.complete && skillImages.warcry_shockwave.naturalWidth > 0) {
+            const frameIdx = Math.min(p.currentTick * 2, 15);
+            ctx.drawImage(skillImages.warcry_shockwave, frameIdx * 84, 0, 84, 56, p.x - 42, p.y - 28, 84, 56);
+          } else {
+            ctx.strokeStyle = '#FCD34D';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      });
+
+      // 8. 浮動傷害數字繪製
+      floatingTexts.forEach(ft => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.alpha);
+        ctx.font = 'bold 14px "Segoe UI", sans-serif';
+        ctx.fillStyle = ft.color;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 4;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      });
+
+      // 9. 更新 HUD 監視器數值
+      document.getElementById('metric-state').textContent = `狀態: ${barbCombatEngine.state}`;
+      document.getElementById('metric-parabola').textContent = `拋物線離地高度 z: ${Math.round(barbCombatEngine.leap.z)} px`;
+      document.getElementById('metric-ww-spin').textContent = `旋風角速度: ${barbCombatEngine.state === 'WHIRLWIND' ? 'π/4 rad/tick (40ms/向)' : '0 rad/s'}`;
+      document.getElementById('metric-actives').textContent = `活動投射物/實體: ${projectiles.length + groundTotems.length}`;
+    }
+
+    // 初始化假人與開始主循環
+    initDummies();
+    renderSkillsDeck();
+    updateMovementHud(true);
+    updateArmorDisplay();
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>

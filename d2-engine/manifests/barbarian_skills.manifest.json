@@ -1,0 +1,330 @@
+{
+  "$schema": "../schemas/skill_manifest_schema.json",
+  "manifestVersion": "1.13c-sdd-v2.0",
+  "characterClass": "BARBARIAN",
+  "classCode": "ba",
+  "baseAssetRoot": "data/global/chars/ba",
+  "tickRateFps": 25,
+  "tickDurationMs": 40,
+  "defaultPaperdoll": {
+    "armorTier": "plt",
+    "helmCode": "ba_hd_avb",
+    "rightHandWeapon": "ba_rh_bax",
+    "leftHandWeapon": "ba_lh_bax",
+    "throwingRight": "ba_rh_tax",
+    "throwingLeft": "ba_lh_tax"
+  },
+  "skills": {
+    "151": {
+      "skillId": 151,
+      "skillKey": "WHIRLWIND",
+      "displayName": "旋風斬 (Whirlwind)",
+      "agentIntentMapping": "CODE_GENERATING",
+      "plrMode": "SQ",
+      "wClass": "2HS",
+      "sequenceConfig": {
+        "sequenceId": 8,
+        "baseSourceMode": "A1",
+        "lockedPoseFrames": [
+          3,
+          4,
+          5
+        ],
+        "spinDirectionStepPerTick": 1,
+        "totalDirections": 8,
+        "fullRotationTicks": 8
+      },
+      "kinematics": {
+        "movementType": "CONTINUOUS_PATH_SWEEP",
+        "baseVelocitySubTilesPerTick": 0.24,
+        "velocityMultiplier": 1.15,
+        "hitCheckInitialTicks": [
+          4,
+          8
+        ],
+        "hitCheckIntervalTicks": 4,
+        "meleeSweepRadiusSubTiles": 2.2
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_2hsa1.dcc",
+        "missileCelFile": null,
+        "underlayLoopCelFile": "data/global/overlays/whirlwind_dust.dcc",
+        "weaponTrailCelFile": "data/global/overlays/swoosh_heavy.dcc",
+        "hitOverlayCelFile": "data/global/overlays/hit_slash_blood.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_CENTER",
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "143": {
+      "skillId": 143,
+      "skillKey": "LEAP_ATTACK",
+      "displayName": "跳躍攻擊 (Leap Attack)",
+      "agentIntentMapping": "TOOL_EXECUTING",
+      "plrMode": "SQ",
+      "wClass": "STF",
+      "sequenceConfig": {
+        "sequenceId": 4,
+        "phases": [
+          {
+            "phaseName": "TAKEOFF_PREP",
+            "sourceMode": "WL",
+            "sourceFrames": [
+              0,
+              1,
+              2
+            ],
+            "durationTicks": 3,
+            "triggerOverlayOnStart": "data/global/overlays/leap_dust_cloud.dcc"
+          },
+          {
+            "phaseName": "AIRBORNE_PARABOLA",
+            "sourceMode": "NU",
+            "sourceFrames": [
+              2
+            ],
+            "minFlightTicks": 12,
+            "maxFlightTicks": 22,
+            "distanceTickDivisor": 0.45,
+            "parabolaEquation": "z(u) = 4 * H_max * u * (1 - u)",
+            "basePeakHeightPx": 72,
+            "heightPerSubTilePx": 12,
+            "maxPeakHeightPx": 160,
+            "detachGroundShadow": true
+          },
+          {
+            "phaseName": "LANDING_STRIKE",
+            "sourceMode": "A1",
+            "sourceFrames": [
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10
+            ],
+            "durationTicks": 7,
+            "actionFlagTickOffset": 2,
+            "triggerOverlayOnLand": "data/global/overlays/leap_impact_ring.dcc"
+          }
+        ]
+      },
+      "kinematics": {
+        "movementType": "PARABOLIC_BALLISTIC_JUMP",
+        "landingStopDistanceBeforeTargetSubTiles": 1.2,
+        "landingShockwaveRadiusSubTiles": 2.0,
+        "meleeReachSubTiles": 1.8
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_stf{mode}.dcc",
+        "missileCelFile": "data/global/missiles/leapattack_shock.dcc",
+        "castOverlayCelFile": "data/global/overlays/leap_dust_cloud.dcc",
+        "landingOverlayCelFile": "data/global/overlays/leap_impact_ring.dcc",
+        "hitOverlayCelFile": "data/global/overlays/crush_heavy_hit.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_CENTER",
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "133": {
+      "skillId": 133,
+      "skillKey": "DOUBLE_SWING",
+      "displayName": "雙重打擊 (Double Swing)",
+      "agentIntentMapping": "CODE_GENERATING",
+      "plrMode": "SQ",
+      "wClass": "1SS",
+      "sequenceConfig": {
+        "sequenceId": 2,
+        "totalSequenceTicks": 12,
+        "segments": [
+          {
+            "segmentName": "RIGHT_HAND_PRIMARY_SLASH",
+            "sourceMode": "A1",
+            "tickRange": [
+              0,
+              5
+            ],
+            "actionFlagTick": 3,
+            "activeSlot": "RH",
+            "swingOverlayCelFile": "data/global/overlays/double_swing_arc_r.dcc"
+          },
+          {
+            "segmentName": "LEFT_HAND_OFFHAND_SLASH",
+            "sourceMode": "A2",
+            "tickRange": [
+              6,
+              11
+            ],
+            "actionFlagTick": 9,
+            "activeSlot": "LH",
+            "swingOverlayCelFile": "data/global/overlays/double_swing_arc_l.dcc"
+          }
+        ]
+      },
+      "kinematics": {
+        "movementType": "STATIONARY_DUAL_MELEE",
+        "meleeReachSubTiles": 1.65,
+        "arcAngleRad": 1.0472
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_1ss{mode}.dcc",
+        "missileCelFile": null,
+        "hitOverlayCelFile": "data/global/overlays/hit_sparks_dual.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_CENTER",
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "152": {
+      "skillId": 152,
+      "skillKey": "BERSERK",
+      "displayName": "狂戰士 (Berserk)",
+      "agentIntentMapping": "TOOL_EXECUTING",
+      "plrMode": "A1",
+      "wClass": "2HS",
+      "animationConfig": {
+        "totalFrames": 11,
+        "castGlowStartFrame": 2,
+        "actionFlagFrame": 5
+      },
+      "kinematics": {
+        "movementType": "STATIONARY_HEAVY_STRIKE",
+        "damageType": "PURE_MAGIC_100_PCT",
+        "meleeReachSubTiles": 1.85,
+        "selfDefenseZeroBuffDurationTicks": 50
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_2hsa1.dcc",
+        "missileCelFile": null,
+        "castOverlayCelFile": "data/global/overlays/berserk_cast_slash.dcc",
+        "selfDebuffOverlayCelFile": "data/global/overlays/berserk_self_debuff.dcc",
+        "hitOverlayCelFile": "data/global/overlays/magic_hit_burst.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_CENTER",
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "140": {
+      "skillId": 140,
+      "skillKey": "DOUBLE_THROW",
+      "displayName": "雙重投擲 (Double Throw)",
+      "agentIntentMapping": "CODE_GENERATING",
+      "plrMode": "SQ",
+      "wClass": "1SS",
+      "sequenceConfig": {
+        "sequenceId": 5,
+        "totalSequenceTicks": 12,
+        "sourceMode": "TH",
+        "releases": [
+          {
+            "releaseName": "RIGHT_HAND_THROW",
+            "actionFlagTick": 4,
+            "handSource": "RIGHT_HAND",
+            "lateralOffsetSubTiles": 0.35,
+            "forwardRadiusSubTiles": 0.65,
+            "zFirePx": 42
+          },
+          {
+            "releaseName": "LEFT_HAND_THROW",
+            "actionFlagTick": 8,
+            "handSource": "LEFT_HAND",
+            "lateralOffsetSubTiles": -0.35,
+            "forwardRadiusSubTiles": 0.65,
+            "zFirePx": 42
+          }
+        ]
+      },
+      "kinematics": {
+        "movementType": "DUAL_PARALLEL_BALLISTIC_PROJECTILES",
+        "dualHandsTotalSpacingSubTiles": 0.7,
+        "projectileSpeedSubTilesPerTick": 2.4,
+        "projectileRadiusSubTiles": 0.25,
+        "collisionModel": "SWEPT_CIRCLE_CONTINUOUS_SEGMENT",
+        "pierce": false,
+        "ttlTicks": 25
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_1ssth.dcc",
+        "missileCelFile": "data/global/missiles/flyingaxe.dcc",
+        "altMissileCelFile": "data/global/missiles/throwingknife.dcc",
+        "castOverlayCelFile": "data/global/overlays/throw_launch_gust.dcc",
+        "hitOverlayCelFile": "data/global/overlays/javelin_pierce_blood.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_CENTER",
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "154": {
+      "skillId": 154,
+      "skillKey": "WAR_CRY",
+      "displayName": "震撼戰嚎 (War Cry)",
+      "agentIntentMapping": "TEST_AOE",
+      "plrMode": "SC",
+      "wClass": "1SS",
+      "animationConfig": {
+        "totalFrames": 13,
+        "actionFlagFrame": 6
+      },
+      "kinematics": {
+        "movementType": "RADIAL_CONCENTRIC_ACOUSTIC_RING",
+        "subMissileCount": 16,
+        "originZPx": 36,
+        "expansionSpeedSubTilesPerTick": 0.625,
+        "maxRadiusSubTiles": 5.0,
+        "ringLifetimeTicks": 8,
+        "stunDurationTicks": 65
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_1sssc.dcc",
+        "missileCelFile": "data/global/missiles/warcry_ring_wave.dcc",
+        "castOverlayCelFile": "data/global/overlays/warcry_cast_roar.dcc",
+        "hitOverlayCelFile": "data/global/overlays/warcry_impact_flash.dcc",
+        "stunHeadOverlayCelFile": "data/global/overlays/stun2.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "TARGET_TORSO_AND_HEAD_STUN",
+        "headStunOffsetAboveSpritePx": 12,
+        "layerRole": "FOREGROUND_SANDWICH_TOP"
+      }
+    },
+    "150": {
+      "skillId": 150,
+      "skillKey": "GRIM_WARD",
+      "displayName": "殘酷庇護所 (Grim Ward)",
+      "agentIntentMapping": "DEEP_THINKING",
+      "plrMode": "SC",
+      "wClass": "1SS",
+      "animationConfig": {
+        "totalFrames": 13,
+        "actionFlagFrame": 6
+      },
+      "kinematics": {
+        "movementType": "STATIONARY_GROUND_TOTEM_PULSER",
+        "totemSpawnFrames": 10,
+        "totemDurationTicks": 250,
+        "totemDespawnFrames": 8,
+        "fearPulseIntervalTicks": 25,
+        "fearPulseRadiusSubTiles": 6.0,
+        "monsterAiOverride": "FLEE_RADIAL_AWAY"
+      },
+      "assets": {
+        "characterDccPattern": "ba{part}{armor}_1sssc.dcc",
+        "summonedUnitCelFile": "data/global/monsters/gw/tr/gwtrlitnuhth.dcc",
+        "spawnOverlayCelFile": "data/global/overlays/corpse_totem_spawn.dcc",
+        "pulseRingOverlayCelFile": "data/global/overlays/grimward_pulse_ring.dcc",
+        "monsterCurseOverlayCelFile": "data/global/overlays/curse_terror.dcc"
+      },
+      "hitEffectAnchor": {
+        "anchorType": "GROUND_ORIGIN_AND_TARGET_HEAD_CURSE",
+        "headCurseOffsetAboveSpritePx": 16,
+        "layerRole": "UNDERLAY_RING_AND_FOREGROUND_CURSE"
+      }
+    }
+  }
+}

@@ -110,6 +110,7 @@ class AgentSignalBridgeHub:
 AGENT_BRIDGE = AgentSignalBridgeHub()
 
 class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     hub = EventHub()
     agent_bridge = AGENT_BRIDGE
 
@@ -243,6 +244,20 @@ class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
                 paladin_html = os.path.join(WEB_DIR, "paladin_sandbox.html")
             if os.path.exists(paladin_html):
                 with open(paladin_html, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        if self.path == "/barbarian_sandbox.html":
+            barbarian_html = os.path.join(SANDBOX_DIR, "barbarian_sandbox.html")
+            if not os.path.exists(barbarian_html):
+                barbarian_html = os.path.join(WEB_DIR, "barbarian_sandbox.html")
+            if os.path.exists(barbarian_html):
+                with open(barbarian_html, "rb") as f:
                     content = f.read()
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
