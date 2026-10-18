@@ -8,10 +8,13 @@ This document details the **Five Core Universal Archetypes (plus extended forms)
 
 ### 1. Physical Behavior and Mathematical Model
 Projectiles are launched from the caster's chest / staff tip and travel in screen 2D space along a Euclidean straight line at constant velocity toward the clicked target:
-- **Spawn Origin**: $S_x = \text{caster}.x,\ S_y = \text{caster}.y - 32\text{px}$
-- **Initial Step Forward (InitSteps)**:
-  $$\Delta x = \text{target}.x - S_x, \quad \Delta y = \text{target}.y - S_y, \quad \text{dist} = \sqrt{\Delta x^2 + \Delta y^2}$$
-  $$P_0.x = S_x + \frac{\Delta x}{\text{dist}} \times 20\text{px}, \quad P_0.y = S_y + \frac{\Delta y}{\text{dist}} \times 20\text{px}$$
+- **Directional Fire Offset Vector ($P_{spawn}(d)$)**:
+  Projectiles do not spawn from the character's ground pivot or naive torso center. They are calculated based on character orientation angle $\theta_d$ (for 8 or 16 directions $d$), polar forward offset $R_{hand}$, lateral hand offset $L_{hand}$ (distinguishing left/right casting hand), and elevation $z_{fire}$ (default 40px):
+  $$\begin{bmatrix} x_{spawn}(d) \\ y_{spawn}(d) \\ z_{spawn}(d) \end{bmatrix} = \begin{bmatrix} x_{actor} \\ y_{actor} \\ 0 \end{bmatrix} + \begin{bmatrix} \cos\theta_d & -\sin\theta_d & 0 \\ \sin\theta_d & \cos\theta_d & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} R_{hand} \\ L_{hand} \\ z_{fire} \end{bmatrix}$$
+  In screen isometric projection ($W_{tile} = 32\text{px}, H_{tile} = 16\text{px}$):
+  $$x_s = (x_w - y_w) \cdot \frac{W_{tile}}{2} + X_{cam}, \quad y_s = (x_w + y_w) \cdot \frac{H_{tile}}{2} - z_w + Y_{cam}$$
+  Supports direction-specific manual micro-offsets $(\delta x_s[d], \delta y_s[d])$ in `missiles.manifest.json` for pixel-perfect staff-tip alignment.
+
 - **Velocity Vector**:
   $$v_x = \frac{\Delta x}{\text{dist}} \times \text{Vel}, \quad v_y = \frac{\Delta y}{\text{dist}} \times \text{Vel}$$
 - **Orientation Angle**:
@@ -19,15 +22,32 @@ Projectiles are launched from the caster's chest / staff tip and travel in scree
 - **Strict Prohibition (Red Line)**:
   **NEVER multiply $v_y$ by 0.5, and NEVER compute $\text{atan2}(\Delta y \times 2, \Delta x)$**. Projectiles travel straight in screen space rather than crawling along the isometric ground plane.
 
-### 2. Hitbox and Impact Mechanics (Per Phrozen Keep Annex Bounding Box Standards)
-- **Dynamic Hitbox Center**:
+### 2. Hitbox and Impact Mechanics (Swept Circle Continuous Collision)
+- **Continuous Swept Circle Collision in World XY Plane**:
+  Prevents high-speed tunneling where projectiles skip over targets between frames.
+  Given projectile position at tick $t-1$ as $A = (x_{t-1}, y_{t-1})$ and tick $t$ as $B = (x_t, y_t)$, and target cylinder center as $C = (x_c, y_c)$:
+  1. Compute segment projection parameter $\lambda$:
+     $$\lambda = \max\left(0, \min\left(1, \frac{(C - A) \cdot (B - A)}{\|B - A\|^2}\right)\right)$$
+  2. Compute closest point on trajectory line segment:
+     $$Q = A + \lambda (B - A)$$
+  3. Collision criterion:
+     $$\|C - Q\| \le R_{projectile} + R_{target}$$
+  Where $R_{target}$ corresponds to `MonStats2.txt` collision radius (Small = 0.5, Medium = 1.0, Large = 1.5 sub-tiles).
+
+- **Target Torso Anchor for Hit Overlays**:
+  Upon non-piercing impact (`Pierce = false`), the projectile entity terminates and instantiates a `HitOverlay` (e.g. shock burst, ice shatter, holy bolt cloud).
+  The VFX rendering origin is strictly locked to the target's torso center:
+  $$(x_{fx}, y_{fx}) = (x_{s,target}, y_{s,target} - z_{torso})$$
+  Rendered in the foreground overlay layer (`PreDraw: 0`), preventing hit VFX from drifting or being occluded by the monster's base sprite.
+
+- **Dynamic Hitbox Center & Sizing**:
   - Baseline Standard Dummy / Small Monster Torso Center: $(\text{target}.x, \text{target}.y - 18\text{px})$.
-  - **Dynamic Centering Formula for Diverse Monster Sizes**: Derived from `PixHeight` and `HitTestHeight` fields in `monstats.txt`:
+  - Derived from `PixHeight` and `HitTestHeight` fields in `monstats.txt`:
     $$\text{HitCenter}_y = \text{target}.y - \left(\frac{\text{PixHeight}}{2}\right)$$
     - Small Monsters (Fallen `FA`, PixHeight = 36px): Hit sphere center is $Y - 18\text{px}$.
     - Medium Humanoid Monsters (Zombie `ZM`, PixHeight = 72px): Hit sphere center is $Y - 36\text{px}$.
     - Large Boss Monsters (Diablo `DI`, PixHeight = 160px): Hit sphere center is $Y - 80\text{px}$.
-  - **Failsafe Iron Rule**: Never perform 2D collision distance checks directly against the ground foot coordinate $(x, y)$; otherwise, trajectories passing through the chest will produce severe ghosting and false-negative pass-throughs.
+
 - **Single Target vs. AoE Detonation**:
   - **Single-Target Piercing / Dissipation (e.g., Fire Bolt, Ice Bolt, Bone Spear)**: Calculates damage directly within collision radius and destroys the projectile; **no explosion atlas is spawned**.
   - **Area Detonation (e.g., Fire Ball, Glacial Spike, Javelins)**: Upon reaching max range or impacting a monster, spawns a secondary explosion entity at current coordinates (e.g., `FireArrowExplode2`, `GlacialSpikeExplode`), dealing damage to all hostile targets within a 60px~80px radius.

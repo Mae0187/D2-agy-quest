@@ -83,6 +83,19 @@ In any code implementation, calibration, or refactoring, **violating the followi
 11. **[Units Global Palette Lock Iron Rule]**:
     * All dynamic characters, monsters, and skill projectiles (Missiles & Units) must strictly bind to the `units.pal` global palette during extraction and rendering. Never decode dynamic units using local scene tile palettes, preventing hot-pink artifacts and lost specular highlights across acts.
 
+12. **[Directional Fire Offset & Swept Continuous Collision Iron Rule]**:
+    * **Directional Fire Offset**: Projectile spawn coordinates must be computed via directional polar offsets $P_{spawn}(d)$ incorporating caster facing angle $\theta_d$, forward reach $R_{hand}$, lateral hand offset $L_{hand}$, and chest/staff elevation $z_{fire}$. Spawning from ground pivots or naive torso center is strictly prohibited.
+    * **Swept Circle Continuous Collision**: High-speed missiles must use continuous swept projection parameter $\lambda = \max(0, \min(1, \frac{(C-A)\cdot(B-A)}{\|B-A\|^2}))$. Missiles passing over targets between discrete frames without triggering collision (tunneling) is strictly banned.
+    * **Torso Center Hit Overlay**: Non-piercing hit VFX must anchor at target $(x_{s,target}, y_{s,target} - z_{torso})$ on foreground overlay layers, preventing drifting.
+
+13. **[Agent Event-Driven HSM & Action Frame Gate Iron Rule]**:
+    * **Event Coalescing**: Asynchronous Agent signals (token streams, tool calls) must be coalesced via a 120ms sliding window ($W = 120\text{ms}$ / 3 ticks) into continuous combat sequences (Zeal / Channeling), preventing 0-th frame reset stuttering.
+    * **Action Frame Gate**: Normal states ($P \ge 1$) transition strictly after action trigger frame $f_{act}$ or animation end frame $N - 1$.
+    * **Preemptive Error Interrupt**: Fatal error events ($P = 0$) possess full preemptive authority, immediately interrupting the current animation into Hit Recovery (`GH`) or Shield Block (`BL`).
+
+14. **[Headless Engine Core & Single Source of Truth (SSOT) Manifest Iron Rule]**:
+    * The skill engine must operate as a headless core decoupled from host environments. Both `verification_sandbox` (tuning workbench) and `Diablo2-Agent-Monitor/web` (production dungeon) must strictly import identical manifests from `d2-engine/manifests`. Dual-maintenance, duplicated config tables, or divergent drawing routines are strictly banned.
+
 ---
 
 ## 🧭 II. Four-Table Cross-Audit Architecture (Skills.txt ✕ states.txt ✕ Overlay.txt ✕ Missiles.txt)
@@ -190,6 +203,7 @@ This skill package consists of the following modular documents:
   * [04_ALL_CLASSES_SKILL_MATRIX.md](./references/04_ALL_CLASSES_SKILL_MATRIX.md): Comprehensive authentic parameters across seven classes and dual official wiki index.
   * [05_VERIFICATION_AND_SANDBOX.md](./references/05_VERIFICATION_AND_SANDBOX.md): Isolated port topology, Playwright automated testing SOP, and the 5-Gate ground truth protocol.
   * [06_ASSET_NORMALIZATION_AND_INDEX.md](./references/06_ASSET_NORMALIZATION_AND_INDEX.md): Normalized atlas catalog across 15 categories, Void Sprite Slot specs, and Units Global Palette standard.
+  * [07_AGENT_EVENT_HSM_AND_HARNESS.md](./references/07_AGENT_EVENT_HSM_AND_HARNESS.md): Three-tier event-driven HSM pipeline, 120ms sliding window coalescing, action frame gates, and 3-tier deterministic test harness (RenderQueueSnapshot, Golden Snapshot, Temporal Centroid Continuity).
 
 * **Standard Templates (`templates/`)**:
   * [skill_manifest_schema.json](./templates/skill_manifest_schema.json): Standard Skill Manifest Schema.
