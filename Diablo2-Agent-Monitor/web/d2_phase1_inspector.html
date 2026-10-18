@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diablo II Agent Monitor & Verification Sandbox (Phase 1 View Layer)</title>
+  <style>
+    :root {
+      --d2-gold: #c7b377;
+      --d2-gold-bright: #f5d77f;
+      --d2-bg-dark: #090706;
+      --d2-panel-bg: #14110f;
+      --d2-border: #3d3326;
+      --d2-blood: #991b1b;
+      --d2-mana: #1e3a8a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--d2-bg-dark);
+      color: var(--d2-gold);
+      font-family: 'Courier New', Consolas, monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* 頂部 Agent 狀態列 */
+    header.d2-top-bar {
+      height: 48px;
+      background: linear-gradient(180deg, #1f1916 0%, #0e0b09 100%);
+      border-bottom: 2px solid var(--d2-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+    }
+    .d2-title {
+      font-weight: bold;
+      letter-spacing: 1px;
+      color: var(--d2-gold-bright);
+      font-size: 15px;
+    }
+    .intent-badge {
+      padding: 4px 12px;
+      border: 1px solid var(--d2-gold);
+      background: rgba(0, 0, 0, 0.65);
+      font-size: 13px;
+      font-weight: bold;
+    }
+    /* 主視圖容器 */
+    .main-workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+    .canvas-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #181310 0%, #050403 100%);
+      position: relative;
+    }
+    canvas#d2-viewport {
+      border: 2px solid var(--d2-border);
+      box-shadow: 0 0 28px rgba(0, 0, 0, 0.9);
+      background-color: #080605;
+    }
+    /* 右側沙盒檢視與控制面板 (verification_sandbox 整合抽屜) */
+    aside.sandbox-drawer {
+      width: 360px;
+      background-color: var(--d2-panel-bg);
+      border-left: 2px solid var(--d2-border);
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .panel-group {
+      border: 1px solid var(--d2-border);
+      background: #0d0b09;
+      padding: 10px;
+    }
+    .panel-group h3 {
+      font-size: 12px;
+      color: var(--d2-gold-bright);
+      border-bottom: 1px solid #29221a;
+      padding-bottom: 5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      font-size: 12px;
+    }
+    select, input[type="range"], button {
+      background: #1c1814;
+      color: var(--d2-gold-bright);
+      border: 1px solid var(--d2-border);
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    button:hover {
+      background: #2e261d;
+      cursor: pointer;
+    }
+    /* 底部暗黑 II 經典血球與魔力球 HUD */
+    footer.d2-hud-bar {
+      height: 86px;
+      background: linear-gradient(180deg, #120e0c 0%, #070504 100%);
+      border-top: 2px solid var(--d2-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+    .orb {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 11px;
+      text-align: center;
+      color: #fff;
+      border: 2px solid var(--d2-gold);
+      box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.7);
+    }
+    .orb.life {
+      background: radial-gradient(circle at 35% 35%, #ef4444 0%, #7f1d1d 70%, #450a0a 100%);
+    }
+    .orb.mana {
+      background: radial-gradient(circle at 35% 35%, #3b82f6 0%, #1e3a8a 70%, #0f172a 100%);
+    }
+    .hud-center-console {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 12px;
+      color: var(--d2-gold);
+    }
+  </style>
+</head>
+<body>
+  <header class="d2-top-bar">
+    <div class="d2-title">⚔️ DIABLO II AGENT MONITOR // VIEW LAYER PHASE 1</div>
+    <div class="intent-badge" id="hud-intent-badge">IDLE PATROL // 地牢巡邏待命</div>
+    <button id="btn-toggle-scene">切換場景 (地牢 ↔ 營火)</button>
+  </header>
+
+  <div class="main-workspace">
+    <main class="canvas-stage">
+      <canvas id="d2-viewport" width="960" height="600"></canvas>
+    </main>
+
+    <aside class="sandbox-drawer">
+      <div class="panel-group">
+        <h3>1. Agent Intent 狀態預覽 (UI Preview)</h3>
+        <div class="control-row">
+          <label for="sel-intent">Agent 意圖：</label>
+          <select id="sel-intent">
+            <option value="IDLE_PATROL">IDLE_PATROL (TN/WL)</option>
+            <option value="DEEP_THINKING">DEEP_THINKING (Aura)</option>
+            <option value="CODE_GENERATING">CODE_GENERATING (A1/A2)</option>
+            <option value="TOOL_EXECUTING">TOOL_EXECUTING (SC)</option>
+            <option value="TEST_AOE">TEST_AOE (AoE Burst)</option>
+            <option value="ERROR_HAZARD">ERROR_HAZARD (BL/GH P=0)</option>
+            <option value="QUEST_COMPLETE">QUEST_COMPLETE (NU)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="sel-class">角色職業：</label>
+          <select id="sel-class">
+            <option value="PALADIN">Paladin (聖騎士)</option>
+            <option value="SORCERESS">Sorceress (法師)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel-group">
+        <h3>2. 骨架與神聖之盾狀態機 (COF & Override)</h3>
+        <div class="control-row">
+          <label for="rng-dir">面向方向 (Dir 0~7)：</label>
+          <input type="range" id="rng-dir" min="0" max="7" value="0" />
+          <span id="lbl-dir">0 (S)</span>
+        </div>
+        <div class="control-row">
+          <label for="rng-frame">動畫幀索引 (Frame)：</label>
+          <input type="range" id="rng-frame" min="0" max="11" value="0" />
+          <span id="lbl-frame">0</span>
+        </div>
+        <div class="control-row">
+          <label for="chk-holy-shield">神聖之盾 LH 覆寫：</label>
+          <input type="checkbox" id="chk-holy-shield" checked />
+        </div>
+      </div>
+
+      <div class="panel-group">
+        <h3>3. 鐵律 12：投射物偏移與受擊盒 (Geometry)</h3>
+        <div class="control-row">
+          <label for="sel-hand">發射持物源：</label>
+          <select id="sel-hand">
+            <option value="RIGHT_HAND">右手武器 (RIGHT_HAND)</option>
+            <option value="LEFT_HAND">左手盾/副手 (LEFT_HAND)</option>
+            <option value="STAFF_CENTER">雙手法杖中心 (STAFF_CENTER)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="sel-monster-size">怪物圓柱體尺寸：</label>
+          <select id="sel-monster-size">
+            <option value="SMALL">Small (0.5 sub-tile)</option>
+            <option value="MEDIUM" selected>Medium (1.0 sub-tile)</option>
+            <option value="LARGE">Large (1.5 sub-tiles)</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="chk-hit-overlay">顯示軀幹受擊爆炸：</label>
+          <input type="checkbox" id="chk-hit-overlay" checked />
+        </div>
+      </div>
+
+      <div class="panel-group">
+        <h3>4. 營火過渡與 Gamma 衰減預覽</h3>
+        <div class="control-row">
+          <label for="sel-campfire-phase">營火選角階段：</label>
+          <select id="sel-campfire-phase">
+            <option value="BACK_IDLE">P1: Back_Idle (NU)</option>
+            <option value="STEP_FORWARD">P2: Step_Forward</option>
+            <option value="FRONT_IDLE" selected>P3: Front_Idle</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="rng-gamma">Gamma 暗場幀 (0~8)：</label>
+          <input type="range" id="rng-gamma" min="0" max="8" value="0" />
+          <span id="lbl-gamma">0</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="d2-hud-bar">
+    <div class="orb life" id="orb-life">LIFE<br/>100%</div>
+    <div class="hud-center-console">
+      <div>CLOCK: <strong>25 FPS (40ms Fixed Step)</strong></div>
+      <div id="hud-anim-readout">MODE: TN | DIR: 0 | FRAME: 0</div>
+      <div>COALESCE WINDOW: <strong>120ms (3 Ticks)</strong></div>
+    </div>
+    <div class="orb mana" id="orb-mana">MANA<br/>100%</div>
+  </footer>
+
+  <script type="module">
+    import { UI_CONFIG } from '../../d2-engine/templates/ui_config.js';
+    import { D2ViewShell } from '../../d2-engine/templates/d2_view_shell.js';
+
+    const canvas = document.getElementById('d2-viewport');
+    const viewShell = new D2ViewShell(canvas);
+    viewShell.renderFrame();
+
+    const badge = document.getElementById('hud-intent-badge');
+    const readout = document.getElementById('hud-anim-readout');
+
+    function syncUI() {
+      const intentKey = document.getElementById('sel-intent').value;
+      const intentCfg = UI_CONFIG.AGENT_INTENT_MAP[intentKey];
+      const dir = Number(document.getElementById('rng-dir').value);
+      const frame = Number(document.getElementById('rng-frame').value);
+      const gamma = Number(document.getElementById('rng-gamma').value);
+
+      document.getElementById('lbl-dir').textContent = `${dir} (${UI_CONFIG.FIRE_OFFSET_CONFIG.DIRECTION_8_TABLE[dir].label})`;
+      document.getElementById('lbl-frame').textContent = String(frame);
+      document.getElementById('lbl-gamma').textContent = String(gamma);
+
+      badge.textContent = intentCfg.hudLabel;
+      badge.style.color = intentCfg.hudColor;
+      badge.style.borderColor = intentCfg.hudColor;
+
+      const activeAnimMode = intentCfg.d2AnimModes[0];
+      readout.textContent = `MODE: ${activeAnimMode} | DIR: ${dir} | FRAME: ${frame}`;
+
+      viewShell.setViewState({
+        agentIntent: intentKey,
+        animMode: activeAnimMode,
+        characterClass: document.getElementById('sel-class').value,
+        direction: dir,
+        frameIndex: frame,
+        holyShieldOverride: document.getElementById('chk-holy-shield').checked,
+        handSource: document.getElementById('sel-hand').value,
+        campfireStepPhase: document.getElementById('sel-campfire-phase').value,
+        gammaFadeStep: gamma,
+        targetMonster: {
+          sizeClass: document.getElementById('sel-monster-size').value,
+          worldPos: { x: 3.5, y: 0.0, z: 0 },
+          showHitOverlay: document.getElementById('chk-hit-overlay').checked
+        }
+      });
+    }
+
+    document.querySelectorAll('select, input').forEach((el) => {
+      el.addEventListener('input', syncUI);
+      el.addEventListener('change', syncUI);
+    });
+
+    document.getElementById('btn-toggle-scene').addEventListener('click', () => {
+      const nextScene = viewShell.viewState.sceneMode === 'DUNGEON' ? 'CAMPFIRE' : 'DUNGEON';
+      viewShell.setViewState({ sceneMode: nextScene });
+    });
+  </script>
+</body>
+</html>
